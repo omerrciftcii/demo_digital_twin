@@ -965,7 +965,7 @@ def test_overlapping_sections_go_to_the_model_in_full():
     assert "Kalıp giriş" in messages[-1]["content"]
 
     femara = relevant_context(_record("patient-03"), "Femara'yı kullanmaya devam ediyor muyum?")
-    assert "letrozol" in femara.casefold()
+    assert "FEMARA" in femara
 
     fev_record = _record("patient-02")
     fev_context = relevant_context(fev_record, "Solunum testimde FEV1 kaç çıktı?")

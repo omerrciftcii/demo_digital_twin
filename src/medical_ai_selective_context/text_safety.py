@@ -6,8 +6,9 @@ classes are broad conversational patterns. A chart question that does not ask
 for a dose, a start, a stop, or permission to take a drug still goes to the model.
 
 Dose-change refusals quote a few medication-section lines. There is no model
-call. The lines are chosen by overlap with the question and by the drug-class
-file. The quoted characters are copied from the record.
+call. The lines are chosen by overlap with the question. A generated drug
+dictionary is used only when that file is present. The quoted characters are
+copied from the record.
 """
 
 from __future__ import annotations
@@ -79,7 +80,7 @@ _EMERGENCY = (
     r"(ezici|baskici|sikisan) (agri|gogus)",
     r"gog(s|us)\w{0,20}(agr|sikis|ezil|baski).{0,48}(kol|cene|sirt|omuz)",
     r"(kolum|cene|cenem).{0,40}(gogus|gogs)",
-    r"kalbim durdu", r"gogusumden agir",
+    r"gogusumden agir",
     # Breathlessness that is sudden or severe, not a mild "daralıyor, neden".
     r"nefes alamiyor", r"nefesim kesil", r"boguluyor",
     r"nefes(im|i) (cok|birden|asiri) (daral|kesil|tikand)",
@@ -88,20 +89,21 @@ _EMERGENCY = (
     r"(yuzum|agzim) (egri|dustu|uyus|kaydi)",
     r"yuzumun bir taraf", r"(kolum|bacak\w{0,4}) (uyus|gucsuz|kalkmiyor)",
     r"konusmam (bozul|peltek)", r"bir taraf\w{0,6} gucsuz",
-    r"hayatimin en siddetli bas agr",
-    # Syncope.
-    r"bayil", r"bilinc(im|i) (kapand|kayb|gitti|kaybold)", r"gozum karardi",
+    # Syncope that is happening now. Reported history (bayılmıştım) stays a chart question.
+    r"\bbayil(?:iyorum|iyorsun|iyoruz|iyor|maktayim|acagim)\b",
+    r"\bbayil(?:dim|din|duk)\b",
+    r"bilinc(im|i) (kapand|kayb|gitti|kaybold)", r"gozum karardi",
     # Severe bleeding.
     r"kanama(m|si)? (durmuyor|cok|siddet|fisil)", r"kan kus", r"siyah diski",
     r"asiri kanama", r"kanamam durmuyor",
-    # Severe hypoglycemia.
-    r"sekerim\s+\d+", r"hipoglisemi",
+    # Severe hypoglycemia: a sugar reading, or a first-person event in progress.
+    r"sekerim\s+\d+",
+    r"\bhipoglisemi(?:m|n)?\s+(?:yasiyorum|oluyorum|oldum|geciriyorum|basladi)\b",
     r"(seker|glukoz).{0,40}(bayil|titre|bilinc|karis)",
     r"(titriyorum|kafam karis).{0,40}(seker|glukoz)",
     # Anaphylaxis.
     r"(yuzum|dudak\w{0,6}|dilim|bogaz\w{0,6}) (sis|sisti)",
     r"anafilak", r"alerji.{0,24}(nefes|bogaz|sis)",
-    r"gozlerimin onunde isik",
 )
 _EXFIL = (
     r"sistem talimat", r"ham veri", r"\btc kimlik\b", r"butun hastalarin",
@@ -140,7 +142,7 @@ _UNSAFE_ANSWER = (
     r"ilacinizi (kesin|birakin|artirin)",
     r"acil degil", r"acile gitmeyin", r"doktorunuza gitmeyin",
     r"\btaniniz\b", r"guvenle kullan",
-    r"sizde (diyabet|kanser|hipertansiyon|kalp yetmezligi) var",
+    r"\b(?:sizde|sende)(?:\s+\w+){1,8}\s+var\b",
 )
 
 

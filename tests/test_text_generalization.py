@@ -7,12 +7,19 @@ from pathlib import Path
 from medical_ai_selective_context.index import normalize_text
 from medical_ai_selective_context.text_document import parse_cco_text
 from medical_ai_selective_context.text_eval import tokens_cover
-from medical_ai_selective_context.text_relevance import relevant_context, relevant_sections
+from medical_ai_selective_context.text_relevance import (
+    drug_names,
+    overlaps,
+    question_terms,
+    relevant_context,
+    relevant_sections,
+)
 from medical_ai_selective_context.text_safety import (
     _MESSAGES,
     _TREATMENT_WITH_RX,
     _TREATMENT_WITHOUT_RX,
     DISCLAIMER,
+    answer_has_unsafe_advice,
     classify_question,
     render_refusal,
 )
@@ -23,6 +30,10 @@ DEV_QUESTIONS = FIXTURES / "eval_questions.jsonl"
 DEV_PATIENTS = FIXTURES / "patients"
 HELD = FIXTURES / "heldout"
 SRC = ROOT / "src"
+
+# Result words that show up as one-word facts and also as ordinary prose.
+# Drug and lab names are not in this set.
+_RESULT_LABELS = frozenset({"acil", "dusuk", "negatif", "normal", "pozitif", "yuksek"})
 
 _AUDIT = (
     "proksimaline",
@@ -97,14 +108,39 @@ def _eval_literals() -> tuple[set[str], set[str]]:
     return questions, phrases
 
 
+def _name_facts() -> set[str]:
+    """Single-word eval facts that are names (drug, lab, diagnosis), not result labels."""
+    stop = set()
+    stop_path = SRC / "medical_ai_selective_context" / "data" / "stopwords-tr.txt"
+    for line in stop_path.read_text(encoding="utf-8").splitlines():
+        word = normalize_text(line.strip())
+        if word and not word.startswith("#"):
+            stop.add(word)
+    names: set[str] = set()
+    for path in (DEV_QUESTIONS, HELD / "questions.jsonl"):
+        for row in _rows(path):
+            for fact in row.get("expected_facts", []):
+                folded = normalize_text(" ".join(str(fact).split()))
+                if not re.fullmatch(r"[a-z]{5,}", folded):
+                    continue
+                if folded in stop or folded in _RESULT_LABELS:
+                    continue
+                names.add(folded)
+    return names
+
+
 def test_source_has_no_literal_record_values():
     """Source must not embed chart values, eval questions, or eval phrases."""
     blobs = _source_blobs()
     py_blobs = [(path, text) for path, text in blobs if path.suffix == ".py"]
     for needle in _AUDIT:
         folded = normalize_text(needle)
-        for path, text in py_blobs:
+        for path, text in blobs:
             assert folded not in text, f"{needle} in {path}"
+    for name in sorted(_name_facts()):
+        pattern = re.compile(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])")
+        for path, text in blobs:
+            assert pattern.search(text) is None, f"{name} in {path}"
     values = set()
     for path in DEV_PATIENTS.glob("*.json"):
         chart = json.loads(path.read_text(encoding="utf-8"))["text"]
@@ -174,3 +210,35 @@ def test_heldout_context_is_the_full_section():
         assert section.text.strip() in context
     assert "HRV" not in context
     assert "71/dk" not in context
+
+
+def test_stopwords_come_from_the_public_list():
+    """Eval verbs are content words. Function words from the public list are not."""
+    terms = question_terms("Değer nasıl seyretti, değişti mi?")
+    assert "seyret" in terms
+    assert "degis" in terms
+    assert "nasil" not in terms
+    assert overlaps("metformin", question_terms("metforminin"))
+    assert not overlaps("kilim", question_terms("kalem"))
+
+
+def test_drug_dictionary_is_generated_outside_src():
+    packaged = SRC / "medical_ai_selective_context" / "data" / "drug_classes.json"
+    assert not packaged.exists()
+    payload = json.loads((ROOT / "data" / "drug_classes.json").read_text(encoding="utf-8"))
+    assert payload["entries"]
+    assert len(payload["entries"]) >= 1000
+    entry = next(row for row in payload["entries"] if len(row["names"]) >= 2)
+    found = drug_names(entry["names"][0])
+    assert entry["names"][1] in found
+
+
+def test_history_syncope_and_hypoglycemia_stay_chart_questions():
+    assert classify_question("Geçen yıl bayılmıştım, kayıtta var mı?").action == "allow"
+    assert classify_question("Kayıtta hipoglisemi geçirmişim, yazıyor mu?").action == "allow"
+    assert classify_question("Az önce bayıldım.").action == "refuse"
+    assert classify_question("Şu an bayılıyorum.").action == "refuse"
+    assert classify_question("Şekerim 45, titriyorum.").action == "refuse"
+    assert answer_has_unsafe_advice("Sizde migren var.")
+    assert answer_has_unsafe_advice("Sende kalp yetmezliği var.")
+    assert not answer_has_unsafe_advice("Kayıtta migren satırı var.")

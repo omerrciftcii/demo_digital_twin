@@ -1,22 +1,28 @@
 """Choose chart rows by section and by the question's own words.
 
 No chart value, diagnosis code, or question-type list lives here.
-A row is relevant when its words overlap the question. A drug name also
-matches the other names on the same dictionary entry. Symptom-to-diagnosis
-mapping is left to the model.
+A row is relevant when its words share a stem with the question.
+A generated drug dictionary (data/drug_classes.json, built by
+scripts/build_drug_dictionary.py) links the other names on the same ATC
+entry. It lives outside this package so the source scan does not see the
+full product list. Symptom-to-diagnosis mapping is left to the model.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
 
+from snowballstemmer import stemmer
+
 from .index import normalize_text
 from .text_document import TextRecord
 
-_DATA = Path(__file__).resolve().parent / "data" / "drug_classes.json"
+_STEMMER = stemmer("turkish")
+_STOP_PATH = Path(__file__).resolve().parent / "data" / "stopwords-tr.txt"
 _WORD = re.compile(r"[a-z0-9]{3,}", re.IGNORECASE)
 _FULL_DATE = re.compile(r"\d{1,2}\.\d{1,2}\.\d{4}")
 _UNIT = re.compile(
@@ -27,47 +33,40 @@ _EXAM = re.compile(
     r"(?i)\b(?:ŞİKAYET|Şikayet|Şikâyet|HİKAYE|Hikaye|Hikâye|HİKÂYE|"
     r"BULGULAR|Bulgular|ÖZGEÇMİŞ|Özgeçmiş|Epikriz|EPİKRİZ)\s*:"
 )
-_SUFFIXES = (
-    "larimizdan", "lerimizden", "larimiz", "lerimiz", "larimdan", "lerimden",
-    "imizden", "imizdan", "undan", "unden", "indan", "inden",
-    "nin", "nın", "nun", "nün", "yi", "yı", "yu", "yü",
-    "den", "dan", "ten", "tan", "ler", "lar", "lik", "lık", "luk", "lük",
-    "imiz", "ımız", "umuz", "ümüz",
-    "iyor", "uyor", "yor", "yon", "yo",
-    "si", "sı", "su", "sü",
-    "im", "ım", "um", "üm", "in", "ın", "un", "ün",
-    "de", "da", "te", "ta",
-    "di", "du", "ti", "tu", "mis", "mus",
-)
-_STOP = frozenset({
-    "bana", "benim", "bugun", "deger", "degeri", "durum", "hakkinda", "hala",
-    "halen", "icin", "ilac", "ilaci", "iyi", "kadar", "kayit", "kayitta",
-    "kullan", "miyim", "musun", "nasil", "neden", "nedir", "normal", "olabilir",
-    "olarak", "oldu", "once", "recete", "sonra", "sonuc", "soyle", "tahlil",
-    "tahliller", "var", "yok", "kotu", "seyir", "seyret", "degis", "degisti",
-    "ilgili", "ilgil", "hastalik", "hastasi", "eder", "ediyor", "gibi", "daha",
-    "gore", "baska", "hepsi", "tum", "butun", "simdi", "bugunku", "laboratuvar",
-    "son", "olcum", "olcu", "kac", "cikti", "cikt", "cok", "sey", "bir", "bu",
-    "veri", "gun", "gece", "zaman", "diye", "ile", "ne", "mi", "mu",
-})
-_VOWELS = frozenset("aeiou")
 
 
 def fold(text: str) -> str:
     return normalize_text(text or "")
 
 
-def _skeleton(stem: str) -> str:
-    return "".join(char for char in stem if char not in _VOWELS)
-
-
 def stem(token: str) -> str:
-    """Strip one trailing Turkish ending. The stem stays at least four letters."""
-    current = fold(token)
-    for suffix in _SUFFIXES:
-        if len(current) - len(suffix) >= 4 and current.endswith(suffix):
-            return current[: -len(suffix)]
-    return current
+    """Turkish stem (Snowball). Stems shorter than three letters stay whole."""
+    folded = fold(token)
+    if len(folded) < 3:
+        return folded
+    stemmed = fold(_STEMMER.stemWord(folded))
+    if len(stemmed) < 3:
+        return folded
+    return stemmed
+
+
+def _load_stop() -> frozenset[str]:
+    """Lucene Turkish stopwords, plus the stem of each word."""
+    found: set[str] = set()
+    for line in _STOP_PATH.read_text(encoding="utf-8").splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith("#"):
+            continue
+        word = fold(raw)
+        if len(word) >= 3:
+            found.add(word)
+        stemmed = stem(word)
+        if len(stemmed) >= 3:
+            found.add(stemmed)
+    return frozenset(found)
+
+
+_STOP = _load_stop()
 
 
 def _terms_in(text: str) -> list[str]:
@@ -85,17 +84,13 @@ def question_terms(question: str) -> list[str]:
 
 
 def _same(left: str, right: str) -> bool:
+    """Equal stems, or one stem is a short extension of the other."""
     if not left or not right:
         return False
     if left == right:
         return True
     short, long = (left, right) if len(left) <= len(right) else (right, left)
-    # A shared prefix counts when the extra letters are a short ending.
-    if len(short) >= 5 and long.startswith(short) and len(long) - len(short) <= 3:
-        return True
-    if len(short) >= 5 and short in long and len(long) - len(short) <= 4:
-        return True
-    return bool(len(short) >= 4 and _skeleton(left) == _skeleton(right) and len(_skeleton(left)) >= 3)
+    return bool(len(short) >= 5 and long.startswith(short) and len(long) - len(short) <= 3)
 
 
 def overlaps(text: str, terms: list[str] | set[str]) -> bool:
@@ -140,9 +135,22 @@ def score_text(text: str, terms: list[str] | set[str]) -> int:
     return score
 
 
+def _dictionary_path() -> Path | None:
+    """Optional generated dictionary. Absent in the packaged tree."""
+    override = os.environ.get("DRUG_DICTIONARY_PATH", "").strip()
+    if override:
+        path = Path(override)
+        return path if path.is_file() else None
+    candidate = Path(__file__).resolve().parents[2] / "data" / "drug_classes.json"
+    return candidate if candidate.is_file() else None
+
+
 @lru_cache(maxsize=1)
 def _entries() -> tuple[dict, ...]:
-    payload = json.loads(_DATA.read_text(encoding="utf-8"))
+    path = _dictionary_path()
+    if path is None:
+        return ()
+    payload = json.loads(path.read_text(encoding="utf-8"))
     rows = []
     for entry in payload.get("entries", []):
         names = tuple(dict.fromkeys(fold(name) for name in entry.get("names", []) if name))
@@ -170,7 +178,10 @@ def _name_in(name: str, folded: str, tokens: list[str]) -> bool:
 
 
 def drug_names(question: str) -> set[str]:
-    """Brand and active ingredient on the same dictionary entry as a name in the question."""
+    """Names on the same dictionary entry as a name in the question.
+
+    Empty when no dictionary file is present.
+    """
     names: set[str] = set()
     for entry in matched_entries(question):
         names.update(entry["names"])

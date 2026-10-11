@@ -100,6 +100,19 @@ class ContextPacket(ApiModel):
     model_context: dict[str, Any] = Field(alias="modelContext")
 
 
+class TextAnswerRequest(ApiModel):
+    record_id: str = Field(alias="recordId", min_length=1, max_length=80)
+    question: str = Field(min_length=1, max_length=4000)
+    stream: bool = False
+
+    @field_validator("question", "record_id")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Must not be blank")
+        return value.strip()
+
+
 class ChatResponse(ApiModel):
     status: Literal[
         "answered", "answered_unvalidated", "insufficient_evidence", "blocked",

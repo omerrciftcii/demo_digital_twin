@@ -8,6 +8,7 @@ __pycache__/
 # Captured production CCOs can contain health data and must stay local.
 data/cco/**
 !data/cco/.gitkeep
+data/text-records/
 data/subject-ids.txt
 data/runtime/
 data/evaluation/

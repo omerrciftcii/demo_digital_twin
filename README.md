@@ -2,6 +2,8 @@
 
 ABP lisansı veya çalışan CCO/MedicalAI servisi gerektirmeyen, Python/FastAPI tabanlı yerel geliştirme alanı. **Mevcut CCO generation değiştirilmez.** Kaynak JSON değişmeden saklanır; model girdisi ayrı bir `ContextPacket` olur.
 
+Metin özeti (`cco-text/1`) ayrı bir yoldur: tüm markdown tek çağrıda kalır, yanıt düz Türkçedir, atıf köşeli parantezdir. Ayrıntı ve eval komutları: [docs/text-answers.md](docs/text-answers.md).
+
 ## Uygulanan akış
 
 1. **Snapshot:** yalnız CCO **0.7.0** sözleşmesi; ham belge ve `document`/`Document` zarfı. Şema hataları reddedilir, eksik tarih veya metadata uydurulmaz. Aynı hastanın birden fazla snapshot'ı içerik hash'iyle ayrı saklanır.

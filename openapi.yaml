@@ -3,7 +3,7 @@
   "info": {
     "title": "MedicalAI Selective Context V2",
     "description": "Local, snapshot-bound CCO 0.7 evidence inspection. ContextPacket is not a CCO. Real-data external model calls are disabled by default. No production service calls.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "paths": {
     "/health": {
@@ -276,6 +276,90 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/v1/text-records": {
+      "get": {
+        "summary": "List cco-text/1 records",
+        "operationId": "list_text_records",
+        "responses": {
+          "200": {
+            "description": "Summaries without the clinical text"
+          }
+        }
+      },
+      "post": {
+        "summary": "Import a cco-text/1 record",
+        "operationId": "import_text_record",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["format", "id", "subjectId", "asOf", "language", "text"],
+                "properties": {
+                  "format": {"const": "cco-text/1"},
+                  "id": {"type": "string"},
+                  "subjectId": {"type": "string"},
+                  "asOf": {"type": "string"},
+                  "language": {"const": "tr"},
+                  "text": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Stored"},
+          "200": {"description": "Already stored"},
+          "409": {"description": "Same id, different text"},
+          "422": {"description": "Invalid record"}
+        }
+      }
+    },
+    "/api/v1/text-records/{record_id}": {
+      "get": {
+        "summary": "Fetch one cco-text/1 record",
+        "operationId": "get_text_record",
+        "parameters": [
+          {"name": "record_id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Record"},
+          "404": {"description": "Missing"}
+        }
+      }
+    },
+    "/api/v1/text/answer": {
+      "post": {
+        "summary": "Answer from one cco-text/1 record",
+        "operationId": "answer_text",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["recordId", "question"],
+                "properties": {
+                  "recordId": {"type": "string"},
+                  "question": {"type": "string"},
+                  "stream": {"type": "boolean", "default": false}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON answer, or text/event-stream when stream is true"
+          },
+          "404": {"description": "Missing record"},
+          "422": {"description": "Invalid request"}
         }
       }
     }

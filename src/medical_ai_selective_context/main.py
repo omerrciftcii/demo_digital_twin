@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -26,10 +26,14 @@ from .models import (
     ContextPacket,
     DocumentSelectionRequest,
     SelectionRequest,
+    TextAnswerRequest,
 )
 from .selector import select_context
 from .store import CcoStore, content_hash, unwrap_and_validate_cco
 from .terminology import catalog_from_glossaries
+from .text_document import TextRecordError, TextRecordStore, loads_text_payload
+from .text_llm import TextModelClient
+from .text_qa import TextAnswerer
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = Path(__file__).parent / "static"
@@ -59,11 +63,14 @@ def _trusted_synthetic() -> dict[str, Any]:
 class Services:
     def __init__(
         self, data_dir: Path, model: ModelClient, graph: Neo4jTerminologyGraph,
-        embedding_model: str, load_sample: bool,
+        embedding_model: str, load_sample: bool, text_model: TextModelClient,
     ) -> None:
         self.store = CcoStore(data_dir)
         self.index = EvidenceIndex(data_dir.parent / "runtime" / "evidence.sqlite3", embedding_model)
         self.model = model
+        self.text_records = TextRecordStore(data_dir.parent / "text-records")
+        self.text_model = text_model
+        self.text_answers = TextAnswerer(text_model)
         self.graph = graph
         self.sample = _trusted_synthetic()
         # Only shipped, hash-verified public metadata enters the shared graph.
@@ -102,7 +109,7 @@ class Services:
 def create_app(
     data_dir: Path | None = None, *, model_client: ModelClient | None = None,
     graph: Neo4jTerminologyGraph | None = None, embedding_model: str | None = None,
-    load_sample: bool | None = None,
+    load_sample: bool | None = None, text_model: TextModelClient | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -115,10 +122,12 @@ def create_app(
             load_sample if load_sample is not None else (
                 os.getenv("LOAD_SYNTHETIC_EXAMPLE", "true").lower() == "true"
             ),
+            text_model or TextModelClient(),
         )
         application.state.services = services
         try:
             await run_in_threadpool(services.reload)
+            await run_in_threadpool(services.text_records.load)
             try:
                 await services.graph.initialize(services.catalog)
             except TerminologyGraphUnavailable:
@@ -131,7 +140,7 @@ def create_app(
             services.store.close()
 
     application = FastAPI(
-        title="MedicalAI Selective Context V2", version="0.2.0", lifespan=lifespan,
+        title="MedicalAI Selective Context V2", version="0.3.0", lifespan=lifespan,
         description=(
             "Local, snapshot-bound CCO 0.7 evidence inspection. ContextPacket is not a CCO. "
             "Real-data external model calls are disabled by default. No production service calls."
@@ -188,7 +197,9 @@ def create_app(
         return {
             "status": "ok" if svc.graph.available and index_state["status"] == "ready" else "degraded",
             "loadedSnapshots": svc.store.count,
+            "textRecords": svc.text_records.count,
             "neo4j": svc.graph.status(), "index": index_state, "llm": svc.model.status(),
+            "textLlm": svc.text_model.status(),
         }
 
     @application.get("/api/v1/ccos", response_model=list[CcoSummary])
@@ -357,6 +368,49 @@ def create_app(
             totalMs=round((perf_counter() - started) * 1000, 2),
         )
         return response
+
+    def _sse(event: str, data: dict[str, Any]) -> bytes:
+        payload = json.dumps(data, ensure_ascii=False, allow_nan=False)
+        return f"event: {event}\ndata: {payload}\n\n".encode()
+
+    @application.get("/api/v1/text-records")
+    async def list_text_records(request: Request):
+        return services(request).text_records.list_summaries()
+
+    @application.post("/api/v1/text-records")
+    async def import_text_record(request: Request):
+        svc = services(request)
+        try:
+            payload = loads_text_payload(await request.body())
+            record, created = await run_in_threadpool(svc.text_records.import_payload, payload)
+        except TextRecordError as exc:
+            code = str(exc)
+            raise HTTPException(409 if code == "record_id_conflict" else 422, code) from exc
+        return JSONResponse(record.summary(), status_code=201 if created else 200)
+
+    @application.get("/api/v1/text-records/{record_id}")
+    async def get_text_record(record_id: str, request: Request):
+        record = services(request).text_records.get(record_id.lower())
+        if record is None:
+            raise HTTPException(404, "Kayıt bulunamadı.")
+        return record.public_document()
+
+    @application.post("/api/v1/text/answer")
+    async def answer_text(body: TextAnswerRequest, request: Request):
+        svc = services(request)
+        record = svc.text_records.get(body.record_id.lower())
+        if record is None:
+            raise HTTPException(404, "Kayıt bulunamadı.")
+        if not body.stream:
+            return await svc.text_answers.answer(record, body.question)
+
+        async def events():
+            async for event in svc.text_answers.events(record, body.question):
+                name = "token" if event["type"] == "token" else "done"
+                data = {key: value for key, value in event.items() if key != "type"}
+                yield _sse(name, data)
+
+        return StreamingResponse(events(), media_type="text/event-stream")
 
     return application
 

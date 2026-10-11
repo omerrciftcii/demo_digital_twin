@@ -1,7 +1,7 @@
 """Parse a plain-text answer and keep only numbers the record actually contains.
 
 The model does not emit JSON. The first line is a status token, and citations
-are lightweight markers such as [Laboratuvar (hastane) 18.09.2026]. Line
+are lightweight markers such as [Laboratuvar (hastane)]. Line
 numbers are resolved here. A number, date, unit pair, relative time, or causal
 phrase that the cited section does not contain drops the answer.
 """

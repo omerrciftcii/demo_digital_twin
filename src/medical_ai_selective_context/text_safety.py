@@ -1,10 +1,9 @@
 """Refuse before the model. Chart questions still go through.
 
-Acute first-person emergencies, self-harm, explicit dose changes, and
-prompt-injection / data grabs never see the provider. A recorded finding
-("nefesim daralıyor, ne yapmalıyım?", "ibuprofen alabilir miyim?") is not
-one of those: the eval expects the chart sentence, and the answer prompt
-still forbids telling the person what to take.
+Acute first-person emergencies, self-harm, explicit dose or permission-to-take
+requests, and prompt-injection or data grabs never see the provider. The
+classes are broad conversational patterns. A chart question that does not ask
+for a dose, a start, a stop, or permission to take a drug still goes to the model.
 
 Dose-change refusals quote a few medication-section lines. There is no model
 call. The lines are chosen by overlap with the question and by the drug-class
@@ -128,6 +127,7 @@ _TREATMENT = (
     r"(atlayabilir|icmesem|almazsam|atlamali)",
     r"birlikte (kullan|al|ic)",
     r"(beraber|ayni anda) (kullan|al|ic)",
+    r"(alabilir|kullanabilir|icilebilir) mi(?:yim)?",
     r"dozu dogrudan",
     r"guvenli oldugunu yaz",
 )
@@ -199,7 +199,7 @@ def _question_tokens(question: str) -> set[str]:
     tokens = {
         token for token in re.findall(r"[a-z0-9]{5,}", folded) if token not in _QUOTE_STOP
     }
-    tokens.update(name for name in drug_names(question, expand_group=False) if len(name) >= 4)
+    tokens.update(name for name in drug_names(question) if len(name) >= 4)
     return tokens
 
 
@@ -269,7 +269,7 @@ def _looks_like_prescription(text: str) -> bool:
 
 def prescription_quotes(record: TextRecord, question: str, limit: int = 3) -> list:
     """Medication-section rows for the named drug, or the latest rows when none is named."""
-    names = {name for name in drug_names(question, expand_group=False) if len(name) >= 3}
+    names = {name for name in drug_names(question) if len(name) >= 3}
     tokens = _question_tokens(question)
     matched = []
     latest = []

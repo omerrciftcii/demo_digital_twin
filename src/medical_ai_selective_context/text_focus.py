@@ -1,8 +1,7 @@
-"""Say the chart row the question's own words point at.
+"""Keep answer sentences that share the question's words, and add those chart rows.
 
-Rows are chosen by section and by lexical overlap, not by a list of chart
-values. The number, date, and flag word stay verbatim. A missing lab is said
-to be missing. A last prescription is not described as current use.
+Rows come from lexical overlap. The number, date, and flag word stay verbatim.
+A prescription date is not rewritten into a claim about current use.
 """
 
 from __future__ import annotations
@@ -13,11 +12,7 @@ from .index import normalize_text
 from .text_document import TextRecord
 from .text_grounding import GroundingResult, content_words, ground_answer
 from .text_relevance import (
-    asks_labs,
-    asks_panel,
     drug_names,
-    is_continuation,
-    lab_rows,
     matched_lab_rows,
     overlaps,
     question_terms,
@@ -25,16 +20,6 @@ from .text_relevance import (
 )
 
 _CLAUSE = re.compile(r"(?<!\d[.;])(?<=[.;])\s+")
-_EFFECT = ("azaldi mi", "artti mi", "ise yaradi", "etkisi oldu", "dusurdu mu", "fayda etti")
-_UNKNOWN_Q = ("yapildi mi", "geldi mi", "basladi mi", "basladim mi", "uygulandi mi", "dustu mu")
-_GAP = (
-    "bilinmiyor", "kayitta yok", "kaydi yok", "henuz",
-    "yapilip yapilmad", "uygulanip uygulanmad",
-)
-_WHY = (
-    "neden olabilir", "neden agriyor", "neden oluyor", "neden ola",
-    "niye", "sebeb",
-)
 
 
 def _folded(text: str) -> str:
@@ -43,87 +28,6 @@ def _folded(text: str) -> str:
 
 def _parts(text: str) -> list[str]:
     return [part.strip(" -") for part in _CLAUSE.split(text) if part.strip(" -")]
-
-
-def _line_has(line: str, needles: tuple[str, ...]) -> bool:
-    folded = _folded(line)
-    return all(needle in folded or needle in line for needle in needles)
-
-
-def _piece(line: str, needles: tuple[str, ...]) -> str:
-    text = line.strip().lstrip("-").strip()
-    if len(text) <= 180 and _line_has(text, needles):
-        return text
-    parts = _parts(text)
-    hits = [part for part in parts if _line_has(part, needles)]
-    if not hits:
-        for index in range(1, len(parts)):
-            window = f"{parts[index - 1]} {parts[index]}"
-            if _line_has(window, needles):
-                hits.append(window)
-    if not hits:
-        return text if _line_has(text, needles) else ""
-    return min(hits, key=len)
-
-
-def _question_hits_line(question: str, line: str) -> bool:
-    if overlaps(line, question_terms(question)):
-        return True
-    names = drug_names(question, expand_group=False)
-    return bool(names) and overlaps(line, names)
-
-
-def _unknown_line(record: TextRecord, question: str, *, prefer_gap: bool) -> str | None:
-    words = [word for word in content_words(question) if len(word) >= 6]
-    best: tuple[int, int, str] | None = None
-    for line in record.lines:
-        if line.text.startswith("##"):
-            continue
-        folded = _folded(line.text)
-        section = _folded(record.sections[line.section_index].heading)
-        gap = "bilinmeyen" in section or any(token in folded for token in _GAP)
-        planned = "planlandi" in folded
-        if prefer_gap and not gap:
-            continue
-        if not gap and not planned:
-            continue
-        if not _question_hits_line(question, line.text):
-            continue
-        score = sum(1 for word in words if word[:6] in folded)
-        if overlaps(line.text, drug_names(question, expand_group=False)):
-            score += 2
-        if gap:
-            score += 1
-        if score <= 0:
-            continue
-        text = line.text.strip().lstrip("-").strip()
-        if len(text) > 240:
-            text = _piece(text, tuple(word[:6] for word in words[:2])) or text
-        ranked = (score, -len(text), text)
-        if best is None or ranked > best:
-            best = ranked
-    return None if best is None else best[2]
-
-
-def _same_date(date: str, answer: str) -> bool:
-    if date in answer:
-        return True
-    match = re.fullmatch(r"0?(\d{1,2})\.0?(\d{1,2})\.(\d{4})", date)
-    if not match:
-        return date in _folded(answer)
-    day, month, year = (int(part) for part in match.groups())
-    return re.search(rf"0?{day}\.0?{month}\.{year}", answer) is not None
-
-
-def _has_all(answer: str, needles: tuple[str, ...]) -> bool:
-    folded = _folded(answer)
-    for needle in needles:
-        if not needle:
-            continue
-        if needle in answer or needle in folded or _same_date(needle, answer):
-            continue
-        return False
-    return True
 
 
 def _from_lines(record: TextRecord, status: str, lines: list[str]) -> GroundingResult | None:
@@ -166,11 +70,6 @@ def _drop_echo(answer: str, question: str) -> str:
     return "\n".join(kept)
 
 
-def _asks(question: str, phrases: tuple[str, ...]) -> bool:
-    folded = _folded(question)
-    return any(phrase in folded for phrase in phrases)
-
-
 def _generic(answer: str) -> bool:
     folded = _folded(answer)
     return "bu bilgi kayitta yok" in folded or (
@@ -201,14 +100,6 @@ _EXAM_HEAD = re.compile(
     r"BULGULAR|Bulgular|ÖZGEÇMİŞ|Özgeçmiş)\s*:"
 )
 _GENERAL = ("genellikle", "cogu hastada", "tipik olarak", "herkeste", "bilimsel olarak")
-_FALSE_NORMAL = (
-    "diger tahliller normal", "digerleri normal", "diger sonuclar normal",
-    "kalan tahliller normal", "hepsi normal",
-)
-_NOTE = "Hekiminle konuşman iyi olur."
-_BANNED_OPENER = "Kayıtta şunu görüyorum"
-
-
 def _chartish(text: str) -> bool:
     folded = _folded(text)
     if any(token in folded for token in _DUMP_MARK):
@@ -303,39 +194,6 @@ def _drop_general(answer: str, record: TextRecord) -> str:
     return "\n".join(kept)
 
 
-def _stale_use_sentence(record: TextRecord, question: str) -> str | None:
-    """A last prescription date is not proof the medicine is still being taken."""
-    if not is_continuation(question):
-        return None
-    names = drug_names(question, expand_group=False)
-    if not names:
-        return None
-    rows = select_rows(record, question)
-    if any(token in _folded(row) for row in rows for token in ("kesil", "birak", "kullanmad", "kullaniyor", "halen")):
-        return None
-    rows = [row for row in rows if _SON_RE.search(row) or _RX_RE.search(row)]
-    if not rows:
-        return None
-    blob = rows[0]
-    folded = _folded(blob)
-    if any(token in folded for token in ("kesil", "birak", "kullanmad", "kullaniyor", "halen")):
-        return None
-    match = _SON_RE.search(blob) or _FULL_DATE.search(blob)
-    if not match:
-        return None
-    date = match.group(1) if match.lastindex else match.group(0)
-    branded = _RX_RE.search(blob)
-    product = branded.group(1).split()[0] if branded else ""
-    asked = max(names, key=len)
-    product_fold = _folded(product)
-    if product and asked not in product_fold and product_fold not in asked:
-        shown = asked.upper() if len(asked) <= 4 else asked
-        label = f"{shown} ilacının son reçetesi {date} ({product})"
-    else:
-        label = f"{product or asked} son reçetesi {date}"
-    return f"Kayıtta {label}; güncel kullanımı kayıtta görünmüyor."
-
-
 def _dated_head(text: str) -> str:
     match = _HEAD_RE.search(text.lstrip("- "))
     if not match:
@@ -411,74 +269,6 @@ def _speak_clause(text: str) -> str:
     return _frame(clause)
 
 
-def _prefix(text: str, token: str) -> bool:
-    return re.search(rf"(?<![a-z]){re.escape(token)}", text) is not None
-
-
-def _date_key(text: str) -> tuple[int, int, int]:
-    dates = _FULL_DATE.findall(text)
-    if not dates:
-        return (0, 0, 0)
-    day, month, year = (int(part) for part in dates[-1].split("."))
-    return (year, month, day)
-
-
-def _followup_line(record: TextRecord, question: str) -> str | None:
-    folded = _folded(question)
-    if "ne zaman" not in folded:
-        return None
-    if "kontrol" not in folded and "randevu" not in folded:
-        return None
-    ranked: list[tuple[int, int, str]] = []
-    for order, line in enumerate(record.lines):
-        if line.text.startswith("##"):
-            continue
-        text = line.text.strip().lstrip("-").strip()
-        folded_line = _folded(text)
-        if "kontrol" not in folded_line and not _prefix(folded_line, "randevu"):
-            continue
-        if not _FULL_DATE.search(text):
-            continue
-        if _prefix(folded_line, "randevu") or _prefix(folded_line, "hatirlatma"):
-            rank = 0
-        elif "sonra" in folded_line and "kontrol" in folded_line:
-            rank = 1
-        else:
-            rank = 2
-        ranked.append((rank, order, text))
-    if not ranked:
-        return None
-    best = min(item[0] for item in ranked)
-    pool = [text for rank, _order, text in ranked if rank == best]
-    text = max(pool, key=_date_key)
-    return _follow_piece(text)
-
-
-def _follow_piece(text: str) -> str:
-    if len(text) <= 200:
-        return _frame(text)
-    parts = _parts(text) or [text]
-    folded_parts = [(part, _folded(part)) for part in parts]
-    preferred = [
-        part for part, folded in folded_parts if "sonra" in folded and "kontrol" in folded
-    ]
-    if not preferred:
-        preferred = [
-            part for part, folded in folded_parts
-            if _prefix(folded, "randevu") or "hatirlatma" in folded
-        ]
-    if not preferred:
-        preferred = [
-            part for part, folded in folded_parts if _prefix(folded, "kontrol")
-        ]
-    piece = min(preferred or parts, key=len)
-    if not _FULL_DATE.search(piece):
-        date = _FULL_DATE.findall(text)
-        if date:
-            piece = f"{date[0]} {piece}"
-    return _frame(piece)
-
-
 def _clip(piece: str, limit: int = 220) -> str:
     if len(piece) <= limit:
         return piece
@@ -492,7 +282,6 @@ def _clip(piece: str, limit: int = 220) -> str:
 
 def _frame(piece: str) -> str:
     piece = _deheader(piece).strip().rstrip(";").strip()
-    piece = piece.replace(_BANNED_OPENER + ":", "").replace(_BANNED_OPENER, "").strip()
     piece = _clip(piece)
     if not piece:
         return ""
@@ -501,25 +290,8 @@ def _frame(piece: str) -> str:
     return piece
 
 
-def clinician_note(question: str) -> str:
-    """A gentle sen-form nudge. Appended after grounding, so it adds no number."""
-    if _asks(question, _WHY):
-        return _NOTE
-    return ""
-
-
-def _prefer_spoken(record: TextRecord, status: str, raw_line: str) -> GroundingResult | None:
-    spoken = _speak_clause(raw_line)
-    forced = _from_lines(record, status, [spoken])
-    anchor = raw_line.strip().lstrip("-").strip()
-    if forced is not None and (len(anchor) > 80 or anchor.rstrip(".") in forced.answer or anchor[:40] in forced.answer):
-        return forced
-    return _from_lines(record, status, [anchor])
-
-
 def _strip_template(answer: str) -> str:
-    cleaned = answer.replace(_BANNED_OPENER + ":", " ").replace(_BANNED_OPENER, " ")
-    return "\n".join(" ".join(part.split()) for part in cleaned.splitlines() if part.strip())
+    return "\n".join(" ".join(part.split()) for part in answer.splitlines() if part.strip())
 
 
 def _normal_backed(sentence: str, record: TextRecord) -> bool:
@@ -535,16 +307,11 @@ def _normal_backed(sentence: str, record: TextRecord) -> bool:
 
 
 def _drop_false_normal(answer: str, record: TextRecord) -> str:
-    abnormal = any(
-        _FLAG_RE.search(line) and _flag_word(line) != "normal" for line in lab_rows(record)
-    )
     kept = []
     for sentence in _sentences(answer):
         folded = _folded(sentence)
         if "normal" not in folded:
             kept.append(sentence)
-            continue
-        if abnormal and any(phrase in folded for phrase in _FALSE_NORMAL):
             continue
         if _normal_backed(sentence, record):
             kept.append(sentence)
@@ -561,7 +328,7 @@ def _drop_false_normal(answer: str, record: TextRecord) -> str:
 
 def _on_topic(sentence: str, question: str, selected: list[str]) -> bool:
     terms = question_terms(question)
-    names = drug_names(question, expand_group=is_continuation(question))
+    names = drug_names(question)
     if overlaps(sentence, [*terms, *names]):
         return True
     for row in selected:
@@ -572,43 +339,8 @@ def _on_topic(sentence: str, question: str, selected: list[str]) -> bool:
 
 
 def _drop_off_topic(answer: str, question: str, selected: list[str]) -> str:
-    if not selected and not question_terms(question):
-        return answer
     kept = [sentence for sentence in _sentences(answer) if _on_topic(sentence, question, selected)]
     return "\n".join(kept)
-
-
-def _drop_outside_labs(answer: str, record: TextRecord) -> str:
-    blob = "\n".join(lab_rows(record))
-    folded_blob = _folded(blob)
-    kept = []
-    for sentence in _sentences(answer):
-        folded = _folded(sentence)
-        if any(token in folded and token not in folded_blob for token in ("hrv", "nabiz", "giyilebilir")):
-            continue
-        numbers = re.findall(r"\d+(?:,\d+)?", sentence)
-        if numbers and any(token not in blob for token in numbers):
-            continue
-        kept.append(sentence)
-    return "\n".join(kept)
-
-
-def _absent_labs(record: TextRecord, question: str) -> GroundingResult | None:
-    if not asks_labs(question) or asks_panel(question) or matched_lab_rows(record, question):
-        return None
-    sentence = "Laboratuvar bölümünde bu soruyla ilgili bir tahlil sonucu yok."
-    citations = []
-    for section in record.sections:
-        if "laboratuvar" in _folded(section.heading):
-            citations.append({
-                "section": section.heading,
-                "startLine": section.start_line,
-                "endLine": section.start_line,
-                "quote": section.heading,
-                "marker": section.heading,
-            })
-            break
-    return GroundingResult(True, "answered", sentence, citations, "")
 
 
 def _covered(answer: str, row: str) -> bool:
@@ -640,7 +372,7 @@ def lab_fallback(record: TextRecord, question: str) -> GroundingResult | None:
         stacked = _stack(record, "answered", sentences)
         if stacked is not None:
             return stacked
-    return _absent_labs(record, question)
+    return None
 
 
 def _same_fact(left: str, right: str) -> bool:
@@ -653,12 +385,6 @@ def _collect_rows(record: TextRecord, question: str, base: str) -> list[str]:
     for row in select_rows(record, question):
         if row not in extra and not _covered(base, row):
             extra.append(row)
-    follow = _followup_line(record, question)
-    if follow and follow not in extra and not _covered(base, follow):
-        extra.append(follow)
-    stale = _stale_use_sentence(record, question)
-    if stale and stale not in extra and "güncel kullanımı kayıtta görünmüyor" not in base:
-        extra.append(stale)
     unique: list[str] = []
     for line in extra:
         if line and not any(_same_fact(line, kept) for kept in unique):
@@ -667,17 +393,7 @@ def _collect_rows(record: TextRecord, question: str, base: str) -> list[str]:
 
 
 def align_answer(record: TextRecord, question: str, grounded: GroundingResult) -> GroundingResult:
-    """Keep the sentences that match the question, and add the overlapping chart rows."""
-    effect = _asks(question, _EFFECT)
-    unknown_q = _asks(question, _UNKNOWN_Q)
-    if effect or unknown_q:
-        unknown = _unknown_line(record, question, prefer_gap=True)
-        if unknown and _question_hits_line(question, unknown):
-            forced = _prefer_spoken(record, "insufficient_evidence", unknown)
-            if forced is not None:
-                return forced
-            return grounded
-
+    """Keep sentences that share the question's words, and add overlapping chart rows."""
     selected = select_rows(record, question)
     base = _strip_template(_drop_false_normal(
         _drop_off_topic(
@@ -693,20 +409,17 @@ def align_answer(record: TextRecord, question: str, grounded: GroundingResult) -
         ),
         record,
     ))
-    if asks_labs(question):
-        base = _drop_outside_labs(base, record)
-    absent = _absent_labs(record, question)
-    if absent is not None and not base.strip():
-        return absent
     extra = _collect_rows(record, question, base)
     original = grounded.answer if grounded.ok else ""
+    if not extra and not base.strip():
+        fallback = lab_fallback(record, question)
+        if fallback is not None:
+            return fallback
+        if not original.strip():
+            return grounded
+        return GroundingResult(False, "insufficient_evidence", "", [], "off_topic")
     if not extra and base.strip() == original.strip() and not _chartish(original):
         if _generic(original) or not grounded.ok:
-            unknown = _unknown_line(record, question, prefer_gap=False)
-            if unknown and _question_hits_line(question, unknown):
-                forced = _prefer_spoken(record, "insufficient_evidence", unknown)
-                if forced is not None:
-                    return forced
             fallback = lab_fallback(record, question)
             if fallback is not None:
                 return fallback

@@ -5,11 +5,19 @@ import re
 import sys
 from pathlib import Path
 
+from medical_ai_selective_context.index import normalize_text
 from medical_ai_selective_context.text_document import parse_cco_text
 from medical_ai_selective_context.text_eval import score_case, summarize, tokens_cover
 from medical_ai_selective_context.text_focus import align_answer
 from medical_ai_selective_context.text_grounding import GroundingResult
-from medical_ai_selective_context.text_safety import classify_question, render_refusal
+from medical_ai_selective_context.text_safety import (
+    _MESSAGES,
+    _TREATMENT_WITH_RX,
+    _TREATMENT_WITHOUT_RX,
+    DISCLAIMER,
+    classify_question,
+    render_refusal,
+)
 
 ROOT = Path(__file__).parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "text"
@@ -86,12 +94,49 @@ def test_month_names_and_suffixes_match_without_a_chart_value():
     assert tokens_cover("metforminin kullanımı", "metformin kullanımı sürüyor")
 
 
+def _source_blobs() -> list[tuple[Path, str]]:
+    blobs = []
+    for path in SRC.rglob("*"):
+        if path.suffix.lower() not in {".py", ".json", ".md"} or not path.is_file():
+            continue
+        blobs.append((path, normalize_text(path.read_text(encoding="utf-8"))))
+    return blobs
+
+
+def _refusal_copy() -> str:
+    """General safety sentences. A short fact may quote one of these."""
+    chunks = [DISCLAIMER, _TREATMENT_WITH_RX, _TREATMENT_WITHOUT_RX, *_MESSAGES.values()]
+    return normalize_text("\n".join(chunks))
+
+
+def _eval_literals() -> tuple[set[str], set[str]]:
+    """Full questions, plus facts that are a chart value or a multi-word phrase."""
+    questions: set[str] = set()
+    phrases: set[str] = set()
+    for path in (DEV_QUESTIONS, HELD / "questions.jsonl"):
+        for row in _rows(path):
+            question = " ".join(row["question"].split())
+            if len(question) >= 12:
+                questions.add(normalize_text(question))
+            for fact in row.get("expected_facts", []):
+                text = " ".join(str(fact).split())
+                folded = normalize_text(text)
+                words = folded.split()
+                numeric = re.search(r"\d", folded) and len(folded) >= 4
+                verbal = len(words) >= 3 and len(folded) >= 12
+                if numeric or verbal:
+                    phrases.add(folded)
+    return questions, phrases
+
+
 def test_source_has_no_literal_record_values():
-    """Python source must not embed chart values or the retired audit needles."""
-    blobs = [(path, path.read_text(encoding="utf-8").casefold()) for path in SRC.rglob("*.py")]
+    """Source must not embed chart values, eval questions, or eval phrases."""
+    blobs = _source_blobs()
+    py_blobs = [(path, text) for path, text in blobs if path.suffix == ".py"]
     for needle in _AUDIT:
-        for path, text in blobs:
-            assert needle not in text, f"{needle} in {path}"
+        folded = normalize_text(needle)
+        for path, text in py_blobs:
+            assert folded not in text, f"{needle} in {path}"
     values = set()
     for path in DEV_PATIENTS.glob("*.json"):
         chart = json.loads(path.read_text(encoding="utf-8"))["text"]
@@ -99,9 +144,18 @@ def test_source_has_no_literal_record_values():
     for value in sorted(values):
         if len(value) < 4:
             continue
-        for path, text in blobs:
+        for path, text in py_blobs:
             cleaned = re.sub(r"\{\d+,\d+\}", "", text)
             assert value not in cleaned, f"{value} in {path}"
+    questions, phrases = _eval_literals()
+    allowed = _refusal_copy()
+    safety_name = "text_safety.py"
+    for phrase in sorted(questions | phrases):
+        in_refusal = phrase not in questions and phrase in allowed and not re.search(r"\d", phrase)
+        for path, text in blobs:
+            if in_refusal and path.name == safety_name:
+                continue
+            assert phrase not in text, f"{phrase} in {path}"
 
 
 def test_perturbed_chart_values_follow_the_row():

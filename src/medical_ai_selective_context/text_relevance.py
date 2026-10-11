@@ -1,9 +1,9 @@
 """Choose chart rows by section and by the question's own words.
 
-No chart value, diagnosis code, or hand-picked brand list lives here.
-Drug groups come from the ATC-style file. A row is relevant when its words
-overlap the question (or the same drug group, when the question is about
-continued use). Symptom-to-diagnosis mapping is left to the model.
+No chart value, diagnosis code, or question-type list lives here.
+A row is relevant when its words overlap the question. A drug name also
+matches the other names on the same dictionary entry. Symptom-to-diagnosis
+mapping is left to the model.
 """
 
 from __future__ import annotations
@@ -23,8 +23,6 @@ _UNIT = re.compile(
     r"\d+(?:[.,]\d+)?\s*(?:mg/dL|g/dL|pg/mL|ng/mL|mIU/L|U/L|mmHg|µg|mcg|kg|mg|mL|mm|cm)\b",
     re.IGNORECASE,
 )
-_FLAG = re.compile(r",\s*(yüksek|düşük)\b", re.IGNORECASE)
-_RX_MARK = re.compile(r"TABLET|KAPSÜL|KAPSUL|DAMLA|İNHALER|INHALER|KALEM|SPREY", re.IGNORECASE)
 _EXAM = re.compile(
     r"(?i)\b(?:ŞİKAYET|Şikayet|Şikâyet|HİKAYE|Hikaye|Hikâye|HİKÂYE|"
     r"BULGULAR|Bulgular|ÖZGEÇMİŞ|Özgeçmiş|Epikriz|EPİKRİZ)\s*:"
@@ -52,13 +50,6 @@ _STOP = frozenset({
     "son", "olcum", "olcu", "kac", "cikti", "cikt", "cok", "sey", "bir", "bu",
     "veri", "gun", "gece", "zaman", "diye", "ile", "ne", "mi", "mu",
 })
-_WEARABLE_TERMS = frozenset({"nabiz", "hrv", "adim", "giyilebilir", "wearable"})
-_LAB_WORDS = ("tahlil", "laboratuvar")
-_PANEL_WORDS = ("nasil", "iyi", "kotu", "normal", "durum")
-_CONTINUATION = (
-    "hala ", "halen", "devam ediyor", "kullanmam gerekiyor", "kullaniyor muyum",
-    "kullanmaya devam", "kullaniyor muydum",
-)
 _VOWELS = frozenset("aeiou")
 
 
@@ -178,17 +169,11 @@ def _name_in(name: str, folded: str, tokens: list[str]) -> bool:
     return any(_same(name, token) for token in tokens)
 
 
-def drug_names(question: str, *, expand_group: bool) -> set[str]:
-    """Brand and active ingredient. Group mates only when continued use is the question."""
-    hits = matched_entries(question)
+def drug_names(question: str) -> set[str]:
+    """Brand and active ingredient on the same dictionary entry as a name in the question."""
     names: set[str] = set()
-    groups = {entry["group"] for entry in hits if entry["group"]}
-    for entry in hits:
+    for entry in matched_entries(question):
         names.update(entry["names"])
-    if expand_group and groups:
-        for entry in _entries():
-            if entry["group"] in groups:
-                names.update(entry["names"])
     return {name for name in names if len(name) >= 3}
 
 
@@ -209,23 +194,6 @@ def section_kind(heading: str) -> str:
     if any(token in folded for token in ("basvuru", "muayene", "poliklinik", "epikriz")):
         return "visit"
     return "other"
-
-
-def asks_labs(question: str) -> bool:
-    folded = fold(question)
-    return any(token in folded for token in _LAB_WORDS)
-
-
-def asks_panel(question: str) -> bool:
-    """A lab question that names no measurement of its own."""
-    if not asks_labs(question):
-        return False
-    return not question_terms(question)
-
-
-def is_continuation(question: str) -> bool:
-    folded = fold(question)
-    return any(phrase in folded for phrase in _CONTINUATION)
 
 
 def _date_key(text: str) -> tuple[int, int, int]:
@@ -274,47 +242,16 @@ def focus_clause(text: str, terms: list[str] | set[str]) -> str:
     return piece.strip()
 
 
-def _abnormal_labs(record: TextRecord) -> list[str]:
-    found = []
-    for line in record.lines:
-        if line.text.startswith("##"):
-            continue
-        if section_kind(record.sections[line.section_index].heading) != "lab":
-            continue
-        if not _FLAG.search(line.text):
-            continue
-        text = " ".join(line.text.strip().lstrip("-").split())
-        if text and text not in found:
-            found.append(text)
-        if len(found) == 3:
-            break
-    return found
-
-
 def select_rows(record: TextRecord, question: str, limit: int = 4) -> list[str]:
-    """Rows whose section and words fit the question. Empty when nothing overlaps."""
+    """Rows whose words overlap the question. Empty when nothing overlaps."""
     terms = question_terms(question)
-    names = drug_names(question, expand_group=is_continuation(question))
-    folded_names = list(names)
-    wearable_ok = any(token in _WEARABLE_TERMS for token in terms) or any(
-        token in fold(question) for token in _WEARABLE_TERMS
-    )
-    labs_only = asks_labs(question)
-    search_terms = list(dict.fromkeys([*terms, *folded_names]))
-    if labs_only and asks_panel(question):
-        return _abnormal_labs(record)[:limit]
-
+    names = drug_names(question)
+    search_terms = list(dict.fromkeys([*terms, *names]))
     ranked: list[tuple[int, tuple[int, int, int], str, str]] = []
     for line in record.lines:
         if line.text.startswith("##") or not line.text.strip():
             continue
         kind = section_kind(record.sections[line.section_index].heading)
-        if kind == "wearable" and not wearable_ok:
-            continue
-        if labs_only and kind != "lab":
-            continue
-        if not labs_only and kind == "lab" and not overlaps(line.text, search_terms):
-            continue
         row_score = score_text(line.text, search_terms)
         if names and any(_name_in(name, fold(line.text), _terms_in(line.text)) for name in names):
             row_score += 2
@@ -360,9 +297,7 @@ def lab_rows(record: TextRecord) -> list[str]:
 
 
 def matched_lab_rows(record: TextRecord, question: str) -> list[str]:
-    """Lab rows the question's words actually touch. A bare panel question uses abnormal flags."""
-    if asks_panel(question):
-        return _abnormal_labs(record)
+    """Lab rows the question's words actually touch."""
     selected = select_rows(record, question, limit=4)
     labs = [fold(line) for line in lab_rows(record)]
     found = []

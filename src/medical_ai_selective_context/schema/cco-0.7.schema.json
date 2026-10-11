@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kib.local/schemas/cco/0.7.0",
+  "title": "Clinical Context Object",
+  "description": "The frozen, as-of patient context care-copilot reads (doc 06 rev 3; F6 paket 5). Built only from clinical-insight's own tables: active facts (with their frozen values, comparisons and evidence pointers), the summaries and produced insights that stand at asOf, the missing-data declarations and the insights' controlled content references. Immutable once written; a later request is a new object. Every numeric or clinical claim care-copilot makes must cite a factId from this document; a content reference is never a citation (06 §7). 0.4.0 (e20): every factId an insight or summary cites resolves in the document - a cited result that is no longer current is listed under its section's citedRevisions. 0.5.0 (e22 B8): a section lists only results that hold a value at asOf (a day- or episode-keyed definition with its recent days, a rolling window with its newest result only); a result without a value is declared once in its section's missingData as a short note; evidence pointers are carried by the clinical-record families only; the flattened top-level missingData is gone; summaries are not carried (they held neither text nor values) and citedRevisions is gone - an insight carries the fact values it was produced from. 0.6.0 (e4 P10): a narrative value - a clinical text record in named sections (radiology, pathology and surgery reports, a visit's examination), cut to its definition's limits and marked truncated when cut; three clinical families (imaging, pathology, procedure). 0.7.0 (decision 61.5): a glossary - the Turkish label and reading note of every family, fact definition and insight rule the document names, once each; a number carries its amount at a reading precision (computed amounts rounded, laboratory results as reported) and no flag, a yes/no value its flag and no amount; a narrative section without a letter or digit is left out, and a narrative left without any is not listed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "subjectId", "purpose", "asOf", "generatedAt", "culture", "consent", "sections", "contentReferences", "safety", "limits", "release", "glossary"],
+  "properties": {
+    "schemaVersion": { "const": "0.7.0" },
+    "id": { "type": "string", "format": "uuid" },
+    "subjectId": { "type": "string", "format": "uuid" },
+    "purpose": { "enum": ["user-chat", "physician-view", "periodic-review"] },
+    "asOf": { "type": "string", "format": "date-time", "description": "The instant up to which data is included: facts recorded at or before it and still standing at it." },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": ["string", "null"], "maxLength": 128 },
+    "culture": { "type": "string", "maxLength": 16, "description": "The subject's message culture (48.12); care-copilot renders in it." },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["withheldFamilies"],
+      "properties": {
+        "withheldFamilies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["medication", "diagnosis", "visit", "lab", "glucose", "imaging", "pathology", "procedure"] }
+        }
+      }
+    },
+    "sections": {
+      "type": "object",
+      "description": "Keyed by fact family (sleep, cardio, oxygen, recovery, activity, hydration, data, wellness, record …).",
+      "additionalProperties": { "$ref": "#/$defs/section" }
+    },
+    "contentReferences": { "type": "array", "items": { "$ref": "#/$defs/contentReference" } },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiresHumanReview", "disclaimerPolicy"],
+      "properties": {
+        "requiresHumanReview": { "type": "boolean", "description": "True when a critical insight stands at asOf." },
+        "disclaimerPolicy": { "enum": ["standard"] }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxFactsPerSection", "maxPayloadBytes", "truncated"],
+      "properties": {
+        "maxFactsPerSection": { "type": "integer", "minimum": 1 },
+        "maxPayloadBytes": { "type": "integer", "minimum": 1 },
+        "truncated": { "type": "boolean", "description": "True when facts were dropped (oldest first) to respect a limit; what remains is still exact." }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "unreviewedDefinitions"],
+      "description": "e15 (0.3.0): under which release the document was served. released = the public gate passed (shadow mode off and every published rule and summary clinically reviewed). preview = the machine endpoint while clinical-insight is still in shadow mode, for a preview cohort only: the content is real but its rules may not be clinically reviewed yet, so it must not be shown to a user as reviewed clinical advice.",
+      "properties": {
+        "mode": { "enum": ["released", "preview"] },
+        "unreviewedDefinitions": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "The rules this document's insights come from whose version is still waiting for clinical review (0.5.0: the document carries no summaries); always empty when released.",
+          "items": { "$ref": "#/$defs/definition" }
+        }
+      }
+    },
+    "glossary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["families", "facts", "rules"],
+      "description": "0.7.0 (decision 61.5): what the codes mean, in the document's culture - one entry per family (section), fact definition (the canonical id of a definition, without its version) and insight rule the document names. An id clinical-insight has no text for is left out.",
+      "properties": {
+        "families": { "$ref": "#/$defs/glossaryEntries" },
+        "facts": { "$ref": "#/$defs/glossaryEntries" },
+        "rules": { "$ref": "#/$defs/glossaryEntries" }
+      }
+    }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facts", "insights", "missingData"],
+      "properties": {
+        "facts": { "type": "array", "items": { "$ref": "#/$defs/factReference" }, "maxItems": 100, "description": "e22 B8 (0.5.0): the results that hold a value at asOf. A day- or episode-keyed device definition keeps its recent days; a rolling or calendar window only its newest result (it covers the earlier keys); a clinical record only its current result." },
+        "insights": { "type": "array", "items": { "$ref": "#/$defs/insightReference" } },
+        "missingData": { "type": "array", "items": { "$ref": "#/$defs/missingData" }, "description": "e22 B8 (0.5.0): one short note per definition whose newest key holds no value at asOf (not computable, or its validity ended). An earlier day without a value is not declared; a clinical record without a current result is not declared at all." }
+      }
+    },
+    "definition": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*\\|[0-9]+\\.[0-9]+\\.[0-9]+$", "description": "canonicalId|version" },
+    "factReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factId", "definition", "evaluationKey", "evaluationStatus", "occurredFrom", "occurredTo", "recordedAt", "comparisons"],
+      "properties": {
+        "factId": { "type": "string", "format": "uuid" },
+        "definition": { "$ref": "#/$defs/definition" },
+        "evaluationKey": { "type": "string", "maxLength": 256 },
+        "evaluationStatus": { "enum": ["success", "data-required", "not-met", "error"] },
+        "occurredFrom": { "type": "string", "format": "date-time" },
+        "occurredTo": { "type": "string", "format": "date-time" },
+        "recordedAt": { "type": "string", "format": "date-time" },
+        "validUntil": { "type": ["string", "null"], "format": "date-time", "description": "P9 (additive in 0.2.0): the instant the content stops being valid (the definition's validity period after the newest source record); null = no period. A listed fact is always valid at asOf - one whose validity ended is declared under its section's missingData with reason expired instead." },
+        "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/scalarValue" }, { "$ref": "#/$defs/booleanValue" }, { "$ref": "#/$defs/codedValue" }, { "$ref": "#/$defs/narrativeValue" }] },
+        "comparisons": { "type": "array", "items": { "$ref": "#/$defs/comparison" } },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" }, "description": "e22 B8 (0.5.0): clinical-record families only (medication, diagnosis, visit, lab, glucose; 0.6.0: imaging, pathology, procedure), where occurredAt is the record's own date. A device result carries none: its window is occurredFrom/occurredTo." }
+      }
+    },
+    "scalarValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "amount", "unit"],
+      "description": "0.7.0: a number - computed amounts rounded to a reading precision (an hour to one decimal, anything else to two), laboratory and glucose results as the laboratory reported them.",
+      "properties": {
+        "type": { "enum": ["quantity", "percentage", "count"] },
+        "amount": { "type": ["number", "null"] },
+        "unit": { "type": "string", "maxLength": 64 }
+      }
+    },
+    "booleanValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "flag", "unit"],
+      "description": "0.7.0: a yes/no value (no shipped definition yields one today).",
+      "properties": {
+        "type": { "const": "boolean" },
+        "flag": { "type": ["boolean", "null"] },
+        "unit": { "type": "string", "maxLength": 64 }
+      }
+    },
+    "glossaryEntries": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9.-]*$", "maxLength": 200 },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "description"],
+        "properties": {
+          "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 600 }
+        }
+      }
+    },
+    "codedValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "unit", "system", "code", "display", "attributes"],
+      "properties": {
+        "type": { "const": "coded" },
+        "unit": { "const": "code" },
+        "system": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "code": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "display": { "type": "string", "maxLength": 512 },
+        "attributes": {
+          "type": "object",
+          "maxProperties": 16,
+          "propertyNames": { "minLength": 1, "maxLength": 64 },
+          "additionalProperties": { "oneOf": [{ "type": "string", "maxLength": 256 }, { "type": "number" }] }
+        }
+      }
+    },
+    "narrativeValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "unit", "sections", "attributes", "truncated"],
+      "description": "0.6.0 (e4 P10): what a clinician wrote, as written (personal identifiers masked by the producer), in named sections; a record of the past, not a claim about today. An empty source section is left out.",
+      "properties": {
+        "type": { "const": "narrative" },
+        "unit": { "const": "text" },
+        "sections": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 12,
+          "propertyNames": { "minLength": 1, "maxLength": 64 },
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 4000 }
+        },
+        "attributes": {
+          "type": "object",
+          "maxProperties": 16,
+          "propertyNames": { "minLength": 1, "maxLength": 64 },
+          "additionalProperties": { "oneOf": [{ "type": "string", "maxLength": 256 }, { "type": "number" }] }
+        },
+        "truncated": { "type": "boolean", "description": "True when a section was cut to the definition's limit (ended with an ellipsis) or dropped because the item's limit was spent." }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "unit"],
+      "properties": {
+        "kind": { "enum": ["threshold", "profile-goal", "previous-period", "personal-baseline", "personal-record", "fact-target", "reference-range"] },
+        "target": { "type": ["number", "null"] },
+        "targetSource": { "type": ["string", "null"], "maxLength": 32 },
+        "delta": { "type": ["number", "null"] },
+        "unit": { "type": "string", "maxLength": 64 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceType", "sourceId", "role"],
+      "properties": {
+        "sourceType": { "type": "string", "maxLength": 200 },
+        "sourceId": { "type": "string", "maxLength": 300 },
+        "role": { "type": "string", "maxLength": 32 },
+        "occurredAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "insightReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["insightId", "definition", "severity", "producedAt", "facts"],
+      "properties": {
+        "insightId": { "type": "string", "format": "uuid" },
+        "definition": { "$ref": "#/$defs/definition" },
+        "severity": { "enum": ["info", "warning", "critical"] },
+        "producedAt": { "type": "string", "format": "date-time" },
+        "validUntil": { "type": ["string", "null"], "format": "date-time" },
+        "facts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/insightFact" },
+          "description": "e22 B8 (0.5.0): the facts the insight was produced from, with the values it read (a snapshot). The same factId may also be listed in its section's facts; when the fact has been re-evaluated since, the current value is there under the same definition and evaluationKey."
+        }
+      }
+    },
+    "insightFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factId", "definition", "evaluationKey", "evaluationStatus", "value"],
+      "properties": {
+        "factId": { "type": "string", "format": "uuid" },
+        "definition": { "$ref": "#/$defs/definition" },
+        "evaluationKey": { "type": "string", "maxLength": 256 },
+        "evaluationStatus": { "enum": ["success", "data-required", "not-met", "error"] },
+        "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/scalarValue" }, { "$ref": "#/$defs/booleanValue" }, { "$ref": "#/$defs/codedValue" }, { "$ref": "#/$defs/narrativeValue" }] }
+      }
+    },
+    "missingData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "evaluationKey", "missing"],
+      "properties": {
+        "code": { "type": "string", "maxLength": 200, "description": "The fact definition that could not be evaluated." },
+        "evaluationKey": { "type": "string", "maxLength": 256 },
+        "reason": { "enum": ["not-met", "error", "expired"], "description": "Absent = data-required (0.5.0: the common reason is not written). expired (P9, additive in 0.2.0): the result's validity period ended; missing names the period (expired:<N>d) when the engine wrote it so, else expired." },
+        "missing": { "type": "array", "items": { "type": "string", "maxLength": 200 } },
+        "constraints": { "type": "array", "minItems": 1, "items": { "type": "string", "maxLength": 200 }, "description": "Absent when none (0.5.0)." }
+      }
+    },
+    "contentReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["insightId", "key", "kind", "provider", "role", "permanentId", "definitionVersion"],
+      "description": "A resolved, controlled content pointer of a standing insight (13): permanent provider identity only, never a URL or binary; never a citation.",
+      "properties": {
+        "insightId": { "type": "string", "format": "uuid" },
+        "key": { "type": "string", "maxLength": 100 },
+        "kind": { "type": "string", "maxLength": 32 },
+        "provider": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "maxLength": 32 },
+        "permanentId": { "type": "string", "maxLength": 300 },
+        "locale": { "type": ["string", "null"], "maxLength": 16 },
+        "providerRevision": { "type": ["string", "null"], "maxLength": 100 },
+        "definitionVersion": { "type": "string", "maxLength": 32 }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+
+# Captured production CCOs can contain health data and must stay local.
+data/cco/**
+!data/cco/.gitkeep
+data/subject-ids.txt
+data/runtime/
+data/evaluation/
+.cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+

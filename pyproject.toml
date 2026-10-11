@@ -1,0 +1,41 @@
+[project]
+name = "medical-ai-selective-context-v2"
+version = "0.2.0"
+description = "Standalone CCO selective-context workbench"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "neo4j>=6.3.1",
+  "pydantic>=2.9,<3",
+  "uvicorn[standard]>=0.32,<1",
+  "httpx>=0.27,<1",
+  "jsonschema[format]>=4.23,<5",
+  "numpy>=2.1,<3",
+]
+
+[project.optional-dependencies]
+semantic = ["sentence-transformers>=3.4,<6"]
+dev = [
+  "httpx>=0.27,<1",
+  "pytest>=8,<9",
+  "pyyaml>=6,<7",
+  "ruff>=0.8,<1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+filterwarnings = [
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+ignore = ["TRY004"]
+
+[tool.setuptools.package-data]
+medical_ai_selective_context = ["static/*", "schema/*.json"]
+

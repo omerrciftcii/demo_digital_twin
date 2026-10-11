@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0.0",
+  "key": "medical-ai-terminology-local-v1",
+  "status": "review-required",
+  "concepts": [
+    {
+      "system": "http://snomed.info/sct",
+      "code": "37796009",
+      "preferredTerm": "Migren",
+      "aliases": ["migren", "migraine"],
+      "factFamilies": ["diagnosis", "medication"]
+    },
+    {
+      "system": "http://snomed.info/sct",
+      "code": "23986001",
+      "preferredTerm": "Glokom",
+      "aliases": ["glokom", "glaucoma", "göz tansiyonu"],
+      "factFamilies": ["diagnosis", "medication"]
+    },
+    {
+      "system": "http://snomed.info/sct",
+      "code": "73211009",
+      "preferredTerm": "Diabetes mellitus",
+      "aliases": ["diyabet", "diabetes", "şeker hastalığı"],
+      "factFamilies": ["diagnosis", "glucose", "lab", "medication"]
+    },
+    {
+      "system": "http://snomed.info/sct",
+      "code": "38341003",
+      "preferredTerm": "Hipertansiyon",
+      "aliases": ["hipertansiyon", "yüksek tansiyon"],
+      "factFamilies": ["diagnosis", "cardio", "medication"]
+    },
+    {
+      "system": "http://snomed.info/sct",
+      "code": "709044004",
+      "preferredTerm": "Kronik böbrek hastalığı",
+      "aliases": ["kronik böbrek hastalığı", "böbrek yetmezliği", "ckd"],
+      "factFamilies": ["diagnosis", "lab", "medication"]
+    }
+  ]
+}

@@ -1,0 +1,5013 @@
+{
+  "schemaVersion": "0.7.0",
+  "id": "e70e35f9-6e4a-50d7-bfa8-da6d3e5ac7a8",
+  "subjectId": "5b1f3c2e-7a4d-4e8b-9c61-2f0d8a4e7b13",
+  "purpose": "user-chat",
+  "asOf": "2026-09-30T17:30:00Z",
+  "generatedAt": "2026-09-30T17:30:00Z",
+  "correlationId": "ornek-sohbet-0001",
+  "culture": "tr",
+  "consent": {
+    "withheldFamilies": []
+  },
+  "sections": {
+    "activity": {
+      "facts": [
+        {
+          "factId": "5459e985-fca5-54fe-acc4-abdb0d77bc3b",
+          "definition": "activity.steps.14d-average|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-16T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 7215.4,
+            "unit": "step"
+          },
+          "comparisons": [
+            {
+              "kind": "profile-goal",
+              "target": 8000,
+              "targetSource": "goal",
+              "delta": -784.6,
+              "unit": "step"
+            }
+          ]
+        },
+        {
+          "factId": "14307f1f-be0a-5661-b2a4-e22838c78958",
+          "definition": "activity.steps.active-hours|1.1.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 9,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 1,
+              "targetSource": "definition",
+              "delta": 8,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "722fd30d-5792-5f43-be4a-fd7dc5f283cc",
+          "definition": "activity.steps.day-total|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 7540,
+            "unit": "step"
+          },
+          "comparisons": [
+            {
+              "kind": "profile-goal",
+              "target": 8000,
+              "targetSource": "goal",
+              "delta": -460,
+              "unit": "step"
+            },
+            {
+              "kind": "personal-record",
+              "target": 13210,
+              "targetSource": null,
+              "delta": -5670,
+              "unit": "step"
+            }
+          ]
+        },
+        {
+          "factId": "bb7c38b7-4223-5d48-b010-1aa00ea9d6d9",
+          "definition": "activity.steps.goal-attainment-30d|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-31T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "percentage",
+            "amount": 36.7,
+            "unit": "percent"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 15,
+              "targetSource": "definition",
+              "delta": 21.7,
+              "unit": "percent"
+            }
+          ]
+        },
+        {
+          "factId": "ebbdc0ff-bbe6-5111-b474-2a1c4d98ad92",
+          "definition": "activity.steps.goal-streak|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-23T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 1,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 7,
+              "targetSource": "definition",
+              "delta": -6,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "c11f29b0-81ea-518d-b517-aa3508dcbf6c",
+          "definition": "activity.steps.recent-window-sum|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-30T15:00:00Z",
+          "occurredTo": "2026-09-30T17:25:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 3180,
+            "unit": "step"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 3000,
+              "targetSource": "definition",
+              "delta": 180,
+              "unit": "step"
+            }
+          ]
+        }
+      ],
+      "insights": [
+        {
+          "insightId": "46a351fc-7baf-5a1e-bac8-7708d0c969c8",
+          "definition": "activity.steps.goal-within-reach|1.0.0",
+          "severity": "info",
+          "producedAt": "2026-09-30T17:26:00Z",
+          "validUntil": "2026-09-30T21:00:00Z",
+          "facts": [
+            {
+              "factId": "722fd30d-5792-5f43-be4a-fd7dc5f283cc",
+              "definition": "activity.steps.day-total|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "count",
+                "amount": 7540,
+                "unit": "step"
+              }
+            }
+          ]
+        }
+      ],
+      "missingData": []
+    },
+    "cardio": {
+      "facts": [
+        {
+          "factId": "71540f83-2bb7-549e-8648-e9975f7bc972",
+          "definition": "cardio.heart-rate.night-average|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 58.4,
+            "unit": "bpm"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 70,
+              "targetSource": "definition",
+              "delta": -11.6,
+              "unit": "bpm"
+            },
+            {
+              "kind": "personal-baseline",
+              "target": 56.9,
+              "targetSource": "previous-fact",
+              "delta": 1.5,
+              "unit": "bpm"
+            }
+          ]
+        },
+        {
+          "factId": "9b468602-87a4-5406-8a02-6b3b4630f3a9",
+          "definition": "cardio.heart-rate.night-personal-baseline|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-30T21:00:00Z",
+          "occurredTo": "2026-09-29T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 56.9,
+            "unit": "bpm"
+          },
+          "comparisons": []
+        },
+        {
+          "factId": "0d104feb-ed96-5da8-977f-24f7d2f06691",
+          "definition": "cardio.heart-rate.sleep-bradycardia-hours|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 0,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 2,
+              "targetSource": "definition",
+              "delta": -2,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "cfc85f56-804c-5ac5-94b5-329b4be7dc4b",
+          "definition": "cardio.hrv.consecutive-decline-days|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-16T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:10:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 1,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 6,
+              "targetSource": "definition",
+              "delta": -5,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "0152c540-6989-58ce-b978-3dfae2404d29",
+          "definition": "cardio.hrv.day|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:10:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 46,
+            "unit": "millisecond"
+          },
+          "comparisons": [
+            {
+              "kind": "personal-baseline",
+              "target": 43.5,
+              "targetSource": "previous-fact",
+              "delta": 2.5,
+              "unit": "millisecond"
+            },
+            {
+              "kind": "personal-record",
+              "target": 55,
+              "targetSource": null,
+              "delta": -9,
+              "unit": "millisecond"
+            }
+          ]
+        },
+        {
+          "factId": "859c6141-699c-50f8-8a91-5eba6080b49e",
+          "definition": "cardio.hrv.personal-baseline|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-30T21:00:00Z",
+          "occurredTo": "2026-09-29T21:00:00Z",
+          "recordedAt": "2026-09-30T04:10:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 43.5,
+            "unit": "millisecond"
+          },
+          "comparisons": []
+        },
+        {
+          "factId": "725b91ba-a2de-57dd-a30a-9832187b42f2",
+          "definition": "cardio.resting-heart-rate.30d-trend|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-31T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:10:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": -0.18,
+            "unit": "bpm-per-day"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": -0.15,
+              "targetSource": "definition",
+              "delta": -0.03,
+              "unit": "bpm-per-day"
+            }
+          ]
+        },
+        {
+          "factId": "9f724094-b31e-53b4-b1e5-572b19a8ba20",
+          "definition": "cardio.resting-heart-rate.30d-trend-fit|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-31T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:10:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 0.52,
+            "unit": "ratio"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 0.3,
+              "targetSource": "definition",
+              "delta": 0.22,
+              "unit": "ratio"
+            }
+          ]
+        },
+        {
+          "factId": "0e0e735b-4d4c-577f-9098-9a014e19c6bc",
+          "definition": "cardio.resting-heart-rate.day|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:10:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 62,
+            "unit": "bpm"
+          },
+          "comparisons": [
+            {
+              "kind": "personal-baseline",
+              "target": 64.1,
+              "targetSource": "previous-fact",
+              "delta": -2.1,
+              "unit": "bpm"
+            },
+            {
+              "kind": "personal-record",
+              "target": 58,
+              "targetSource": null,
+              "delta": 4,
+              "unit": "bpm"
+            }
+          ]
+        },
+        {
+          "factId": "d751b58f-6dad-54fa-94cf-9a5113febd00",
+          "definition": "cardio.resting-heart-rate.elevation-streak|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-16T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:10:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 0,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 3,
+              "targetSource": "definition",
+              "delta": -3,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "1df84e58-a492-5708-afd7-0344ed791e45",
+          "definition": "cardio.resting-heart-rate.personal-baseline|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-30T21:00:00Z",
+          "occurredTo": "2026-09-29T21:00:00Z",
+          "recordedAt": "2026-09-30T04:10:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 64.1,
+            "unit": "bpm"
+          },
+          "comparisons": []
+        }
+      ],
+      "insights": [
+        {
+          "insightId": "643ac4c1-81a0-56f1-b0fc-f51a54d11bee",
+          "definition": "cardio.resting-heart-rate.improving|1.0.0",
+          "severity": "info",
+          "producedAt": "2026-09-30T04:11:00Z",
+          "validUntil": "2026-09-30T21:00:00Z",
+          "facts": [
+            {
+              "factId": "725b91ba-a2de-57dd-a30a-9832187b42f2",
+              "definition": "cardio.resting-heart-rate.30d-trend|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": -0.18,
+                "unit": "bpm-per-day"
+              }
+            },
+            {
+              "factId": "9f724094-b31e-53b4-b1e5-572b19a8ba20",
+              "definition": "cardio.resting-heart-rate.30d-trend-fit|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": 0.52,
+                "unit": "ratio"
+              }
+            }
+          ]
+        }
+      ],
+      "missingData": [
+        {
+          "code": "cardio.heart-rate.sleep-late-drop",
+          "evaluationKey": "profile-day:2026-09-30",
+          "missing": [
+            "edge-buckets-missing"
+          ]
+        }
+      ]
+    },
+    "data": {
+      "facts": [
+        {
+          "factId": "a55f372c-7571-505c-a727-baeef580e3b0",
+          "definition": "data.coverage.7d-full-signal-days|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-23T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 5,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 7,
+              "targetSource": "definition",
+              "delta": -2,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "aca6e83b-57a4-5496-9852-502d92b2370f",
+          "definition": "data.ring.had-data-30d|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-31T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 28,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 1,
+              "targetSource": "definition",
+              "delta": 27,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "3a68c625-fded-5b95-9227-6dc954d668e6",
+          "definition": "data.ring.last-seen-hours|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-31T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 0.3,
+            "unit": "hour"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 24,
+              "targetSource": "definition",
+              "delta": -23.7,
+              "unit": "hour"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "diagnosis": {
+      "facts": [
+        {
+          "factId": "9128d316-e2e3-544f-8683-0ce148269d3a",
+          "definition": "diagnosis.definitive-count|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "1970-01-01T00:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 4,
+            "unit": "count"
+          },
+          "comparisons": [],
+          "evidence": []
+        },
+        {
+          "factId": "13e684e4-54ec-5cd4-8b27-455fbca9cc77",
+          "definition": "diagnosis.recorded-item|1.1.0",
+          "evaluationKey": "code:icd-10:E11.9",
+          "evaluationStatus": "success",
+          "occurredFrom": "2024-03-18T08:30:00Z",
+          "occurredTo": "2026-09-12T07:10:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "icd-10",
+            "code": "E11.9",
+            "display": "Tip 2 diabetes mellitus, komplikasyonsuz",
+            "attributes": {
+              "departmentName": "İç Hastalıkları",
+              "externalVisitId": "V-2026-118834",
+              "facilityId": "FAC-IST-1042",
+              "type": "definitive",
+              "visitDate": "2026-09-12T07:10:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.visit-diagnosis",
+              "sourceId": "DX-V-2024-031877-E11.9",
+              "role": "source",
+              "occurredAt": "2024-03-18T08:30:00Z"
+            },
+            {
+              "sourceType": "emr.visit-diagnosis",
+              "sourceId": "DX-V-2026-118834-E11.9",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:10:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "e94b90d4-6584-54a9-9425-08cd62041719",
+          "definition": "diagnosis.recorded-item|1.1.0",
+          "evaluationKey": "code:icd-10:E78.5",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-14T08:50:00Z",
+          "occurredTo": "2026-08-14T08:50:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "icd-10",
+            "code": "E78.5",
+            "display": "Hiperlipidemi, tanımlanmamış",
+            "attributes": {
+              "departmentName": "Kardiyoloji",
+              "externalVisitId": "V-2026-104417",
+              "facilityId": "FAC-IST-1042",
+              "type": "preliminary",
+              "visitDate": "2026-08-14T08:50:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.visit-diagnosis",
+              "sourceId": "DX-V-2026-104417-E78.5",
+              "role": "source",
+              "occurredAt": "2026-08-14T08:50:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d816ebf9-5412-5bfd-8b6f-e770b4bcfae4",
+          "definition": "diagnosis.recorded-item|1.1.0",
+          "evaluationKey": "code:icd-10:I10",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-11-04T10:20:00Z",
+          "occurredTo": "2026-09-12T07:10:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "icd-10",
+            "code": "I10",
+            "display": "Esansiyel (primer) hipertansiyon",
+            "attributes": {
+              "departmentName": "İç Hastalıkları",
+              "externalVisitId": "V-2026-118834",
+              "facilityId": "FAC-IST-1042",
+              "type": "definitive",
+              "visitDate": "2026-09-12T07:10:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.visit-diagnosis",
+              "sourceId": "DX-V-2025-209455-I10",
+              "role": "source",
+              "occurredAt": "2025-11-04T10:20:00Z"
+            },
+            {
+              "sourceType": "emr.visit-diagnosis",
+              "sourceId": "DX-V-2026-118834-I10",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:10:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "f36db282-15b4-53f7-b8f7-e265f8f7deb6",
+          "definition": "diagnosis.recorded-item|1.1.0",
+          "evaluationKey": "code:icd-10:J06.9",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T07:10:00Z",
+          "occurredTo": "2026-09-12T07:10:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "icd-10",
+            "code": "J06.9",
+            "display": "Akut üst solunum yolu enfeksiyonu, tanımlanmamış",
+            "attributes": {
+              "departmentName": "İç Hastalıkları",
+              "externalVisitId": "V-2026-118834",
+              "facilityId": "FAC-IST-1042",
+              "type": "definitive",
+              "visitDate": "2026-09-12T07:10:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.visit-diagnosis",
+              "sourceId": "DX-V-2026-118834-J06.9",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:10:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d7dd266c-29c7-5559-9d5b-abd0d88c1390",
+          "definition": "diagnosis.recorded-item|1.1.0",
+          "evaluationKey": "code:icd-10:N20.1",
+          "evaluationStatus": "success",
+          "occurredFrom": "2015-12-14T12:43:00Z",
+          "occurredTo": "2015-12-14T12:43:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "icd-10",
+            "code": "N20.1",
+            "display": "Üreter taşı",
+            "attributes": {
+              "departmentName": "Üroloji",
+              "externalVisitId": "V-2015-307744",
+              "facilityId": "FAC-IST-1042",
+              "type": "definitive",
+              "visitDate": "2015-12-14T12:43:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.visit-diagnosis",
+              "sourceId": "DX-V-2015-307744-N20.1",
+              "role": "source",
+              "occurredAt": "2015-12-14T12:43:00Z"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "glucose": {
+      "facts": [
+        {
+          "factId": "31f1d5f4-f60a-5b27-a581-ad328b24eda9",
+          "definition": "glucose.fasting.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-02T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2026-12-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 104,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.bg-fasting",
+              "sourceId": "lab-b2c622811bba503c9e20135087c405d4",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "532e991e-2609-5cc9-a615-6ec4c9d121ba",
+          "definition": "glucose.fasting.series|1.1.0",
+          "evaluationKey": "sample:lab-171a4f88a7b355cdbd2c81c3364b0e1e",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 109,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.bg-fasting",
+              "sourceId": "lab-171a4f88a7b355cdbd2c81c3364b0e1e",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "60ad0049-aa8f-5bb1-b0cc-10f3f0bc3f79",
+          "definition": "glucose.fasting.series|1.1.0",
+          "evaluationKey": "sample:lab-32bc8d9c66e65d2f992d6fd41d4fb187",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-03-18T06:40:00Z",
+          "occurredTo": "2026-03-18T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 121,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.bg-fasting",
+              "sourceId": "lab-32bc8d9c66e65d2f992d6fd41d4fb187",
+              "role": "source",
+              "occurredAt": "2026-03-18T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "11970cc5-3c9f-5bda-81be-dc2a5ffbd2a0",
+          "definition": "glucose.fasting.series|1.1.0",
+          "evaluationKey": "sample:lab-b2c622811bba503c9e20135087c405d4",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 104,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.bg-fasting",
+              "sourceId": "lab-b2c622811bba503c9e20135087c405d4",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "83acdc6c-fe2a-5965-9aba-14bd761d548d",
+          "definition": "glucose.fasting.series|1.1.0",
+          "evaluationKey": "sample:lab-c9d2b94ce45955c3af5bc3f25c8607ae",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 112,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.bg-fasting",
+              "sourceId": "lab-c9d2b94ce45955c3af5bc3f25c8607ae",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "5b5d1aab-22aa-5e78-b909-293c57490b49",
+          "definition": "glucose.fasting.series|1.1.0",
+          "evaluationKey": "sample:lab-d624108d3b5c56ac869fc4152d7035af",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-05-06T06:40:00Z",
+          "occurredTo": "2026-05-06T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 118,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.bg-fasting",
+              "sourceId": "lab-d624108d3b5c56ac869fc4152d7035af",
+              "role": "source",
+              "occurredAt": "2026-05-06T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "bcac5574-abd7-5257-8ca4-19c2711c2897",
+          "definition": "glucose.hba1c.hours-since-latest|1.1.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "1970-01-01T00:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 443.3,
+            "unit": "hour"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hba1c",
+              "sourceId": "lab-79e29036a230566785581af635255068",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "e0ab9882-00d5-553a-8676-3cf2f76806d6",
+          "definition": "glucose.hba1c.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 6.1,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hba1c",
+              "sourceId": "lab-79e29036a230566785581af635255068",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "0d591f18-b212-503e-9ba4-8266d7ad126e",
+          "definition": "glucose.hba1c.series|1.1.0",
+          "evaluationKey": "sample:lab-4e624b62793e5ce39ccab7da7fa7a8fe",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 6.3,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hba1c",
+              "sourceId": "lab-4e624b62793e5ce39ccab7da7fa7a8fe",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "ddf79374-d7f2-5e39-997d-c325fe3f6d08",
+          "definition": "glucose.hba1c.series|1.1.0",
+          "evaluationKey": "sample:lab-5ab19f8de0b95bf08a55733ff1b538d1",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 6.4,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hba1c",
+              "sourceId": "lab-5ab19f8de0b95bf08a55733ff1b538d1",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "524bd83e-04e1-5518-b746-b0ec4ed7b1db",
+          "definition": "glucose.hba1c.series|1.1.0",
+          "evaluationKey": "sample:lab-79e29036a230566785581af635255068",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 6.1,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hba1c",
+              "sourceId": "lab-79e29036a230566785581af635255068",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "c5d511ac-1fc9-513a-9303-4d34ff8b0cd2",
+          "definition": "glucose.hba1c.series|1.1.0",
+          "evaluationKey": "sample:lab-b4541a7f7c875804a45c3ba49105a032",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-05-06T06:40:00Z",
+          "occurredTo": "2026-05-06T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 6.6,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hba1c",
+              "sourceId": "lab-b4541a7f7c875804a45c3ba49105a032",
+              "role": "source",
+              "occurredAt": "2026-05-06T06:40:00Z"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "hydration": {
+      "facts": [
+        {
+          "factId": "a1da45f5-a820-5f82-9378-0e834eab9683",
+          "definition": "hydration.water.day-intake|1.1.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 1250,
+            "unit": "milliliter"
+          },
+          "comparisons": [
+            {
+              "kind": "fact-target",
+              "target": 2500,
+              "targetSource": "previous-fact",
+              "delta": -1250,
+              "unit": "milliliter"
+            }
+          ]
+        },
+        {
+          "factId": "fbcef410-63c2-5bda-afd6-dfa1750ca9aa",
+          "definition": "hydration.water.step-adjusted-target|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 2500,
+            "unit": "milliliter"
+          },
+          "comparisons": []
+        }
+      ],
+      "insights": [
+        {
+          "insightId": "a5ca37ad-fe05-5389-bf4a-fd7783049bf5",
+          "definition": "hydration.water.behind-target-after-activity|1.0.0",
+          "severity": "info",
+          "producedAt": "2026-09-30T17:26:00Z",
+          "validUntil": "2026-09-30T21:00:00Z",
+          "facts": [
+            {
+              "factId": "c11f29b0-81ea-518d-b517-aa3508dcbf6c",
+              "definition": "activity.steps.recent-window-sum|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "count",
+                "amount": 3180,
+                "unit": "step"
+              }
+            },
+            {
+              "factId": "a1da45f5-a820-5f82-9378-0e834eab9683",
+              "definition": "hydration.water.day-intake|1.1.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": 1250,
+                "unit": "milliliter"
+              }
+            }
+          ]
+        }
+      ],
+      "missingData": []
+    },
+    "imaging": {
+      "facts": [
+        {
+          "factId": "7ab0c217-6f5f-5601-8699-ad519f7ff012",
+          "definition": "imaging.count-365d|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 3,
+            "unit": "study"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.radiology-report",
+              "sourceId": "RAD-2026-18805",
+              "role": "source",
+              "occurredAt": "2026-01-22T16:45:00Z"
+            },
+            {
+              "sourceType": "emr.radiology-report",
+              "sourceId": "RAD-2026-66124",
+              "role": "source",
+              "occurredAt": "2026-08-14T13:10:00Z"
+            },
+            {
+              "sourceType": "emr.radiology-report",
+              "sourceId": "RAD-2026-77310",
+              "role": "source",
+              "occurredAt": "2026-09-12T11:30:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "91daeb9d-577a-5d0d-8989-ebb5e1ebb486",
+          "definition": "imaging.report.item|1.1.0",
+          "evaluationKey": "sample:RAD-2026-18805",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-01-22T16:45:00Z",
+          "occurredTo": "2026-01-22T16:45:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "report": "Lomber MR: L4-L5 diskte santral protrüzyon, sağ L5 sinir kökü ile temas. Spinal kanal açıklığı korunmuştur. Diğer seviyelerde dejeneratif değişiklikler."
+            },
+            "attributes": {
+              "approvedAt": "2026-01-22T16:45:00Z",
+              "examName": "Lomber MR",
+              "performedAt": "2026-01-22T12:15:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.radiology-report",
+              "sourceId": "RAD-2026-18805",
+              "role": "source",
+              "occurredAt": "2026-01-22T16:45:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "eb9fc468-f518-5dd0-9386-acd7594d553c",
+          "definition": "imaging.report.item|1.1.0",
+          "evaluationKey": "sample:RAD-2026-66124",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-14T13:10:00Z",
+          "occurredTo": "2026-08-14T13:10:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "report": "Tüm batın ultrasonografisi: Karaciğer boyutu normal, parankim ekojenitesi artmıştır (grade 1 hepatosteatoz ile uyumlu). Safra kesesi opere görünümdedir. Her iki böbrek normal boyut ve ekojenitededir."
+            },
+            "attributes": {
+              "approvedAt": "2026-08-14T13:10:00Z",
+              "examName": "Tüm batın USG",
+              "performedAt": "2026-08-14T10:20:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.radiology-report",
+              "sourceId": "RAD-2026-66124",
+              "role": "source",
+              "occurredAt": "2026-08-14T13:10:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "ba9e0673-605b-527d-b28a-eadf9e0b4550",
+          "definition": "imaging.report.item|1.1.0",
+          "evaluationKey": "sample:RAD-2026-77310",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T11:30:00Z",
+          "occurredTo": "2026-09-12T11:30:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "report": "Akciğer grafisi (PA): Kardiyotorasik oran normal sınırlardadır. Her iki akciğer parankim alanlarında aktif infiltrasyon izlenmedi. Kostofrenik sinüsler açıktır."
+            },
+            "attributes": {
+              "approvedAt": "2026-09-12T11:30:00Z",
+              "examName": "Akciğer grafisi (PA)",
+              "performedAt": "2026-09-12T08:05:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.radiology-report",
+              "sourceId": "RAD-2026-77310",
+              "role": "source",
+              "occurredAt": "2026-09-12T11:30:00Z"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "lab": {
+      "facts": [
+        {
+          "factId": "4d7a6a85-7320-5ce7-be93-463374d22e1c",
+          "definition": "lab.alt.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 24,
+            "unit": "U/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.alt",
+              "sourceId": "lab-ad27539c1d0c5c66a9877089a40eb401",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "0be9244e-eb04-5b23-a8e4-d83163079f80",
+          "definition": "lab.alt.series|1.1.0",
+          "evaluationKey": "sample:lab-9f0f77342fb8565da3160797a2136d82",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 28,
+            "unit": "U/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.alt",
+              "sourceId": "lab-9f0f77342fb8565da3160797a2136d82",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d5340b32-58de-5086-9a0a-e644f7534e90",
+          "definition": "lab.alt.series|1.1.0",
+          "evaluationKey": "sample:lab-ad27539c1d0c5c66a9877089a40eb401",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 24,
+            "unit": "U/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.alt",
+              "sourceId": "lab-ad27539c1d0c5c66a9877089a40eb401",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "1c88cf26-14d6-5b98-87a2-751476f18f19",
+          "definition": "lab.alt.series|1.1.0",
+          "evaluationKey": "sample:lab-c03ccdf0c6735d749d562a7776360e1e",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 26,
+            "unit": "U/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.alt",
+              "sourceId": "lab-c03ccdf0c6735d749d562a7776360e1e",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "f1c81cd0-7d5b-5135-9746-f0be0182a028",
+          "definition": "lab.ast.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 21,
+            "unit": "U/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.ast",
+              "sourceId": "lab-b07b4977d30152b0bd60f769a3fbc7ed",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "92b04d57-8fb3-5c41-a5dd-5ee2457737ff",
+          "definition": "lab.ast.series|1.1.0",
+          "evaluationKey": "sample:lab-35d9cd8c1fb95776b2ccb84799d5ad0e",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 23,
+            "unit": "U/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.ast",
+              "sourceId": "lab-35d9cd8c1fb95776b2ccb84799d5ad0e",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "679f95eb-4378-5309-9bbd-a765a17cad60",
+          "definition": "lab.ast.series|1.1.0",
+          "evaluationKey": "sample:lab-b07b4977d30152b0bd60f769a3fbc7ed",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 21,
+            "unit": "U/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.ast",
+              "sourceId": "lab-b07b4977d30152b0bd60f769a3fbc7ed",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "dcd64d1f-0488-5c7f-9373-4da5bbd36aeb",
+          "definition": "lab.ast.series|1.1.0",
+          "evaluationKey": "sample:lab-e9850c54167b50d6bbc678faa41993b3",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 22,
+            "unit": "U/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.ast",
+              "sourceId": "lab-e9850c54167b50d6bbc678faa41993b3",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "7d5bcab0-0b73-5f13-9bb9-ff415eab953e",
+          "definition": "lab.cholesterol-total.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-09-11T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 212,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.cholesterol-total",
+              "sourceId": "lab-4311a35b680c5482b901dfea46656072",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d004d29a-1028-59f5-ac0e-f32d1eec00c7",
+          "definition": "lab.cholesterol-total.series|1.1.0",
+          "evaluationKey": "sample:lab-1467998263db5aa4884020bf4c390734",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 219,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.cholesterol-total",
+              "sourceId": "lab-1467998263db5aa4884020bf4c390734",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "767e6464-7dfe-51f3-95a7-e08e76cccbf4",
+          "definition": "lab.cholesterol-total.series|1.1.0",
+          "evaluationKey": "sample:lab-4311a35b680c5482b901dfea46656072",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 212,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.cholesterol-total",
+              "sourceId": "lab-4311a35b680c5482b901dfea46656072",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "84c6225e-6fd7-53e7-94d5-7f6204572647",
+          "definition": "lab.cholesterol-total.series|1.1.0",
+          "evaluationKey": "sample:lab-d439bb7811ca50a6b554a1319d8d0586",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 226,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.cholesterol-total",
+              "sourceId": "lab-d439bb7811ca50a6b554a1319d8d0586",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d74080d1-fb60-5f44-8e78-269ce0f476d6",
+          "definition": "lab.creatinine.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 0.9,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.creatinine",
+              "sourceId": "lab-9eefeaf2a5db55409bf690736c260afa",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "48ebf675-9932-5801-92fa-ed5bae433b84",
+          "definition": "lab.creatinine.series|1.1.0",
+          "evaluationKey": "sample:lab-3a7f0a89ecc35823b027a24295f6e20c",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 0.9,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.creatinine",
+              "sourceId": "lab-3a7f0a89ecc35823b027a24295f6e20c",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "a7f012b6-0b55-5734-83fe-e40c09c9a3f3",
+          "definition": "lab.creatinine.series|1.1.0",
+          "evaluationKey": "sample:lab-53f6018b33cd5e94923a87d06d9628dc",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 0.9,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.creatinine",
+              "sourceId": "lab-53f6018b33cd5e94923a87d06d9628dc",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "123f54ee-9b69-5931-b7a3-94d415d5344d",
+          "definition": "lab.creatinine.series|1.1.0",
+          "evaluationKey": "sample:lab-7538c707e14f57f4b463279a837d45e6",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-03-18T06:40:00Z",
+          "occurredTo": "2026-03-18T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 0.8,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.creatinine",
+              "sourceId": "lab-7538c707e14f57f4b463279a837d45e6",
+              "role": "source",
+              "occurredAt": "2026-03-18T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "225bb2bb-7998-5eae-b563-df62163a4c73",
+          "definition": "lab.creatinine.series|1.1.0",
+          "evaluationKey": "sample:lab-9eefeaf2a5db55409bf690736c260afa",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 0.9,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.creatinine",
+              "sourceId": "lab-9eefeaf2a5db55409bf690736c260afa",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "846bfeaa-676b-5667-80b4-189e82bd45da",
+          "definition": "lab.creatinine.series|1.1.0",
+          "evaluationKey": "sample:lab-eb08b650f86557a8a475d8706bb8f2df",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-05-06T06:40:00Z",
+          "occurredTo": "2026-05-06T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 0.9,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.creatinine",
+              "sourceId": "lab-eb08b650f86557a8a475d8706bb8f2df",
+              "role": "source",
+              "occurredAt": "2026-05-06T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d29c983d-fdc6-5a3c-9346-9ea5bc6303ee",
+          "definition": "lab.ft4.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-09-11T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 1.2,
+            "unit": "ng/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.ft4",
+              "sourceId": "lab-1edd12372b185d46a4ee39e30093fd94",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "78ff981b-6902-5c9f-bf8b-b2c0b41a6bd6",
+          "definition": "lab.ft4.series|1.1.0",
+          "evaluationKey": "sample:lab-1edd12372b185d46a4ee39e30093fd94",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 1.2,
+            "unit": "ng/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.ft4",
+              "sourceId": "lab-1edd12372b185d46a4ee39e30093fd94",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "71bc3852-d6db-5420-b96f-8e5f3548dc00",
+          "definition": "lab.ft4.series|1.1.0",
+          "evaluationKey": "sample:lab-54c71458703f5d078b8d910efb0e014b",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 1.1,
+            "unit": "ng/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.ft4",
+              "sourceId": "lab-54c71458703f5d078b8d910efb0e014b",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "749d9c42-14e8-578d-9f72-e4a701379758",
+          "definition": "lab.ft4.series|1.1.0",
+          "evaluationKey": "sample:lab-c402f57ec54f59a587fa3af1bae56222",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 1.2,
+            "unit": "ng/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.ft4",
+              "sourceId": "lab-c402f57ec54f59a587fa3af1bae56222",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "2a739de5-e19c-5d8e-bb51-300c47796ca3",
+          "definition": "lab.hdl.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-09-11T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 46,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hdl",
+              "sourceId": "lab-817cdc7d054f56e7b5b70cf0fd991eeb",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "5eb9c6c0-8985-520c-9670-1c35eba404a7",
+          "definition": "lab.hdl.series|1.1.0",
+          "evaluationKey": "sample:lab-817cdc7d054f56e7b5b70cf0fd991eeb",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 46,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hdl",
+              "sourceId": "lab-817cdc7d054f56e7b5b70cf0fd991eeb",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "6229b2ef-df1c-56af-862d-f76263e7c1e9",
+          "definition": "lab.hdl.series|1.1.0",
+          "evaluationKey": "sample:lab-872fae04acbe516d8dd9c7277cb43f83",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 44,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hdl",
+              "sourceId": "lab-872fae04acbe516d8dd9c7277cb43f83",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "a1ac1f2d-2b5e-5ff1-a5f3-af687e1cdf3b",
+          "definition": "lab.hdl.series|1.1.0",
+          "evaluationKey": "sample:lab-8b49799d959c5c72a574530db42a9dbc",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 45,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hdl",
+              "sourceId": "lab-8b49799d959c5c72a574530db42a9dbc",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "e74e3e2f-f49d-593d-91d2-fc070a086f6d",
+          "definition": "lab.hematocrit.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 43.8,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hematocrit",
+              "sourceId": "lab-90c521f80c46531cab1c01f0e150dfbe",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "c5e707fc-1f00-5b4b-8473-982bb14f214a",
+          "definition": "lab.hematocrit.series|1.1.0",
+          "evaluationKey": "sample:lab-4d343ea3cbfa5a02aa88f42da5e9c21c",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 43,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hematocrit",
+              "sourceId": "lab-4d343ea3cbfa5a02aa88f42da5e9c21c",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "3f1761f5-3b50-5b99-8633-3006b1980d3a",
+          "definition": "lab.hematocrit.series|1.1.0",
+          "evaluationKey": "sample:lab-82dc0d51121f5994b9077c52a0f017a0",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 43.2,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hematocrit",
+              "sourceId": "lab-82dc0d51121f5994b9077c52a0f017a0",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "ab863795-532d-5684-a765-69950ac8fb83",
+          "definition": "lab.hematocrit.series|1.1.0",
+          "evaluationKey": "sample:lab-90c521f80c46531cab1c01f0e150dfbe",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 43.8,
+            "unit": "%"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hematocrit",
+              "sourceId": "lab-90c521f80c46531cab1c01f0e150dfbe",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "6ee835a2-eee8-523d-a5b7-fa33d9b88f1d",
+          "definition": "lab.hemoglobin.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 14.6,
+            "unit": "g/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hemoglobin",
+              "sourceId": "lab-76358fb04899592ab6ea6ad1f31eda83",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "1c7dfe25-af57-5a58-9c65-a3eefe292ca8",
+          "definition": "lab.hemoglobin.series|1.1.0",
+          "evaluationKey": "sample:lab-76358fb04899592ab6ea6ad1f31eda83",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 14.6,
+            "unit": "g/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hemoglobin",
+              "sourceId": "lab-76358fb04899592ab6ea6ad1f31eda83",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "41804361-f69f-5f0b-85c3-506de1f98edb",
+          "definition": "lab.hemoglobin.series|1.1.0",
+          "evaluationKey": "sample:lab-76e595a004f75b218e133c53ebcc87b4",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 14.3,
+            "unit": "g/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hemoglobin",
+              "sourceId": "lab-76e595a004f75b218e133c53ebcc87b4",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "84304cb3-247b-57f1-ab6f-ca9c45c09550",
+          "definition": "lab.hemoglobin.series|1.1.0",
+          "evaluationKey": "sample:lab-f4200435c5c454359badb7bd18660a57",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 14.4,
+            "unit": "g/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.hemoglobin",
+              "sourceId": "lab-f4200435c5c454359badb7bd18660a57",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "575ff1f2-0815-5679-aa81-0dcbfd827495",
+          "definition": "lab.mcv.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 88,
+            "unit": "fL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.mcv",
+              "sourceId": "lab-2ff6b1d2f2f851b0bf7f6041384d8c7d",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "0a74f398-6ab9-51e0-87af-916201350d82",
+          "definition": "lab.mcv.series|1.1.0",
+          "evaluationKey": "sample:lab-2ff6b1d2f2f851b0bf7f6041384d8c7d",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 88,
+            "unit": "fL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.mcv",
+              "sourceId": "lab-2ff6b1d2f2f851b0bf7f6041384d8c7d",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d51e3bad-5458-5b8b-8a55-d10a13671cde",
+          "definition": "lab.mcv.series|1.1.0",
+          "evaluationKey": "sample:lab-e4a9739c84f75d8aa31afb9c3433478c",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 88,
+            "unit": "fL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.mcv",
+              "sourceId": "lab-e4a9739c84f75d8aa31afb9c3433478c",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "47178803-ad50-5f2f-b33a-a9bb09651c8f",
+          "definition": "lab.mcv.series|1.1.0",
+          "evaluationKey": "sample:lab-e642b99971565674b3544e92ef3a2ab1",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 88,
+            "unit": "fL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.mcv",
+              "sourceId": "lab-e642b99971565674b3544e92ef3a2ab1",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "45020134-9b86-5799-8b06-1d36dc94386d",
+          "definition": "lab.neutrophil-abs.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 4.1,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.neutrophil-abs",
+              "sourceId": "lab-35e0816a8fd35163af1cf17814b65b26",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "5e3e3970-0840-5d46-9629-19238f6c935b",
+          "definition": "lab.neutrophil-abs.series|1.1.0",
+          "evaluationKey": "sample:lab-35e0816a8fd35163af1cf17814b65b26",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 4.1,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.neutrophil-abs",
+              "sourceId": "lab-35e0816a8fd35163af1cf17814b65b26",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "540a3665-50b6-5c0e-b100-0f743ee16be7",
+          "definition": "lab.neutrophil-abs.series|1.1.0",
+          "evaluationKey": "sample:lab-4b3882a530275d81902a9371107ff1ec",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 4.4,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.neutrophil-abs",
+              "sourceId": "lab-4b3882a530275d81902a9371107ff1ec",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "e2303099-fe99-516d-93f1-970b6dc90bea",
+          "definition": "lab.neutrophil-abs.series|1.1.0",
+          "evaluationKey": "sample:lab-b0ba19d837795374aeb02fbfc8c42044",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 4,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.neutrophil-abs",
+              "sourceId": "lab-b0ba19d837795374aeb02fbfc8c42044",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "13cd872e-e8bb-5044-9334-18c74b1081c3",
+          "definition": "lab.platelet.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 265,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.platelet",
+              "sourceId": "lab-ed2be70359685563af823d4259ed7ea4",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "0b065a76-0af2-5309-89c6-ff9ec74c7fde",
+          "definition": "lab.platelet.series|1.1.0",
+          "evaluationKey": "sample:lab-4e9974760fec549dbd204053c4a1eb08",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 259,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.platelet",
+              "sourceId": "lab-4e9974760fec549dbd204053c4a1eb08",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "cc0ea9c6-d424-590a-8d91-0bf23f6698e4",
+          "definition": "lab.platelet.series|1.1.0",
+          "evaluationKey": "sample:lab-a1231143007e5893a7d0c5057eed5418",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 251,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.platelet",
+              "sourceId": "lab-a1231143007e5893a7d0c5057eed5418",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "b3062a66-5357-5b81-962f-7d9ac355eb32",
+          "definition": "lab.platelet.series|1.1.0",
+          "evaluationKey": "sample:lab-ed2be70359685563af823d4259ed7ea4",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 265,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.platelet",
+              "sourceId": "lab-ed2be70359685563af823d4259ed7ea4",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "18e179ed-f5ce-5e1e-8b8b-0be698dd5c64",
+          "definition": "lab.triglyceride.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-09-11T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 168,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.triglyceride",
+              "sourceId": "lab-ed0d1c4772785cdba2a6cba9fddafd46",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "b38d6ad5-4f14-54b7-8679-4de1184ed30b",
+          "definition": "lab.triglyceride.series|1.1.0",
+          "evaluationKey": "sample:lab-03f636e0803756b28264279d552d06c9",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 188,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.triglyceride",
+              "sourceId": "lab-03f636e0803756b28264279d552d06c9",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "4000e69e-b9f2-5d11-85bb-ac6712e88510",
+          "definition": "lab.triglyceride.series|1.1.0",
+          "evaluationKey": "sample:lab-94bd05e5be6a51468c250c30937131d5",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 176,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.triglyceride",
+              "sourceId": "lab-94bd05e5be6a51468c250c30937131d5",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "90252327-0400-5fb9-ab4f-dfaaa24fd1fd",
+          "definition": "lab.triglyceride.series|1.1.0",
+          "evaluationKey": "sample:lab-ed0d1c4772785cdba2a6cba9fddafd46",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 168,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.triglyceride",
+              "sourceId": "lab-ed0d1c4772785cdba2a6cba9fddafd46",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "47909050-ce4f-5a2c-80aa-7e523b80a2db",
+          "definition": "lab.tsh.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-09-11T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 2.1,
+            "unit": "mIU/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.tsh",
+              "sourceId": "lab-75a86a1c7e4d5791af7c0a313e41f5bc",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "75f46f0f-1601-52f3-ab94-8054a7c30f04",
+          "definition": "lab.tsh.series|1.1.0",
+          "evaluationKey": "sample:lab-181a1ef8a3095c21be448cb6af1bea32",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 1.8,
+            "unit": "mIU/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.tsh",
+              "sourceId": "lab-181a1ef8a3095c21be448cb6af1bea32",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "ac49aa1e-6abc-56b5-834c-72c23272ca09",
+          "definition": "lab.tsh.series|1.1.0",
+          "evaluationKey": "sample:lab-75a86a1c7e4d5791af7c0a313e41f5bc",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 2.1,
+            "unit": "mIU/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.tsh",
+              "sourceId": "lab-75a86a1c7e4d5791af7c0a313e41f5bc",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "f71219ae-488a-5566-a23c-6281a834f0e8",
+          "definition": "lab.tsh.series|1.1.0",
+          "evaluationKey": "sample:lab-c8bedb93632356ed80dcd2936a4dcc72",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 1.9,
+            "unit": "mIU/L"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.tsh",
+              "sourceId": "lab-c8bedb93632356ed80dcd2936a4dcc72",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "951fea6c-5571-573b-bcf6-ed0a856867fa",
+          "definition": "lab.vitamin-b12.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-09-11T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 385,
+            "unit": "pg/mL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.vitamin-b12",
+              "sourceId": "lab-a47eadc29c535e898a7c882af2ff0fbf",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "625d25ef-57a8-58f6-a7c1-31b5c803c81f",
+          "definition": "lab.vitamin-b12.series|1.1.0",
+          "evaluationKey": "sample:lab-2be49fc05fb15760ba0a604da26485dd",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 362,
+            "unit": "pg/mL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.vitamin-b12",
+              "sourceId": "lab-2be49fc05fb15760ba0a604da26485dd",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "ecb2daca-9e9e-5b7a-8a1e-01633c4b42f9",
+          "definition": "lab.vitamin-b12.series|1.1.0",
+          "evaluationKey": "sample:lab-a47eadc29c535e898a7c882af2ff0fbf",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 385,
+            "unit": "pg/mL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.vitamin-b12",
+              "sourceId": "lab-a47eadc29c535e898a7c882af2ff0fbf",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "8ca1fad3-abfd-5849-979f-90c0db6cd203",
+          "definition": "lab.vitamin-b12.series|1.1.0",
+          "evaluationKey": "sample:lab-fd64b1fd15485084bc445892df9fde27",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 340,
+            "unit": "pg/mL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.vitamin-b12",
+              "sourceId": "lab-fd64b1fd15485084bc445892df9fde27",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "5621c621-c87e-519e-a6b4-df359006d42c",
+          "definition": "lab.vitamin-d.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-09-11T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 18.4,
+            "unit": "ng/mL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.vitamin-d",
+              "sourceId": "lab-e12f925bfd3e52f1b2e9ac5db25d1cb8",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "0c7b5522-200c-5cf9-8630-837e8dd1d3d1",
+          "definition": "lab.vitamin-d.series|1.1.0",
+          "evaluationKey": "sample:lab-40ef3cea75565d74a870335b13b9ecda",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 16.9,
+            "unit": "ng/mL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.vitamin-d",
+              "sourceId": "lab-40ef3cea75565d74a870335b13b9ecda",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "4d9cb097-0d1c-57e8-9f44-9fe22687ea2a",
+          "definition": "lab.vitamin-d.series|1.1.0",
+          "evaluationKey": "sample:lab-b894d35ff27b512ca1ac89b5cc105868",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 14.8,
+            "unit": "ng/mL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.vitamin-d",
+              "sourceId": "lab-b894d35ff27b512ca1ac89b5cc105868",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "6a079ef3-c68d-5520-a7eb-2146cf467036",
+          "definition": "lab.vitamin-d.series|1.1.0",
+          "evaluationKey": "sample:lab-e12f925bfd3e52f1b2e9ac5db25d1cb8",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 18.4,
+            "unit": "ng/mL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.vitamin-d",
+              "sourceId": "lab-e12f925bfd3e52f1b2e9ac5db25d1cb8",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "8135914e-c7ff-5fc4-ad38-0225fe1ef12d",
+          "definition": "lab.wbc.latest|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-04-03T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": "2027-03-10T21:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 7.2,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.wbc",
+              "sourceId": "lab-98aa6a8dde465a478fc85656faf90e9e",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "206969c8-30c2-5fc1-aaad-92744d435020",
+          "definition": "lab.wbc.series|1.1.0",
+          "evaluationKey": "sample:lab-5ac6c8ad803d5089b2f0c71348bf70f4",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-22T06:40:00Z",
+          "occurredTo": "2026-07-22T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 6.9,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.wbc",
+              "sourceId": "lab-5ac6c8ad803d5089b2f0c71348bf70f4",
+              "role": "source",
+              "occurredAt": "2026-07-22T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "6962b78d-c17b-539e-9e1a-6c1366be3faa",
+          "definition": "lab.wbc.series|1.1.0",
+          "evaluationKey": "sample:lab-98aa6a8dde465a478fc85656faf90e9e",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T06:40:00Z",
+          "occurredTo": "2026-09-12T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 7.2,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.wbc",
+              "sourceId": "lab-98aa6a8dde465a478fc85656faf90e9e",
+              "role": "source",
+              "occurredAt": "2026-09-12T06:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "df6d5363-ba86-5821-a7ba-bc108d680a68",
+          "definition": "lab.wbc.series|1.1.0",
+          "evaluationKey": "sample:lab-b3846a0eb8db5419a589201689e75232",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-06-03T06:40:00Z",
+          "occurredTo": "2026-06-03T06:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 7.4,
+            "unit": "10^3/uL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab.wbc",
+              "sourceId": "lab-b3846a0eb8db5419a589201689e75232",
+              "role": "source",
+              "occurredAt": "2026-06-03T06:40:00Z"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "medication": {
+      "facts": [
+        {
+          "factId": "8286aba2-4a85-5538-ba38-b2346490c067",
+          "definition": "medication.history-item|1.0.0",
+          "evaluationKey": "code:tr-drug-barcode:8699525093547",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-08T08:15:00Z",
+          "occurredTo": "2026-09-12T07:25:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-drug-barcode",
+            "code": "8699525093547",
+            "display": "GLİFOR 1000 MG 100 FİLM TABLET",
+            "attributes": {
+              "externalVisitId": "V-2026-118834",
+              "latestExternalPrescriptionId": "3R7K2M9",
+              "latestFacilityId": "FAC-IST-1042",
+              "latestPrescriptionDate": "2026-09-12T07:25:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-2K9FQ7T-8699525093547",
+              "role": "source",
+              "occurredAt": "2026-07-08T08:15:00Z"
+            },
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-3R7K2M9-8699525093547",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:25:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "85a6845e-c5eb-52a5-a131-c13c7941102d",
+          "definition": "medication.history-item|1.0.0",
+          "evaluationKey": "code:tr-drug-barcode:8699536090184",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-14T09:05:00Z",
+          "occurredTo": "2026-08-14T09:05:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-drug-barcode",
+            "code": "8699536090184",
+            "display": "ATOR 20 MG 30 FİLM TABLET",
+            "attributes": {
+              "externalVisitId": "V-2026-104417",
+              "latestExternalPrescriptionId": "5T1WZ8C",
+              "latestFacilityId": "FAC-IST-1042",
+              "latestPrescriptionDate": "2026-08-14T09:05:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-5T1WZ8C-8699536090184",
+              "role": "source",
+              "occurredAt": "2026-08-14T09:05:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "70d50dc5-1293-52cf-b839-f0ed2b9b2980",
+          "definition": "medication.history-item|1.0.0",
+          "evaluationKey": "code:tr-drug-barcode:8699546010127",
+          "evaluationStatus": "success",
+          "occurredFrom": "2015-12-14T11:30:00Z",
+          "occurredTo": "2015-12-14T11:30:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-drug-barcode",
+            "code": "8699546010127",
+            "display": "ARVELES 25 MG 20 FİLM TABLET",
+            "attributes": {
+              "externalVisitId": "V-2015-307744",
+              "latestExternalPrescriptionId": "1H4QX2N",
+              "latestFacilityId": "FAC-IST-1042",
+              "latestPrescriptionDate": "2015-12-14T11:30:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-1H4QX2N-8699546010127",
+              "role": "source",
+              "occurredAt": "2015-12-14T11:30:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "1928fc8d-ba15-5e5c-b2b0-2426fa1cfe46",
+          "definition": "medication.history-item|1.0.0",
+          "evaluationKey": "code:tr-drug-barcode:8699809011427",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T07:25:00Z",
+          "occurredTo": "2026-09-12T07:25:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-drug-barcode",
+            "code": "8699809011427",
+            "display": "COVERSYL 5 MG 30 FİLM TABLET",
+            "attributes": {
+              "externalVisitId": "V-2026-118834",
+              "latestExternalPrescriptionId": "3R7K2M9",
+              "latestFacilityId": "FAC-IST-1042",
+              "latestPrescriptionDate": "2026-09-12T07:25:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-3R7K2M9-8699809011427",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:25:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "16cc045a-2f79-5997-a3d7-3b783ae16114",
+          "definition": "medication.hours-since-last-prescription|1.1.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "1970-01-01T00:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 442.1,
+            "unit": "hour"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-3R7K2M9-8699525093547",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:25:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "6fecfc12-96ed-5e41-80fa-11982e416deb",
+          "definition": "medication.prescribed-item|1.0.0",
+          "evaluationKey": "code:tr-drug-barcode:8699525093547",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-08T08:15:00Z",
+          "occurredTo": "2026-09-12T07:25:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-drug-barcode",
+            "code": "8699525093547",
+            "display": "GLİFOR 1000 MG 100 FİLM TABLET",
+            "attributes": {
+              "latestExternalPrescriptionId": "3R7K2M9",
+              "latestFacilityId": "FAC-IST-1042",
+              "latestPrescriptionDate": "2026-09-12T07:25:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-2K9FQ7T-8699525093547",
+              "role": "source",
+              "occurredAt": "2026-07-08T08:15:00Z"
+            },
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-3R7K2M9-8699525093547",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:25:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "6e87b02a-f114-54f1-8ebc-fb745904fd92",
+          "definition": "medication.prescribed-item|1.0.0",
+          "evaluationKey": "code:tr-drug-barcode:8699536090184",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-14T09:05:00Z",
+          "occurredTo": "2026-08-14T09:05:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-drug-barcode",
+            "code": "8699536090184",
+            "display": "ATOR 20 MG 30 FİLM TABLET",
+            "attributes": {
+              "latestExternalPrescriptionId": "5T1WZ8C",
+              "latestFacilityId": "FAC-IST-1042",
+              "latestPrescriptionDate": "2026-08-14T09:05:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-5T1WZ8C-8699536090184",
+              "role": "source",
+              "occurredAt": "2026-08-14T09:05:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "c2e174fd-9513-5fb9-8590-6669b163fc74",
+          "definition": "medication.prescribed-item|1.0.0",
+          "evaluationKey": "code:tr-drug-barcode:8699809011427",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T07:25:00Z",
+          "occurredTo": "2026-09-12T07:25:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-drug-barcode",
+            "code": "8699809011427",
+            "display": "COVERSYL 5 MG 30 FİLM TABLET",
+            "attributes": {
+              "latestExternalPrescriptionId": "3R7K2M9",
+              "latestFacilityId": "FAC-IST-1042",
+              "latestPrescriptionDate": "2026-09-12T07:25:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.prescription-drug",
+              "sourceId": "RX-3R7K2M9-8699809011427",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:25:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d294f60a-b7ff-565d-abb9-23af1b50d096",
+          "definition": "medication.prescribed-product-count-90d|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-02T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 3,
+            "unit": "count"
+          },
+          "comparisons": [],
+          "evidence": []
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "oxygen": {
+      "facts": [
+        {
+          "factId": "b31db8f3-a4ce-5fa3-81ac-95490191bf88",
+          "definition": "oxygen.spo2.night-average|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 96.1,
+            "unit": "percent"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 90,
+              "targetSource": "definition",
+              "delta": 6.1,
+              "unit": "percent"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "pathology": {
+      "facts": [
+        {
+          "factId": "cb6a97fd-b041-5e4b-86e6-f1ab94581072",
+          "definition": "pathology.report.item|1.0.0",
+          "evaluationKey": "sample:PAT-2021-00876",
+          "evaluationStatus": "success",
+          "occurredFrom": "2021-02-09T09:45:00Z",
+          "occurredTo": "2021-02-09T09:45:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "diagnosis": "Lipom."
+            },
+            "attributes": {
+              "approvedAt": "2021-02-09T09:45:00Z",
+              "requestedAt": "2021-02-02T08:30:00Z",
+              "requestingDepartment": "Genel Cerrahi"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.pathology-report",
+              "sourceId": "PAT-2021-00876",
+              "role": "source",
+              "occurredAt": "2021-02-09T09:45:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "fb70bcbb-4876-523d-8ce2-997070a0e4e8",
+          "definition": "pathology.report.item|1.0.0",
+          "evaluationKey": "sample:PAT-2023-11054",
+          "evaluationStatus": "success",
+          "occurredFrom": "2023-05-11T13:30:00Z",
+          "occurredTo": "2023-05-11T13:30:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "diagnosis": "Tübüler adenom, düşük dereceli displazi. Sap temiz.",
+              "microscopic": "Tübüler yapılardan oluşan adenomatöz polip; yüksek dereceli displazi izlenmedi."
+            },
+            "attributes": {
+              "approvedAt": "2023-05-11T13:30:00Z",
+              "requestedAt": "2023-05-05T10:00:00Z",
+              "requestingDepartment": "Gastroenteroloji"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.pathology-report",
+              "sourceId": "PAT-2023-11054",
+              "role": "source",
+              "occurredAt": "2023-05-11T13:30:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "1956e05a-9551-5906-a917-5bc8d16ae760",
+          "definition": "pathology.report.item|1.0.0",
+          "evaluationKey": "sample:PAT-2025-04418",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-11-20T14:00:00Z",
+          "occurredTo": "2025-11-20T14:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "diagnosis": "Seboreik keratoz. Cerrahi sınırlar temiz.",
+              "macroscopic": "0,8 x 0,6 x 0,3 cm boyutlarında cilt eksizyon materyali.",
+              "microscopic": "Epidermiste akantoz, papillomatozis ve hiperkeratoz izlendi; atipi saptanmadı."
+            },
+            "attributes": {
+              "approvedAt": "2025-11-20T14:00:00Z",
+              "requestedAt": "2025-11-14T09:00:00Z",
+              "requestingDepartment": "Dermatoloji"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.pathology-report",
+              "sourceId": "PAT-2025-04418",
+              "role": "source",
+              "occurredAt": "2025-11-20T14:00:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "ff143249-be25-51b6-976c-c62448d4cb3a",
+          "definition": "pathology.report.item|1.0.0",
+          "evaluationKey": "sample:PAT-2026-02291",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-03-24T10:05:00Z",
+          "occurredTo": "2026-03-24T10:05:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "diagnosis": "Kronik kolesistit ve kolelitiazis.",
+              "macroscopic": "7,5 cm uzunluğunda, duvar kalınlığı 0,4 cm olan safra kesesi; lümende çok sayıda sarı-yeşil taş."
+            },
+            "attributes": {
+              "approvedAt": "2026-03-24T10:05:00Z",
+              "requestedAt": "2026-03-18T07:30:00Z",
+              "requestingDepartment": "Genel Cerrahi"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.pathology-report",
+              "sourceId": "PAT-2026-02291",
+              "role": "source",
+              "occurredAt": "2026-03-24T10:05:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "55f95267-578b-56a5-b605-d87a200a6ba5",
+          "definition": "pathology.report.item|1.0.0",
+          "evaluationKey": "sample:PAT-2026-08720",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-19T15:20:00Z",
+          "occurredTo": "2026-08-19T15:20:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "diagnosis": "Kronik aktif gastrit, Helicobacter pylori pozitif. İntestinal metaplazi saptanmadı.",
+              "macroscopic": "Antrumdan alınmış, en büyüğü 0,3 cm çaplı üç adet endoskopik biyopsi.",
+              "microscopic": "Lamina propriada yoğun lenfoplazmositer iltihap ve nötrofil infiltrasyonu; yüzeyde H. pylori ile uyumlu basiller."
+            },
+            "attributes": {
+              "approvedAt": "2026-08-19T15:20:00Z",
+              "requestedAt": "2026-08-14T11:40:00Z",
+              "requestingDepartment": "Gastroenteroloji"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.pathology-report",
+              "sourceId": "PAT-2026-08720",
+              "role": "source",
+              "occurredAt": "2026-08-19T15:20:00Z"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "procedure": {
+      "facts": [
+        {
+          "factId": "079dc0fc-9aaa-5d98-be70-12543272581f",
+          "definition": "procedure.performed-item|1.0.0",
+          "evaluationKey": "code:tr-sut:P603800",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-14T11:40:00Z",
+          "occurredTo": "2026-08-14T11:40:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-sut",
+            "code": "P603800",
+            "display": "Üst gastrointestinal sistem endoskopisi",
+            "attributes": {
+              "latestFacilityId": "FAC-IST-1042",
+              "procedureDate": "2026-08-14T11:40:00Z",
+              "serviceType": "intervention"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2026-55102",
+              "role": "source",
+              "occurredAt": "2026-08-14T11:40:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d0fb6a4f-918b-5f38-8ab1-b44d455a6de2",
+          "definition": "procedure.performed-item|1.0.0",
+          "evaluationKey": "code:tr-sut:P619650",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-03-18T07:30:00Z",
+          "occurredTo": "2026-03-18T07:30:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-sut",
+            "code": "P619650",
+            "display": "Laparoskopik kolesistektomi",
+            "attributes": {
+              "latestFacilityId": "FAC-IST-1042",
+              "procedureDate": "2026-03-18T07:30:00Z",
+              "serviceType": "surgery"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2026-14466",
+              "role": "source",
+              "occurredAt": "2026-03-18T07:30:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "d24403fd-9901-564d-803a-75a201eb5382",
+          "definition": "procedure.surgery-report.item|1.1.0",
+          "evaluationKey": "sample:PRC-2011-03390",
+          "evaluationStatus": "success",
+          "occurredFrom": "2011-11-07T07:45:00Z",
+          "occurredTo": "2011-11-07T07:45:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "report": "Genel anestezi altında septum mukozası elevasyonu yapıldı; deviye kıkırdak ve kemik bölümleri rezeke edildi. Silikon splint yerleştirildi."
+            },
+            "attributes": {
+              "name": "Septoplasti",
+              "procedureDate": "2011-11-07T07:45:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2011-03390",
+              "role": "source",
+              "occurredAt": "2011-11-07T07:45:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "de7fe134-c57e-51ee-96cf-7762b34b8428",
+          "definition": "procedure.surgery-report.item|1.1.0",
+          "evaluationKey": "sample:PRC-2015-08812",
+          "evaluationStatus": "success",
+          "occurredFrom": "2015-04-22T09:00:00Z",
+          "occurredTo": "2015-04-22T09:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "report": "Genel anestezi altında McBurney insizyonu ile batına girildi. Apendiks flegmonöz görünümdeydi; mezoapendiks bağlanarak apendektomi yapıldı. Perforasyon izlenmedi."
+            },
+            "attributes": {
+              "name": "Apendektomi",
+              "procedureDate": "2015-04-22T09:00:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2015-08812",
+              "role": "source",
+              "occurredAt": "2015-04-22T09:00:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "0779f03f-c257-576c-bec8-2e79377fae5b",
+          "definition": "procedure.surgery-report.item|1.1.0",
+          "evaluationKey": "sample:PRC-2024-52310",
+          "evaluationStatus": "success",
+          "occurredFrom": "2024-12-10T08:15:00Z",
+          "occurredTo": "2024-12-10T08:15:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "report": "Lokal anestezi altında sol el bileği volar insizyonla transvers karpal ligaman gevşetildi; median sinir dekomprese edildi. Cilt sütüre edildi, atel uygulandı."
+            },
+            "attributes": {
+              "name": "Sol karpal tünel gevşetme",
+              "procedureDate": "2024-12-10T08:15:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2024-52310",
+              "role": "source",
+              "occurredAt": "2024-12-10T08:15:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "8bf781a1-e55a-5bf1-9fdb-04b875179f6f",
+          "definition": "procedure.surgery-report.item|1.1.0",
+          "evaluationKey": "sample:PRC-2025-31877",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-06-03T07:30:00Z",
+          "occurredTo": "2025-06-03T07:30:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "report": "Spinal anestezi altında sağ inguinal kanal açıldı. İndirekt herni kesesi serbestleştirilerek redükte edildi; Lichtenstein yöntemiyle polipropilen yama yerleştirildi. Katlar usulüne uygun kapatıldı."
+            },
+            "attributes": {
+              "name": "Sağ inguinal herni onarımı",
+              "procedureDate": "2025-06-03T07:30:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2025-31877",
+              "role": "source",
+              "occurredAt": "2025-06-03T07:30:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "81cd1aa4-f59a-52aa-b6d6-d168df824d96",
+          "definition": "procedure.surgery-report.item|1.1.0",
+          "evaluationKey": "sample:PRC-2026-14466",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-03-18T07:30:00Z",
+          "occurredTo": "2026-03-18T07:30:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "report": "Genel anestezi altında dört trokar ile batına girildi. Safra kesesi kronik kolesistit ile uyumlu görünümdeydi; kistik kanal ve arter klipslenerek kesildi, kese çıkarıldı. Kanama kontrolü yapıldı, dren konmadı. Operasyon komplikasyonsuz tamamlandı."
+            },
+            "attributes": {
+              "name": "Laparoskopik kolesistektomi",
+              "procedureDate": "2026-03-18T07:30:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2026-14466",
+              "role": "source",
+              "occurredAt": "2026-03-18T07:30:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "3f34a07e-6a39-5c89-a629-fd3d77338f4d",
+          "definition": "procedure.surgery.count-730d|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2024-09-30T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 3,
+            "unit": "procedure"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2024-52310",
+              "role": "source",
+              "occurredAt": "2024-12-10T08:15:00Z"
+            },
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2025-31877",
+              "role": "source",
+              "occurredAt": "2025-06-03T07:30:00Z"
+            },
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2026-14466",
+              "role": "source",
+              "occurredAt": "2026-03-18T07:30:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "301cb49c-3db0-5a34-9471-ddbd6d839893",
+          "definition": "procedure.surgery.history-item|1.0.0",
+          "evaluationKey": "code:tr-sut:P607150",
+          "evaluationStatus": "success",
+          "occurredFrom": "2011-11-07T07:45:00Z",
+          "occurredTo": "2011-11-07T07:45:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-sut",
+            "code": "P607150",
+            "display": "Septoplasti",
+            "attributes": {
+              "latestFacilityId": "FAC-IST-1042",
+              "procedureDate": "2011-11-07T07:45:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2011-03390",
+              "role": "source",
+              "occurredAt": "2011-11-07T07:45:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "54118430-3ce4-5337-b1c8-57e7d4218cf0",
+          "definition": "procedure.surgery.history-item|1.0.0",
+          "evaluationKey": "code:tr-sut:P616110",
+          "evaluationStatus": "success",
+          "occurredFrom": "2024-12-10T08:15:00Z",
+          "occurredTo": "2024-12-10T08:15:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-sut",
+            "code": "P616110",
+            "display": "Sol karpal tünel gevşetme",
+            "attributes": {
+              "latestFacilityId": "FAC-IST-1042",
+              "procedureDate": "2024-12-10T08:15:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2024-52310",
+              "role": "source",
+              "occurredAt": "2024-12-10T08:15:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "ec5f8f2b-dbc1-58b8-b6ba-14ea880da7b8",
+          "definition": "procedure.surgery.history-item|1.0.0",
+          "evaluationKey": "code:tr-sut:P619040",
+          "evaluationStatus": "success",
+          "occurredFrom": "2015-04-22T09:00:00Z",
+          "occurredTo": "2015-04-22T09:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-sut",
+            "code": "P619040",
+            "display": "Apendektomi",
+            "attributes": {
+              "latestFacilityId": "FAC-IST-1042",
+              "procedureDate": "2015-04-22T09:00:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2015-08812",
+              "role": "source",
+              "occurredAt": "2015-04-22T09:00:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "4bcaffd4-e853-569f-b690-ee8b218a6688",
+          "definition": "procedure.surgery.history-item|1.0.0",
+          "evaluationKey": "code:tr-sut:P619650",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-03-18T07:30:00Z",
+          "occurredTo": "2026-03-18T07:30:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-sut",
+            "code": "P619650",
+            "display": "Laparoskopik kolesistektomi",
+            "attributes": {
+              "latestFacilityId": "FAC-IST-1042",
+              "procedureDate": "2026-03-18T07:30:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2026-14466",
+              "role": "source",
+              "occurredAt": "2026-03-18T07:30:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "cf3b7cfd-f684-5627-98c7-13417ccaac8e",
+          "definition": "procedure.surgery.history-item|1.0.0",
+          "evaluationKey": "code:tr-sut:P620430",
+          "evaluationStatus": "success",
+          "occurredFrom": "2025-06-03T07:30:00Z",
+          "occurredTo": "2025-06-03T07:30:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "coded",
+            "unit": "code",
+            "system": "tr-sut",
+            "code": "P620430",
+            "display": "Sağ inguinal herni onarımı",
+            "attributes": {
+              "latestFacilityId": "FAC-IST-1042",
+              "procedureDate": "2025-06-03T07:30:00Z"
+            }
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-procedure",
+              "sourceId": "PRC-2025-31877",
+              "role": "source",
+              "occurredAt": "2025-06-03T07:30:00Z"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "sleep": {
+      "facts": [
+        {
+          "factId": "7dba49b2-c1e6-5364-850e-9f07c72c6a5f",
+          "definition": "sleep.awake.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 38,
+            "unit": "minute"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 45,
+              "targetSource": "definition",
+              "delta": -7,
+              "unit": "minute"
+            }
+          ]
+        },
+        {
+          "factId": "3e1d2706-bfc3-57a2-b456-c8847ad9d6b9",
+          "definition": "sleep.bedtime.7d-circular-mean|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-22T21:00:00Z",
+          "occurredTo": "2026-09-29T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 1372,
+            "unit": "minute-of-day"
+          },
+          "comparisons": []
+        },
+        {
+          "factId": "2e4652bb-e2a3-5cac-8534-a9a5a88ca82b",
+          "definition": "sleep.bedtime.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 1385,
+            "unit": "minute-of-day"
+          },
+          "comparisons": [
+            {
+              "kind": "personal-baseline",
+              "target": 1372,
+              "targetSource": "previous-fact",
+              "delta": 13,
+              "unit": "minute-of-day"
+            }
+          ]
+        },
+        {
+          "factId": "d62218a6-8472-5f5c-bfd9-bfece18388a7",
+          "definition": "sleep.deep-share.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "percentage",
+            "amount": 16.9,
+            "unit": "percent"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 10,
+              "targetSource": "definition",
+              "delta": 6.9,
+              "unit": "percent"
+            }
+          ]
+        },
+        {
+          "factId": "14b09604-34c2-5ce5-abeb-ab6ce7bd3516",
+          "definition": "sleep.deep-share.low-streak|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-16T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 0,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 7,
+              "targetSource": "definition",
+              "delta": -7,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "291433c8-5fdd-56da-ac43-7ad07f6765bd",
+          "definition": "sleep.deep.first-4h-share|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "percentage",
+            "amount": 77.8,
+            "unit": "percent"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 70,
+              "targetSource": "definition",
+              "delta": 7.8,
+              "unit": "percent"
+            }
+          ]
+        },
+        {
+          "factId": "e174ed08-f2e9-529a-9f35-67d17e783299",
+          "definition": "sleep.deep.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 72,
+            "unit": "minute"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 60,
+              "targetSource": "definition",
+              "delta": 12,
+              "unit": "minute"
+            },
+            {
+              "kind": "personal-record",
+              "target": 94,
+              "targetSource": null,
+              "delta": -22,
+              "unit": "minute"
+            }
+          ]
+        },
+        {
+          "factId": "963a4d80-8cd7-5462-832e-754fc8641bdb",
+          "definition": "sleep.duration.3d-average|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-27T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 431.3,
+            "unit": "minute"
+          },
+          "comparisons": [
+            {
+              "kind": "profile-goal",
+              "target": 450,
+              "targetSource": "goal",
+              "delta": -18.7,
+              "unit": "minute"
+            }
+          ]
+        },
+        {
+          "factId": "c8b66af1-589f-5325-ba27-fe7d057cb935",
+          "definition": "sleep.duration.7d-average|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-22T21:00:00Z",
+          "occurredTo": "2026-09-29T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 418.4,
+            "unit": "minute"
+          },
+          "comparisons": [
+            {
+              "kind": "profile-goal",
+              "target": 450,
+              "targetSource": "goal",
+              "delta": -31.6,
+              "unit": "minute"
+            },
+            {
+              "kind": "previous-period",
+              "target": 396.1,
+              "targetSource": null,
+              "delta": 22.3,
+              "unit": "minute"
+            },
+            {
+              "kind": "personal-baseline",
+              "target": 409.6,
+              "targetSource": "previous-fact",
+              "delta": 8.8,
+              "unit": "minute"
+            }
+          ]
+        },
+        {
+          "factId": "4a7820f6-69a9-522c-93d4-e2757b0c37e4",
+          "definition": "sleep.duration.day-total|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 427,
+            "unit": "minute"
+          },
+          "comparisons": [
+            {
+              "kind": "profile-goal",
+              "target": 450,
+              "targetSource": "goal",
+              "delta": -23,
+              "unit": "minute"
+            },
+            {
+              "kind": "threshold",
+              "target": 600,
+              "targetSource": "definition",
+              "delta": -173,
+              "unit": "minute"
+            },
+            {
+              "kind": "personal-record",
+              "target": 498,
+              "targetSource": null,
+              "delta": -71,
+              "unit": "minute"
+            },
+            {
+              "kind": "personal-baseline",
+              "target": 409.6,
+              "targetSource": "previous-fact",
+              "delta": 17.4,
+              "unit": "minute"
+            }
+          ]
+        },
+        {
+          "factId": "1ef58727-859a-5691-b0d5-d02bb1a64405",
+          "definition": "sleep.duration.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 427,
+            "unit": "minute"
+          },
+          "comparisons": [
+            {
+              "kind": "profile-goal",
+              "target": 450,
+              "targetSource": "goal",
+              "delta": -23,
+              "unit": "minute"
+            }
+          ]
+        },
+        {
+          "factId": "8fe3d66e-7bfb-5313-a97f-0361f85c141e",
+          "definition": "sleep.duration.personal-baseline|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-25T21:00:00Z",
+          "occurredTo": "2026-09-22T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 409.6,
+            "unit": "minute"
+          },
+          "comparisons": []
+        },
+        {
+          "factId": "346f4ede-e68e-507e-b777-bab6f2dce1db",
+          "definition": "sleep.efficiency.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "percentage",
+            "amount": 91.2,
+            "unit": "percent"
+          },
+          "comparisons": []
+        },
+        {
+          "factId": "5876cc6a-8e85-5885-b28b-dd40b4196c76",
+          "definition": "sleep.latency.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 14,
+            "unit": "minute"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 30,
+              "targetSource": "definition",
+              "delta": -16,
+              "unit": "minute"
+            }
+          ]
+        },
+        {
+          "factId": "922de003-5493-5e3b-a52c-979568682230",
+          "definition": "sleep.main.nights-2d|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-28T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 2,
+            "unit": "count"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 1,
+              "targetSource": "definition",
+              "delta": 1,
+              "unit": "count"
+            }
+          ]
+        },
+        {
+          "factId": "59d3f649-97a4-50f1-ba1e-6173fb233a80",
+          "definition": "sleep.rem-share.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "percentage",
+            "amount": 21.3,
+            "unit": "percent"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 15,
+              "targetSource": "definition",
+              "delta": 6.3,
+              "unit": "percent"
+            },
+            {
+              "kind": "previous-period",
+              "target": 19.8,
+              "targetSource": null,
+              "delta": 1.5,
+              "unit": "percent"
+            }
+          ]
+        },
+        {
+          "factId": "b5318752-951a-5a14-bf22-915d93cbfd72",
+          "definition": "sleep.score.last-main-sleep|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T20:05:00Z",
+          "occurredTo": "2026-09-30T03:32:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 78,
+            "unit": "score"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 90,
+              "targetSource": "definition",
+              "delta": -12,
+              "unit": "score"
+            },
+            {
+              "kind": "personal-record",
+              "target": 88,
+              "targetSource": null,
+              "delta": -10,
+              "unit": "score"
+            }
+          ]
+        },
+        {
+          "factId": "577a755e-b160-5d33-bcc4-e7d1c02aefe8",
+          "definition": "sleep.timing.7d-variability|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-22T21:00:00Z",
+          "occurredTo": "2026-09-29T21:00:00Z",
+          "recordedAt": "2026-09-30T04:05:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 24.5,
+            "unit": "minute"
+          },
+          "comparisons": []
+        }
+      ],
+      "insights": [
+        {
+          "insightId": "83959cc8-22d2-5c1a-a114-e36e3470a6dc",
+          "definition": "sleep.duration.low|1.1.0",
+          "severity": "warning",
+          "producedAt": "2026-09-30T04:06:00Z",
+          "validUntil": "2026-09-30T21:00:00Z",
+          "facts": [
+            {
+              "factId": "4a7820f6-69a9-522c-93d4-e2757b0c37e4",
+              "definition": "sleep.duration.day-total|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": 427,
+                "unit": "minute"
+              }
+            },
+            {
+              "factId": "1ef58727-859a-5691-b0d5-d02bb1a64405",
+              "definition": "sleep.duration.last-main-sleep|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": 427,
+                "unit": "minute"
+              }
+            },
+            {
+              "factId": "8fe3d66e-7bfb-5313-a97f-0361f85c141e",
+              "definition": "sleep.duration.personal-baseline|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": 409.6,
+                "unit": "minute"
+              }
+            },
+            {
+              "factId": "b5318752-951a-5a14-bf22-915d93cbfd72",
+              "definition": "sleep.score.last-main-sleep|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": 78,
+                "unit": "score"
+              }
+            }
+          ]
+        },
+        {
+          "insightId": "14c3a84f-3888-5c0f-b927-fc2c800ea1f1",
+          "definition": "sleep.consistency.improved|1.0.0",
+          "severity": "info",
+          "producedAt": "2026-09-30T04:06:00Z",
+          "validUntil": "2026-09-30T21:00:00Z",
+          "facts": [
+            {
+              "factId": "c8b66af1-589f-5325-ba27-fe7d057cb935",
+              "definition": "sleep.duration.7d-average|1.0.0",
+              "evaluationKey": "profile-day:2026-09-30",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": 418.4,
+                "unit": "minute"
+              }
+            }
+          ]
+        }
+      ],
+      "missingData": [
+        {
+          "code": "sleep.duration.calendar-month-average",
+          "evaluationKey": "profile-day:2026-09-30",
+          "missing": [
+            "spread:3/4"
+          ]
+        },
+        {
+          "code": "sleep.timing.social-jetlag-7d",
+          "evaluationKey": "profile-day:2026-09-30",
+          "missing": [
+            "minimumWeekendSamples:2"
+          ]
+        }
+      ]
+    },
+    "visit": {
+      "facts": [
+        {
+          "factId": "907b798d-84ca-55a5-8dfa-d5c584ae0311",
+          "definition": "visit.count-90d|1.0.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-07-02T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "count",
+            "amount": 3,
+            "unit": "visit"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-visit",
+              "sourceId": "V-2026-091202",
+              "role": "source",
+              "occurredAt": "2026-07-08T08:00:00Z"
+            },
+            {
+              "sourceType": "emr.clinical-visit",
+              "sourceId": "V-2026-104417",
+              "role": "source",
+              "occurredAt": "2026-08-14T08:50:00Z"
+            },
+            {
+              "sourceType": "emr.clinical-visit",
+              "sourceId": "V-2026-118834",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:10:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "7824a542-c9f5-575f-a86a-e1e0e66d4c81",
+          "definition": "visit.examination.item|1.1.0",
+          "evaluationKey": "sample:VE-V-2026-061290",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-03-10T09:20:00Z",
+          "occurredTo": "2026-03-10T09:20:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "chiefComplaint": "Yağlı yemek sonrası sağ üst karın ağrısı.",
+              "epicrisis": "Elektif laparoskopik kolesistektomi planlandı; anestezi konsültasyonu istendi.",
+              "findings": "Murphy bulgusu pozitif. USG: safra kesesinde çok sayıda taş, duvar kalınlaşması."
+            },
+            "attributes": {
+              "departmentName": "Genel Cerrahi",
+              "externalVisitId": "V-2026-061290",
+              "visitDate": "2026-03-10T09:20:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.visit-examination",
+              "sourceId": "VE-V-2026-061290",
+              "role": "source",
+              "occurredAt": "2026-03-10T09:20:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "a294ec2f-e59c-539d-bc43-3ae3d2e3748e",
+          "definition": "visit.examination.item|1.1.0",
+          "evaluationKey": "sample:VE-V-2026-104417",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-08-14T08:50:00Z",
+          "occurredTo": "2026-08-14T08:50:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "carePlan": "Ekokardiyografi istendi; lipid profili sonrası kontrol.",
+              "chiefComplaint": "Merdiven çıkarken çarpıntı.",
+              "findings": "EKG: normal sinüs ritmi, ST-T değişikliği yok."
+            },
+            "attributes": {
+              "departmentName": "Kardiyoloji",
+              "externalVisitId": "V-2026-104417",
+              "visitDate": "2026-08-14T08:50:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.visit-examination",
+              "sourceId": "VE-V-2026-104417",
+              "role": "source",
+              "occurredAt": "2026-08-14T08:50:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "fb6d7c9c-5d03-5969-8c51-860cb77c9c4f",
+          "definition": "visit.examination.item|1.1.0",
+          "evaluationKey": "sample:VE-V-2026-118834",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-12T07:10:00Z",
+          "occurredTo": "2026-09-12T07:10:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "narrative",
+            "unit": "text",
+            "sections": {
+              "carePlan": "Metformin dozu artırıldı, diyet önerileri yinelendi. Üç ay sonra HbA1c ve böbrek fonksiyon testleri ile kontrol.",
+              "chiefComplaint": "Halsizlik, sık idrara çıkma ve ağız kuruluğu.",
+              "findings": "TA: 138/86 mmHg, nabız 78/dk, ritmik. Akciğer sesleri doğal. Ödem yok.",
+              "presentIllness": "Yaklaşık bir aydır yorgunluk ve gece idrara kalkma şikâyeti var. Diyete uyumu son iki ayda azalmış."
+            },
+            "attributes": {
+              "departmentName": "İç Hastalıkları",
+              "externalVisitId": "V-2026-118834",
+              "visitDate": "2026-09-12T07:10:00Z"
+            },
+            "truncated": false
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.visit-examination",
+              "sourceId": "VE-V-2026-118834",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:10:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "a3e4a3aa-fac3-5ae8-9fb8-0ada2eb8d57a",
+          "definition": "visit.hours-since-last|1.1.0",
+          "evaluationKey": "latest",
+          "evaluationStatus": "success",
+          "occurredFrom": "1970-01-01T00:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T00:40:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 442.3,
+            "unit": "hour"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "emr.clinical-visit",
+              "sourceId": "V-2026-118834",
+              "role": "source",
+              "occurredAt": "2026-09-12T07:10:00Z"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    },
+    "wellness": {
+      "facts": [
+        {
+          "factId": "dcaa5298-710c-5595-9348-0f7110814a60",
+          "definition": "wellness.stress.day-average|1.0.0",
+          "evaluationKey": "profile-day:2026-09-30",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-09-29T21:00:00Z",
+          "occurredTo": "2026-09-30T21:00:00Z",
+          "recordedAt": "2026-09-30T17:25:00Z",
+          "validUntil": null,
+          "value": {
+            "type": "quantity",
+            "amount": 31,
+            "unit": "score"
+          },
+          "comparisons": [
+            {
+              "kind": "threshold",
+              "target": 25,
+              "targetSource": "definition",
+              "delta": 6,
+              "unit": "score"
+            }
+          ]
+        }
+      ],
+      "insights": [],
+      "missingData": []
+    }
+  },
+  "contentReferences": [],
+  "safety": {
+    "requiresHumanReview": false,
+    "disclaimerPolicy": "standard"
+  },
+  "limits": {
+    "maxFactsPerSection": 100,
+    "maxPayloadBytes": 262144,
+    "truncated": false
+  },
+  "release": {
+    "mode": "released",
+    "unreviewedDefinitions": []
+  },
+  "glossary": {
+    "families": {
+      "activity": {
+        "label": "Aktivite",
+        "description": "Adım, gün içi hareket ve adım hedefleri (yüzük ve telefon verisi)."
+      },
+      "cardio": {
+        "label": "Kalp",
+        "description": "Gece ve istirahat nabzı, HRV ve bunların eğilimleri (yüzük verisi)."
+      },
+      "data": {
+        "label": "Veri kapsamı",
+        "description": "Yüzüğün takılma durumu ve sinyal kapsamı; kişiyi değil veriyi anlatır. Diğer bölümlerdeki boşlukların nedenini anlamak için okunur."
+      },
+      "diagnosis": {
+        "label": "Tanı",
+        "description": "Hastane vizitlerinde konan ICD-10 tanıları, tarihleriyle (HBYS). Rızaya bağlıdır."
+      },
+      "glucose": {
+        "label": "Glukoz",
+        "description": "Açlık kan şekeri ve HbA1c tahlilleri: son değer ve tarihli seriler (HBYS). Rızaya bağlıdır."
+      },
+      "hydration": {
+        "label": "Su",
+        "description": "Günlük su tüketimi ve adıma göre ayarlanan su hedefi."
+      },
+      "imaging": {
+        "label": "Görüntüleme",
+        "description": "Onaylanmış radyoloji raporları (HBYS). Rızaya bağlıdır."
+      },
+      "lab": {
+        "label": "Laboratuvar",
+        "description": "Seçilmiş tahlil sonuçları: son değer ve tarihli seriler (HBYS). Referans aralığı verilmez. Rızaya bağlıdır."
+      },
+      "medication": {
+        "label": "İlaç",
+        "description": "Hastane reçeteleri (HBYS): reçete geçmişi, son 90 günde reçete edilenler, son reçeteden geçen süre. Reçete edilmiş olmak bugün kullanıldığını göstermez. Rızaya bağlıdır."
+      },
+      "oxygen": {
+        "label": "Oksijen",
+        "description": "Uyku sırasında kan oksijen doygunluğu (SpO2, yüzük verisi)."
+      },
+      "pathology": {
+        "label": "Patoloji",
+        "description": "Onaylanmış patoloji raporları (HBYS). Ağır tanı içerebilir; ilk açıklayan taraf olunmaz. Rızaya bağlıdır."
+      },
+      "procedure": {
+        "label": "İşlem",
+        "description": "Hastanede yapılan klinik işlemler, geçirilmiş ameliyatlar ve ameliyat raporları (HBYS). Rızaya bağlıdır."
+      },
+      "sleep": {
+        "label": "Uyku",
+        "description": "Uyku süresi, evreleri, zamanlaması ve düzeni (yüzük verisi)."
+      },
+      "visit": {
+        "label": "Vizit",
+        "description": "Hastane vizitleri, muayene notları ve son vizitten geçen süre (HBYS). Rızaya bağlıdır."
+      },
+      "wellness": {
+        "label": "Esenlik",
+        "description": "Stres ve hazır olma sinyalleri."
+      }
+    },
+    "facts": {
+      "activity.steps.14d-average": {
+        "label": "Günlük ortalama adım",
+        "description": "Günlük ortalama adım. Dönem: 14 gün (bugün dahil)."
+      },
+      "activity.steps.active-hours": {
+        "label": "En az 250 adım atılan saat sayısı",
+        "description": "En az 250 adım atılan saat sayısı. Dönem: Bugün."
+      },
+      "activity.steps.day-total": {
+        "label": "Bugünkü toplam adım",
+        "description": "Bugünkü toplam adım (gün içinde güncellenir). Dönem: Bugün."
+      },
+      "activity.steps.goal-attainment-30d": {
+        "label": "Adım hedefine ulaşılan günlerin oranı",
+        "description": "Adım hedefine ulaşılan günlerin oranı. Dönem: 30 gün (bugün dahil)."
+      },
+      "activity.steps.goal-streak": {
+        "label": "Adım hedefine art arda ulaşılan gün sayısı",
+        "description": "Adım hedefine art arda ulaşılan gün sayısı. Dönem: 7 gün (bugün dahil)."
+      },
+      "activity.steps.recent-window-sum": {
+        "label": "Son 2 saatteki adım toplamı",
+        "description": "Son 2 saatteki adım toplamı. Dönem: Son 2 saat (hesaplama anına kadar)."
+      },
+      "cardio.heart-rate.night-average": {
+        "label": "Uykuda ortalama kalp hızı",
+        "description": "Uykuda ortalama kalp hızı. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "cardio.heart-rate.night-personal-baseline": {
+        "label": "Kişisel gece nabzı normali",
+        "description": "Kişisel gece nabzı normali: ana uykulardaki ortalama nabzın ortalaması (en az 14 gece, 4 dilimin 3'ünde veri). Dönem: 30 gün (bugün hariç). Kişinin kendi normalidir; tıbbi bir referans değildir."
+      },
+      "cardio.heart-rate.sleep-bradycardia-hours": {
+        "label": "Uykuda 40 bpm altı nabızlı saat sayısı",
+        "description": "Uykuda saatlik en düşük nabzın 40 bpm altında kaldığı saat sayısı. Dönem: Son ana uyku (saatlik). Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "cardio.heart-rate.sleep-late-drop": {
+        "label": "Gece boyunca nabız düşüşü",
+        "description": "Uykunun ilk 2 saati ile son 2 saati arasındaki ortalama nabız farkı (pozitif = gece boyunca düştü). Dönem: Son ana uyku (saatlik). Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "cardio.hrv.consecutive-decline-days": {
+        "label": "HRV'nin art arda düştüğü gün sayısı",
+        "description": "HRV'nin art arda düştüğü gün sayısı. Dönem: 14 gün (bugün dahil)."
+      },
+      "cardio.hrv.day": {
+        "label": "Günün HRV değeri",
+        "description": "Günün HRV değeri. Dönem: Bugün."
+      },
+      "cardio.hrv.personal-baseline": {
+        "label": "Kişisel HRV bazali",
+        "description": "Kişisel HRV bazali (ortalama). Dönem: 30 gün (bugün hariç). Kişinin kendi normalidir; tıbbi bir referans değildir."
+      },
+      "cardio.resting-heart-rate.30d-trend": {
+        "label": "İstirahat nabzı eğilimi",
+        "description": "İstirahat nabzının günlük eğimi (negatif = düşüyor). Dönem: 30 gün (bugün dahil)."
+      },
+      "cardio.resting-heart-rate.30d-trend-fit": {
+        "label": "İstirahat nabzı eğiliminin güvenilirliği",
+        "description": "Aynı eğilimin veriye uyumu (R², 0–1); eşik 0.3. Eğilimin güvenilirliğidir, sağlık ölçümü değildir. Dönem: 30 gün (bugün dahil)."
+      },
+      "cardio.resting-heart-rate.day": {
+        "label": "Günün istirahat nabzı",
+        "description": "Günün istirahat nabzı. Dönem: Bugün."
+      },
+      "cardio.resting-heart-rate.elevation-streak": {
+        "label": "Yüksek istirahat nabzı serisi",
+        "description": "İstirahat nabzının bazalin 10 bpm üzerinde olduğu art arda gün sayısı. Dönem: 14 gün (bugün dahil)."
+      },
+      "cardio.resting-heart-rate.personal-baseline": {
+        "label": "Kişisel istirahat nabzı bazali",
+        "description": "Kişisel istirahat nabzı bazali. Dönem: 30 gün (bugün hariç). Kişinin kendi normalidir; tıbbi bir referans değildir."
+      },
+      "data.coverage.7d-full-signal-days": {
+        "label": "Tam veri günü sayısı",
+        "description": "Bütün temel sinyallerin eksiksiz geldiği gün sayısı. Dönem: 7 gün (bugün dahil)."
+      },
+      "data.ring.had-data-30d": {
+        "label": "Yüzük varlık kaydı sayısı",
+        "description": "Yüzükten gelen varlık (presence) kaydı sayısı. Dönem: 30 gün (bugün dahil)."
+      },
+      "data.ring.last-seen-hours": {
+        "label": "Yüzüğün son görülmesinden geçen süre",
+        "description": "Yüzüğün son görülmesinden bu yana geçen saat. Dönem: 30 gün (bugün dahil)."
+      },
+      "diagnosis.definitive-count": {
+        "label": "Kesin tanı sayısı",
+        "description": "Farklı kesin ICD-10 tanı sayısı. Dönem: Tüm geçmiş. Ön ve ayırıcı tanılar sayılmaz; kanıt (evidence) yalnız sayılan kesin tanı kayıtlarını gösterir."
+      },
+      "diagnosis.recorded-item": {
+        "label": "Tanı",
+        "description": "Kayıtlı vizit tanısı (ön ve ayırıcı tanılar dahil), kalem başına 1 satır. Dönem: Tüm geçmiş; süresiz. Tanı display adıyla ve tarihiyle söylenir; ön ve ayırıcı tanılar da listededir (attributes.type). Listede olmak tanının bugün sürdüğünü göstermez; koddan metinde olmayan ayrıntı çıkarılmaz."
+      },
+      "glucose.fasting.latest": {
+        "label": "Açlık kan şekeri (son değer)",
+        "description": "En son kesin açlık kan şekeri. Dönem: 90 gün (bugün dahil); geçerlilik 90 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "glucose.fasting.series": {
+        "label": "Açlık kan şekeri serisi",
+        "description": "Açlık kan şekeri serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "glucose.hba1c.hours-since-latest": {
+        "label": "Son HbA1c'den geçen süre",
+        "description": "Son kesin HbA1c numunesinden bu yana geçen saat. Dönem: Tüm geçmiş. Değer saat cinsindendir ve belge anına (asOf) göredir; olayın tarihi evidence[].occurredAt alanındadır, kullanıcıya tarih olarak söylenir."
+      },
+      "glucose.hba1c.latest": {
+        "label": "HbA1c (son değer)",
+        "description": "En son kesin HbA1c. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "glucose.hba1c.series": {
+        "label": "HbA1c serisi",
+        "description": "HbA1c serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "hydration.water.day-intake": {
+        "label": "Bugün içilen toplam su",
+        "description": "Bugün içilen toplam su. Dönem: Bugün."
+      },
+      "hydration.water.step-adjusted-target": {
+        "label": "Adıma göre ayarlanmış su hedefi",
+        "description": "Adıma göre ayarlanmış su hedefi (su hedefi, yoksa 2000 ml, + her 3000 adım için 250 ml). Dönem: Bugün."
+      },
+      "imaging.count-365d": {
+        "label": "Görüntüleme sayısı",
+        "description": "Onaylanmış görüntüleme raporu sayısı. Dönem: 365 gün."
+      },
+      "imaging.report.item": {
+        "label": "Radyoloji raporu",
+        "description": "Onaylanmış radyoloji raporu (bölüm report). Dönem: Tüm geçmiş. Hekimin yazdığı metin, bölümlere ayrılmış (sections); geçmişin kaydıdır, tarihiyle anılır. Metin yorumlanıp yeni tanı çıkarılmaz."
+      },
+      "lab.alt.latest": {
+        "label": "ALT (son değer)",
+        "description": "En son kesin ALT. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.alt.series": {
+        "label": "ALT serisi",
+        "description": "ALT serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.ast.latest": {
+        "label": "AST (son değer)",
+        "description": "En son kesin AST. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.ast.series": {
+        "label": "AST serisi",
+        "description": "AST serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.cholesterol-total.latest": {
+        "label": "Total kolesterol (son değer)",
+        "description": "En son kesin total kolesterol. Dönem: 365 gün (bugün dahil); geçerlilik 365 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.cholesterol-total.series": {
+        "label": "Total kolesterol serisi",
+        "description": "Total kolesterol serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.creatinine.latest": {
+        "label": "Kreatinin (son değer)",
+        "description": "En son kesin kreatinin. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.creatinine.series": {
+        "label": "Kreatinin serisi",
+        "description": "Kreatinin serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.ft4.latest": {
+        "label": "Serbest T4 (son değer)",
+        "description": "En son kesin serbest T4. Dönem: 365 gün (bugün dahil); geçerlilik 365 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.ft4.series": {
+        "label": "Serbest T4 serisi",
+        "description": "Serbest T4 serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.hdl.latest": {
+        "label": "HDL kolesterol (son değer)",
+        "description": "En son kesin HDL kolesterol. Dönem: 365 gün (bugün dahil); geçerlilik 365 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.hdl.series": {
+        "label": "HDL kolesterol serisi",
+        "description": "HDL kolesterol serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.hematocrit.latest": {
+        "label": "Hematokrit (son değer)",
+        "description": "En son kesin hematokrit. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.hematocrit.series": {
+        "label": "Hematokrit serisi",
+        "description": "Hematokrit serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.hemoglobin.latest": {
+        "label": "Hemoglobin (son değer)",
+        "description": "En son kesin hemoglobin. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.hemoglobin.series": {
+        "label": "Hemoglobin serisi",
+        "description": "Hemoglobin serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.mcv.latest": {
+        "label": "MCV (son değer)",
+        "description": "En son kesin MCV. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.mcv.series": {
+        "label": "MCV serisi",
+        "description": "MCV serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.neutrophil-abs.latest": {
+        "label": "Mutlak nötrofil sayısı (son değer)",
+        "description": "En son kesin mutlak nötrofil sayısı. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.neutrophil-abs.series": {
+        "label": "Mutlak nötrofil serisi",
+        "description": "Mutlak nötrofil serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.platelet.latest": {
+        "label": "Trombosit (son değer)",
+        "description": "En son kesin trombosit. Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.platelet.series": {
+        "label": "Trombosit serisi",
+        "description": "Trombosit serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.triglyceride.latest": {
+        "label": "Trigliserid (son değer)",
+        "description": "En son kesin trigliserid. Dönem: 365 gün (bugün dahil); geçerlilik 365 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.triglyceride.series": {
+        "label": "Trigliserid serisi",
+        "description": "Trigliserid serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.tsh.latest": {
+        "label": "TSH (son değer)",
+        "description": "En son kesin TSH. Dönem: 365 gün (bugün dahil); geçerlilik 365 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.tsh.series": {
+        "label": "TSH serisi",
+        "description": "TSH serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.vitamin-b12.latest": {
+        "label": "B12 vitamini (son değer)",
+        "description": "En son kesin B12 vitamini. Dönem: 365 gün (bugün dahil); geçerlilik 365 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.vitamin-b12.series": {
+        "label": "B12 vitamini serisi",
+        "description": "B12 vitamini serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.vitamin-d.latest": {
+        "label": "D vitamini (son değer)",
+        "description": "En son kesin D vitamini. Dönem: 365 gün (bugün dahil); geçerlilik 365 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.vitamin-d.series": {
+        "label": "D vitamini serisi",
+        "description": "D vitamini serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.wbc.latest": {
+        "label": "Lökosit (WBC) (son değer)",
+        "description": "En son kesin lökosit (WBC). Dönem: 180 gün (bugün dahil); geçerlilik 180 gün. Geçerlilik süresi içindeki en son kesin sonuç; sürenin sonu validUntil, numune tarihi evidence[].occurredAt. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "lab.wbc.series": {
+        "label": "Lökosit (WBC) serisi",
+        "description": "Lökosit (WBC) serisi: tüm geçmişteki her kesin numune, numune başına 1 satır. Dönem: Tüm geçmiş. Her satır tarihli bir numunedir (tarih occurredTo); bugünkü değer değildir. Belgeye en yeni numuneler girer. Referans aralığı verilmez, yorumlanmaz."
+      },
+      "medication.history-item": {
+        "label": "Reçete geçmişi",
+        "description": "Reçete geçmişi: tüm geçmişte reçete edilmiş ürün, ürün başına 1 satır (belgeye en yeni 20). Dönem: Tüm geçmiş. Ürün adı display alanındadır. Reçete edilmiş olmak ilacın bugün kullanıldığını göstermez; tarihiyle söylenir."
+      },
+      "medication.hours-since-last-prescription": {
+        "label": "Son reçeteden geçen süre",
+        "description": "Son reçeteden bu yana geçen saat. Dönem: Tüm geçmiş. Değer saat cinsindendir ve belge anına (asOf) göredir; olayın tarihi evidence[].occurredAt alanındadır, kullanıcıya tarih olarak söylenir."
+      },
+      "medication.prescribed-item": {
+        "label": "Son 90 günde reçete edilen ürün",
+        "description": "Son 90 günde reçete edilmiş ürün, kalem başına 1 satır (aktif tedavi anlamına gelmez). Dönem: 90 gün (bugün dahil). Ürün adı display alanındadır. Reçete edilmiş olmak ilacın bugün kullanıldığını göstermez; tarihiyle söylenir."
+      },
+      "medication.prescribed-product-count-90d": {
+        "label": "Son 90 günde reçete edilen farklı ürün sayısı",
+        "description": "Reçete edilen farklı ürün (barkod) sayısı. Dönem: 90 gün (bugün dahil)."
+      },
+      "oxygen.spo2.night-average": {
+        "label": "Uykuda ortalama SpO2",
+        "description": "Uykuda ortalama SpO2. Dönem: Son ana uyku (saatlik). Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "pathology.report.item": {
+        "label": "Patoloji raporu",
+        "description": "Onaylanmış patoloji raporu (tanı, mikroskopi, makroskopi, ön tanı, frozen). Dönem: Tüm geçmiş. Hekimin yazdığı metin, bölümlere ayrılmış (sections); geçmişin kaydıdır, tarihiyle anılır. Metin yorumlanıp yeni tanı çıkarılmaz."
+      },
+      "procedure.performed-item": {
+        "label": "Yapılmış klinik işlem",
+        "description": "Yapılmış klinik işlem kalemi, kod başına 1 satır. Dönem: 365 gün. İşlem adı display alanındadır; tarihiyle söylenir."
+      },
+      "procedure.surgery-report.item": {
+        "label": "Ameliyat raporu",
+        "description": "Ameliyat raporu (bölüm report). Dönem: Tüm geçmiş. Hekimin yazdığı metin, bölümlere ayrılmış (sections); geçmişin kaydıdır, tarihiyle anılır. Metin yorumlanıp yeni tanı çıkarılmaz."
+      },
+      "procedure.surgery.count-730d": {
+        "label": "Ameliyat sayısı",
+        "description": "Ameliyat sayısı. Dönem: 730 gün. Kanıt (evidence) yalnız ameliyat kalemlerini gösterir."
+      },
+      "procedure.surgery.history-item": {
+        "label": "Geçirilmiş ameliyat",
+        "description": "Geçirilmiş ameliyat, kod başına 1 satır (raporu olsun olmasın). Dönem: Tüm geçmiş. İşlem adı display alanındadır; tarihiyle söylenir."
+      },
+      "sleep.awake.last-main-sleep": {
+        "label": "Uyku sırasında uyanık geçen süre",
+        "description": "Uyku sırasında uyanık geçen süre. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo). Değer dakika cinsindendir."
+      },
+      "sleep.bedtime.7d-circular-mean": {
+        "label": "Ortalama yatış saati",
+        "description": "Ortalama yatış saati (dairesel ortalama). Dönem: 7 gün (bugün hariç). Değer gece yarısından itibaren dakikadır (ör. 1410 = 23:30, 30 = 00:30)."
+      },
+      "sleep.bedtime.last-main-sleep": {
+        "label": "Son uykunun başladığı saat",
+        "description": "Son uykunun başladığı saat. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo). Değer gece yarısından itibaren dakikadır (ör. 1410 = 23:30, 30 = 00:30)."
+      },
+      "sleep.deep-share.last-main-sleep": {
+        "label": "Derin uyku oranı",
+        "description": "Derin uyku oranı. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "sleep.deep-share.low-streak": {
+        "label": "Düşük derin uyku serisi",
+        "description": "Derin uyku oranının %10'un altında kaldığı art arda gece sayısı. Dönem: 14 gün (bugün dahil)."
+      },
+      "sleep.deep.first-4h-share": {
+        "label": "Derin uykunun ilk 4 saatteki payı",
+        "description": "Derin uykunun ilk 4 saatte geçen kısmının oranı. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "sleep.deep.last-main-sleep": {
+        "label": "Derin uyku süresi",
+        "description": "Derin uyku süresi. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo). Değer dakika cinsindendir."
+      },
+      "sleep.duration.3d-average": {
+        "label": "Günlük toplam uyku ortalaması",
+        "description": "Günlük toplam uyku ortalaması. Dönem: 3 gün (bugün dahil). Değer dakika cinsindendir."
+      },
+      "sleep.duration.7d-average": {
+        "label": "Ana uyku süresi ortalaması",
+        "description": "Ana uyku süresi ortalaması. Dönem: 7 gün (bugün hariç). Değer dakika cinsindendir."
+      },
+      "sleep.duration.calendar-month-average": {
+        "label": "Önceki takvim ayının günlük uyku ortalaması",
+        "description": "Önceki takvim ayının günlük uyku ortalaması. Dönem: Önceki takvim ayı. Değer dakika cinsindendir."
+      },
+      "sleep.duration.day-total": {
+        "label": "Günün toplam uykusu",
+        "description": "O uyku gününün toplam uykusu. Dönem: Bugün. Değer dakika cinsindendir."
+      },
+      "sleep.duration.last-main-sleep": {
+        "label": "Son ana uyku süresi",
+        "description": "Son ana uyku süresi. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo). Değer dakika cinsindendir."
+      },
+      "sleep.duration.personal-baseline": {
+        "label": "Kişisel uyku süresi bazali",
+        "description": "Kişisel uyku süresi bazali. Dönem: 28 gün (son 7 gün hariç). Kişinin kendi normalidir; tıbbi bir referans değildir. Değer dakika cinsindendir."
+      },
+      "sleep.efficiency.last-main-sleep": {
+        "label": "Uyku verimi",
+        "description": "Uyku verimi (uyku süresi / yatakta geçen süre). Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "sleep.latency.last-main-sleep": {
+        "label": "Uykuya dalma süresi",
+        "description": "Uykuya dalma süresi. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo). Değer dakika cinsindendir."
+      },
+      "sleep.main.nights-2d": {
+        "label": "Son iki gecenin ana uyku sayısı",
+        "description": "Son iki gecede kaydedilen ana uyku sayısı (0-2); uyku verisinin gelip gelmediğini anlamak için. Dönem: 2 gün (bugün hariç)."
+      },
+      "sleep.rem-share.last-main-sleep": {
+        "label": "REM uyku oranı",
+        "description": "REM uyku oranı. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "sleep.score.last-main-sleep": {
+        "label": "Cihazın uyku skoru",
+        "description": "Cihazın uyku skoru. Dönem: Son ana uyku. Son tamamlanan ana uykuya aittir (occurredFrom/occurredTo)."
+      },
+      "sleep.timing.7d-variability": {
+        "label": "Yatış saatinin değişkenliği",
+        "description": "Yatış saatinin değişkenliği (dairesel standart sapma). Dönem: 7 gün (bugün hariç). Değer dakika cinsindendir."
+      },
+      "sleep.timing.social-jetlag-7d": {
+        "label": "Hafta içi ile hafta sonu yatış saati farkı",
+        "description": "Hafta içi ile hafta sonu yatış saati farkı (sosyal jetlag). Dönem: 7 gün (bugün dahil). Değer dakika cinsindendir."
+      },
+      "visit.count-90d": {
+        "label": "Vizit sayısı",
+        "description": "Vizit sayısı. Dönem: 90 gün (bugün dahil)."
+      },
+      "visit.examination.item": {
+        "label": "Vizit muayene notları",
+        "description": "Vizit muayene notları (8 bölüm). Dönem: Tüm geçmiş. Hekimin yazdığı metin, bölümlere ayrılmış (sections); geçmişin kaydıdır, tarihiyle anılır. Metin yorumlanıp yeni tanı çıkarılmaz."
+      },
+      "visit.hours-since-last": {
+        "label": "Son vizitten geçen süre",
+        "description": "Son vizitten bu yana geçen saat. Dönem: Tüm geçmiş. Değer saat cinsindendir ve belge anına (asOf) göredir; olayın tarihi evidence[].occurredAt alanındadır, kullanıcıya tarih olarak söylenir."
+      },
+      "wellness.stress.day-average": {
+        "label": "Günün ortalama stres skoru",
+        "description": "Günün ortalama stres skoru. Dönem: Bugün."
+      }
+    },
+    "rules": {
+      "activity.steps.goal-within-reach": {
+        "label": "Hedefe çok az kaldı",
+        "description": "Günün adım sayısı kişinin hedefine çok yaklaştı; kısa bir yürüyüşle tamamlanabilir."
+      },
+      "cardio.resting-heart-rate.improving": {
+        "label": "Kondisyonun artıyor",
+        "description": "İstirahat nabzı son 30 günde düşüş eğiliminde ve eğilim güvenilir (kondisyon artışıyla uyumlu)."
+      },
+      "hydration.water.behind-target-after-activity": {
+        "label": "Su içmeyi unutma",
+        "description": "Kısa süre önce çok adım atıldı ve günün su tüketimi adıma göre ayarlanan hedefin gerisinde."
+      },
+      "sleep.consistency.improved": {
+        "label": "Uyku düzenin iyileşti",
+        "description": "Son 7 günün ortalama uyku süresi önceki 7 güne göre en az 15 dakika arttı."
+      },
+      "sleep.duration.low": {
+        "label": "Az uyudun",
+        "description": "Uyku süresi kişinin kendi uyku hedefinin altında kaldı."
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+services:
+  neo4j:
+    image: neo4j:5.26.17-community
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-local-selective-password}
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - selective_context_neo4j_data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - cypher-shell -u neo4j -p "$${NEO4J_AUTH#*/}" 'RETURN 1' || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  selective_context_neo4j_data:
+

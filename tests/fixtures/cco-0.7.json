@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "0.7.0",
+  "id": "00000000-0000-4000-8000-000000000100",
+  "subjectId": "00000000-0000-4000-8000-000000000200",
+  "purpose": "user-chat",
+  "asOf": "2026-10-11T00:00:00Z",
+  "generatedAt": "2026-10-11T00:00:01Z",
+  "culture": "tr-TR",
+  "consent": {
+    "withheldFamilies": []
+  },
+  "sections": {
+    "lab": {
+      "facts": [
+        {
+          "factId": "00000000-0000-4000-8000-000000000001",
+          "definition": "lab.creatinine.series|1.1.0",
+          "evaluationKey": "sample:1",
+          "evaluationStatus": "success",
+          "occurredFrom": "2021-01-01T00:00:00Z",
+          "occurredTo": "2021-01-01T00:00:00Z",
+          "recordedAt": "2021-01-01T00:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 2.1,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab",
+              "sourceId": "1",
+              "role": "source",
+              "occurredAt": "2021-01-01T00:00:00Z"
+            }
+          ]
+        },
+        {
+          "factId": "00000000-0000-4000-8000-000000000002",
+          "definition": "lab.creatinine.series|1.1.0",
+          "evaluationKey": "sample:2",
+          "evaluationStatus": "success",
+          "occurredFrom": "2026-01-01T00:00:00Z",
+          "occurredTo": "2026-01-01T00:00:00Z",
+          "recordedAt": "2026-01-01T00:00:00Z",
+          "value": {
+            "type": "quantity",
+            "amount": 0.9,
+            "unit": "mg/dL"
+          },
+          "comparisons": [],
+          "evidence": [
+            {
+              "sourceType": "lab",
+              "sourceId": "2",
+              "role": "source",
+              "occurredAt": "2026-01-01T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "insights": [
+        {
+          "insightId": "00000000-0000-4000-8000-000000000300",
+          "definition": "lab.creatinine.review|1.0.0",
+          "severity": "critical",
+          "producedAt": "2026-02-01T00:00:00Z",
+          "facts": [
+            {
+              "factId": "00000000-0000-4000-8000-000000000001",
+              "definition": "lab.creatinine.series|1.1.0",
+              "evaluationKey": "sample:1",
+              "evaluationStatus": "success",
+              "value": {
+                "type": "quantity",
+                "amount": 2.2,
+                "unit": "mg/dL"
+              }
+            }
+          ]
+        }
+      ],
+      "missingData": []
+    }
+  },
+  "contentReferences": [],
+  "safety": {
+    "requiresHumanReview": true,
+    "disclaimerPolicy": "standard"
+  },
+  "limits": {
+    "maxFactsPerSection": 100,
+    "maxPayloadBytes": 200000,
+    "truncated": false
+  },
+  "release": {
+    "mode": "preview",
+    "unreviewedDefinitions": [
+      "lab.creatinine.review|1.0.0"
+    ]
+  },
+  "glossary": {
+    "families": {
+      "lab": {
+        "label": "Laboratuvar",
+        "description": "Tarihli ölçümler"
+      }
+    },
+    "facts": {
+      "lab.creatinine.series": {
+        "label": "Kreatinin ölçümleri",
+        "description": "Numunelerin tarihli serisi"
+      }
+    },
+    "rules": {
+      "lab.creatinine.review": {
+        "label": "Klinisyen incelemesi",
+        "description": "Mevcut kaynak yorumu"
+      }
+    }
+  }
+}
+

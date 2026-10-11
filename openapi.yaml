@@ -1,0 +1,644 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MedicalAI Selective Context V2",
+    "description": "Local, snapshot-bound CCO 0.7 evidence inspection. ContextPacket is not a CCO. Real-data external model calls are disabled by default. No production service calls.",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ccos": {
+      "get": {
+        "summary": "List Ccos",
+        "operationId": "list_ccos_api_v1_ccos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CcoSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Ccos Api V1 Ccos Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Import Cco",
+        "operationId": "import_cco_api_v1_ccos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CcoImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CcoSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ccos/reload": {
+      "post": {
+        "summary": "Reload Ccos",
+        "operationId": "reload_ccos_api_v1_ccos_reload_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ccos/{snapshot_id}": {
+      "get": {
+        "summary": "Get Cco",
+        "operationId": "get_cco_api_v1_ccos__snapshot_id__get",
+        "parameters": [
+          {
+            "name": "snapshot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Snapshot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/terminology/status": {
+      "get": {
+        "summary": "Terminology Status",
+        "operationId": "terminology_status_api_v1_terminology_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/terminology/reload": {
+      "post": {
+        "summary": "Reload Terminology",
+        "operationId": "reload_terminology_api_v1_terminology_reload_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/context/select": {
+      "post": {
+        "summary": "Select Loaded",
+        "operationId": "select_loaded_api_v1_context_select_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextPacket"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/context/select-document": {
+      "post": {
+        "summary": "Select Document",
+        "operationId": "select_document_api_v1_context_select_document_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextPacket"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat": {
+      "post": {
+        "summary": "Chat",
+        "operationId": "chat_api_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CcoImportRequest": {
+        "properties": {
+          "cco": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Cco"
+          },
+          "fileName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._-]+\\.json$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cco"
+        ],
+        "title": "CcoImportRequest"
+      },
+      "CcoSummary": {
+        "properties": {
+          "snapshotId": {
+            "type": "string",
+            "title": "Snapshotid"
+          },
+          "subjectId": {
+            "type": "string",
+            "title": "Subjectid"
+          },
+          "schemaVersion": {
+            "type": "string",
+            "title": "Schemaversion"
+          },
+          "asOf": {
+            "type": "string",
+            "title": "Asof"
+          },
+          "factCount": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Factcount"
+          },
+          "sourceFile": {
+            "type": "string",
+            "title": "Sourcefile"
+          },
+          "dataClass": {
+            "type": "string",
+            "enum": [
+              "real",
+              "synthetic"
+            ],
+            "title": "Dataclass"
+          },
+          "contentHash": {
+            "type": "string",
+            "title": "Contenthash"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "snapshotId",
+          "subjectId",
+          "schemaVersion",
+          "asOf",
+          "factCount",
+          "sourceFile",
+          "dataClass",
+          "contentHash"
+        ],
+        "title": "CcoSummary"
+      },
+      "ChatResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "answered",
+              "answered_unvalidated",
+              "insufficient_evidence",
+              "blocked",
+              "model_unavailable",
+              "validation_failed",
+              "clarification_required"
+            ],
+            "title": "Status"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "citations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "contextPacket": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Contextpacket"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metrics"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "validation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Validation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "answer",
+          "contextPacket",
+          "model"
+        ],
+        "title": "ChatResponse"
+      },
+      "ContextPacket": {
+        "properties": {
+          "packetId": {
+            "type": "string",
+            "title": "Packetid"
+          },
+          "snapshotId": {
+            "type": "string",
+            "title": "Snapshotid"
+          },
+          "canAnswer": {
+            "type": "boolean",
+            "title": "Cananswer"
+          },
+          "evidence": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "excluded": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Excluded"
+          },
+          "coverage": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Coverage"
+          },
+          "warnings": {
+            "items": {},
+            "type": "array",
+            "title": "Warnings"
+          },
+          "modelContext": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Modelcontext"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "packetId",
+          "snapshotId",
+          "canAnswer",
+          "evidence",
+          "excluded",
+          "coverage",
+          "warnings",
+          "modelContext"
+        ],
+        "title": "ContextPacket"
+      },
+      "DocumentSelectionRequest": {
+        "properties": {
+          "cco": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Cco"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "tokenBudget": {
+            "type": "integer",
+            "maximum": 16000,
+            "minimum": 512,
+            "title": "Tokenbudget",
+            "default": 8000
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cco",
+          "question"
+        ],
+        "title": "DocumentSelectionRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HistoryMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "HistoryMessage"
+      },
+      "SelectionRequest": {
+        "properties": {
+          "snapshotId": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Snapshotid"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "tokenBudget": {
+            "type": "integer",
+            "maximum": 16000,
+            "minimum": 512,
+            "title": "Tokenbudget",
+            "default": 8000
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryMessage"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "History"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "snapshotId",
+          "question"
+        ],
+        "title": "SelectionRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

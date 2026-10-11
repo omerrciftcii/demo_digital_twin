@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="color-scheme" content="light">
+    <title>MedicalAI · Kanıt çalışma alanı</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="/static/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#question">Soru alanına geç</a>
+    <header class="app-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">m</span><div><strong>MedicalAI</strong><span>Kanıt çalışma alanı</span></div></div>
+      <div class="service-status"><span id="health-dot" class="status-dot"></span><span id="health-label">Bağlantı kontrol ediliyor</span><button id="health-refresh" class="icon-button" type="button" aria-label="Servis durumunu yenile" title="Servis durumunu yenile">↻</button></div>
+    </header>
+    <div id="global-alert" class="global-alert" role="alert" hidden></div>
+    <main class="workspace">
+      <aside class="snapshots-panel" aria-label="Hasta kayıtları">
+        <div class="panel-heading"><div><p class="eyebrow">YEREL KAYNAKLAR</p><h1>CCO kayıtları</h1></div><span id="snapshot-count" class="count">0</span></div>
+        <p class="muted sidebar-description">Her sohbet, seçtiğiniz tek bir CCO anlık görüntüsüne bağlıdır.</p>
+        <label class="search-box"><span class="sr-only">Kayıtlarda ara</span><input id="snapshot-search" type="search" placeholder="Hasta veya dosya ara" autocomplete="off"></label>
+        <div id="snapshot-list" class="snapshot-list" aria-live="polite"></div>
+        <div class="import-actions"><button id="import-button" class="button button-secondary" type="button">+ CCO JSON ekle</button><button id="reload-button" class="text-button" type="button">Klasörü yeniden tara</button><input id="file-input" type="file" accept=".json,application/json" hidden></div>
+        <div class="local-note"><span class="status-dot online"></span><p>Kayıtlar yerel sunucuda tutulur.<br>Sohbet geçmişi yalnız bu sekmede yaşar.</p></div>
+      </aside>
+      <section class="conversation-panel" aria-labelledby="conversation-title">
+        <div class="conversation-heading"><div><p class="eyebrow">SORUDAN KANITA</p><h2 id="conversation-title">Kaynağıyla birlikte düşünün.</h2></div><button id="clear-chat" class="text-button" type="button" disabled>Sohbeti temizle</button></div>
+        <div id="active-snapshot" class="active-snapshot" hidden></div>
+        <div id="privacy-notice" class="notice" hidden></div>
+        <div id="messages" class="messages" aria-live="polite" aria-relevant="additions">
+          <div id="welcome" class="welcome"><span class="welcome-icon" aria-hidden="true">⌁</span><h3>Önce bir CCO seçin.</h3><p>Soruyu yazın; hangi kayıtların seçildiğini ve neden elendiğini inceleyin. Model bağlantısı olmadan da kanıt seçimi yapabilirsiniz.</p><div class="principles"><span>Kaynağa bağlı cevap</span><span>Görünür kapsam sınırları</span><span>Tek snapshot</span></div></div>
+        </div>
+        <div id="activity" class="activity" role="status" hidden><span class="spinner" aria-hidden="true"></span><span id="activity-label"></span></div>
+        <form id="question-form" class="composer">
+          <label for="question" class="sr-only">Hasta kaydı hakkında soru</label>
+          <textarea id="question" rows="3" maxlength="8000" placeholder="Bu hastanın kayıtları hakkında bir soru yazın…" disabled></textarea>
+          <div class="composer-footer"><span class="composer-hint">8.000 token kanıt bütçesi · Ctrl + Enter: incele</span><div class="composer-actions"><button id="select-button" class="button button-secondary" type="button" disabled>Kanıtları incele</button><button id="answer-button" class="button button-primary" type="submit" disabled>Yanıt üret <span aria-hidden="true">↗</span></button></div></div>
+          <p class="disclaimer">Bir inceleme aracıdır; klinik karar veya tıbbi danışmanlık yerine geçmez. CCO’da olmayan geçmiş bilgiler bulunmuş kabul edilmez.</p>
+        </form>
+      </section>
+      <aside class="evidence-panel" aria-labelledby="evidence-title">
+        <div class="panel-heading"><div><p class="eyebrow">KAYNAK İZİ</p><h2 id="evidence-title">Kanıt paketi</h2></div><span id="evidence-count" class="count">—</span></div>
+        <div id="packet-meta" class="packet-meta" hidden></div>
+        <div class="tabs" role="tablist" aria-label="Kanıt görünümü"><button id="tab-selected" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="view-selected" data-tab="selected">Seçilenler</button><button id="tab-excluded" class="tab" type="button" role="tab" aria-selected="false" aria-controls="view-excluded" data-tab="excluded" tabindex="-1">Elenenler</button><button id="tab-source" class="tab" type="button" role="tab" aria-selected="false" aria-controls="view-source" data-tab="source" tabindex="-1">Kaynak JSON</button></div>
+        <div class="evidence-body"><div id="view-selected" class="tab-view" role="tabpanel" aria-labelledby="tab-selected"><div class="empty-state">Seçim yaptığınızda kaynaklar, zaman bilgisi ve kapsam uyarıları burada görünür.</div></div><div id="view-excluded" class="tab-view" role="tabpanel" aria-labelledby="tab-excluded" hidden></div><div id="view-source" class="tab-view" role="tabpanel" aria-labelledby="tab-source" hidden><div class="source-toolbar"><span id="source-pointer">Orijinal CCO</span><button id="show-full-source" class="text-button" type="button" disabled>Tümünü göster</button></div><pre id="source-json" class="source-json">Bir kanıtın kaynak bağlantısını açın.</pre></div></div>
+        <details class="service-details"><summary>Bağlantı ve çalışma bilgisi</summary><div id="service-details-body" class="service-details-body"></div></details>
+      </aside>
+    </main>
+  </body>
+</html>

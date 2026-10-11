@@ -64,6 +64,7 @@ _DRUGS: dict[str, tuple[str, ...]] = {
     "roaccutane": ("roaccutane", "izotretinoin"),
     "largopen": ("largopen",),
     "maxalt": ("maxalt", "rizatriptan"),
+    "metformin": ("metformin", "glucophage"),
 }
 _CLASS = (("coumadin", "eliquis"),)
 
@@ -152,9 +153,16 @@ def _piece(line: str, needles: tuple[str, ...]) -> str:
 def _best_line(record: TextRecord, needles: tuple[str, ...]) -> str | None:
     found = []
     for line in record.lines:
-        if line.text.startswith("##") or not _line_has(line.text, needles):
+        if line.text.startswith("##"):
             continue
-        piece = _piece(line.text, needles)
+        text = line.text
+        if _EXAM_HEAD.search(text):
+            focused = _exam_focus(text)
+            if _line_has(focused, needles):
+                text = focused
+        if not _line_has(text, needles):
+            continue
+        piece = _piece(text, needles)
         if piece:
             found.append(piece)
     if not found:
@@ -378,6 +386,8 @@ def _symptom_lines(record: TextRecord, question: str) -> list[tuple[str, tuple[s
         groups.extend((("ferritin", "9 ng"), ("5 sa 18",)))
     if "ferritin" in folded and any(token in folded for token in ("degis", "seyret", "trend")):
         groups.append(("ferritin", "onceki"))
+    if "karin" in folded or "karn" in folded:
+        groups.append(("karin",))
     lines: list[tuple[str, tuple[str, ...]]] = []
     seen: set[str] = set()
     for needles in groups:
@@ -388,13 +398,21 @@ def _symptom_lines(record: TextRecord, question: str) -> list[tuple[str, tuple[s
     return lines
 
 
-def _analyte_needed(question: str) -> str | None:
+def _asked_analytes(question: str) -> list[str]:
     folded = _folded(question)
+    found: list[str] = []
     for analyte in _ANALYTES:
         name = "nt-probnp" if analyte == "ntprobnp" else analyte
+        if name in found:
+            continue
         if _token_at(folded, name) >= 0 or _token_at(folded, analyte) >= 0:
-            return name
-    return None
+            found.append(name)
+    return found
+
+
+def _analyte_needed(question: str) -> str | None:
+    found = _asked_analytes(question)
+    return found[0] if found else None
 
 
 def _sentences(answer: str) -> list[str]:
@@ -440,8 +458,8 @@ def _generic(answer: str) -> bool:
 
 _FULL_DATE = re.compile(r"\d{1,2}\.\d{1,2}\.\d{4}")
 _DUMP_MARK = (
-    "epikriz", "sikayet", "bulgular", "ilk recete", "bilinmeyen cumle", "seyrindi",
-    "kayittaki cumle", "kayittaki ilgili satir",
+    "epikriz", "sikayet", "hikaye", "bulgular", "ozgecmis", "ilk recete",
+    "bilinmeyen cumle", "seyrindi", "kayittaki cumle", "kayittaki ilgili satir",
 )
 _BROKEN = ("bilinmeyen cumle", "seyrindi", "kayittaki cumle", "kayittaki ilgili satir")
 _WARM = ("yaziyor", "goruyorum", "kaydinda", "recetende", "hekiminle")
@@ -452,7 +470,22 @@ _RX_RE = re.compile(
 _SON_RE = re.compile(r"son reçete\s+(\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{4})")
 _FLAG_RE = re.compile(r",\s*(yüksek|düşük|normal)\b", re.IGNORECASE)
 _HEAD_RE = re.compile(r"([^\n]{0,140}?\(\d{1,2}\.\d{1,2}\.\d{4}\))")
-_HEADER_RE = re.compile(r"\b(?:Şikâyet|Şikayet|Bulgular|Epikriz|Rapor)\s*:\s*")
+_HEADER_RE = re.compile(
+    r"\b(?:Şikâyet|Şikayet|ŞİKAYET|Hikâye|Hikaye|HİKAYE|HİKÂYE|Bulgular|BULGULAR|"
+    r"Epikriz|Rapor|Özgeçmiş|ÖZGEÇMİŞ)\s*:\s*"
+)
+_EXAM_HEAD = re.compile(
+    r"(?i)\b(?:ŞİKAYET|Şikayet|Şikâyet|HİKAYE|Hikaye|Hikâye|HİKÂYE|"
+    r"BULGULAR|Bulgular|ÖZGEÇMİŞ|Özgeçmiş)\s*:"
+)
+_GENERAL = ("genellikle", "cogu hastada", "tipik olarak", "herkeste", "bilimsel olarak")
+# Each entry is (OR-groups of AND-phrases, chart needles).
+_DIAGNOSIS: tuple[tuple[tuple[tuple[str, ...], ...], tuple[str, ...]], ...] = (
+    ((("sekerim var",), ("seker var mi",), ("diyabetim var",), ("seker hast",)), ("e11",)),
+    ((("tansiyon hast",), ("hipertansiyonum",), ("tansiyonum var",)), ("hipertansiyon",)),
+    ((("pihti",),), ("i82",)),
+    ((("yanak", "kizar"),), ("rozase", "l71")),
+)
 _NOTE = "Hekiminle konuşman iyi olur."
 
 
@@ -506,6 +539,102 @@ def _drop_other_analytes(answer: str, analyte: str | None) -> str:
 
 def _deheader(text: str) -> str:
     return " ".join(_HEADER_RE.sub("", text).split())
+
+
+def _exam_focus(text: str) -> str:
+    """Keep the complaint sentence. Drop the hikaye, bulgular, and preamble blobs."""
+    if not _EXAM_HEAD.search(text):
+        return text
+    spans = list(_EXAM_HEAD.finditer(text))
+    segments: list[tuple[str, str]] = []
+    for index, match in enumerate(spans):
+        end = spans[index + 1].start() if index + 1 < len(spans) else len(text)
+        body = " ".join(text[match.end():end].split()).strip(" .;")
+        segments.append((_folded(match.group(0)), body))
+    preferred = [body for label, body in segments if "sikayet" in label and body]
+    if not preferred:
+        preferred = [body for label, body in segments if "hikaye" in label and body]
+    chosen = preferred[0] if preferred else next((body for _label, body in segments if body), text)
+    if len(chosen) > 180:
+        chosen = chosen[:180].rsplit(" ", 1)[0]
+    return chosen
+
+
+def _drop_invented_stop(answer: str, record: TextRecord) -> str:
+    """'İlaç kesildi' stays only when the same chart line says that drug was stopped."""
+    kept = []
+    for sentence in _sentences(answer):
+        folded = _folded(sentence)
+        if "kesil" not in folded and "birakildi" not in folded and "birakti" not in folded:
+            kept.append(sentence)
+            continue
+        words = [
+            word for word in content_words(sentence)
+            if len(word) >= 5 and not word.startswith("kesil") and not word.startswith("birak")
+        ]
+        backed = False
+        for line in record.lines:
+            line_folded = _folded(line.text)
+            if "kesil" not in line_folded and "birak" not in line_folded:
+                continue
+            if not words or any(word[:6] in line_folded for word in words):
+                backed = True
+                break
+        if backed:
+            kept.append(sentence)
+    return "\n".join(kept)
+
+
+def _drop_general(answer: str, record: TextRecord) -> str:
+    chart = _folded(record.text)
+    kept = []
+    for sentence in _sentences(answer):
+        folded = _folded(sentence)
+        if any(phrase in folded and phrase not in chart for phrase in _GENERAL):
+            continue
+        kept.append(sentence)
+    return "\n".join(kept)
+
+
+def _diagnosis_lines(record: TextRecord, question: str) -> list[str]:
+    folded = _folded(question)
+    found: list[str] = []
+    for cue_groups, needles in _DIAGNOSIS:
+        if not any(all(part in folded for part in group) for group in cue_groups):
+            continue
+        for line in record.lines:
+            if line.text.startswith("##"):
+                continue
+            section = _folded(record.sections[line.section_index].heading)
+            if "tani" not in section:
+                continue
+            if not _line_has(line.text, needles):
+                continue
+            piece = _piece(line.text, needles)
+            if piece and piece not in found:
+                found.append(piece)
+            break
+    return found[:2]
+
+
+def _stale_use_sentence(record: TextRecord, question: str) -> str | None:
+    """A last prescription is not proof the medicine is still being taken or was stopped."""
+    if not _asks(question, _CONTINUATION):
+        return None
+    if not _drugs_for(question):
+        return None
+    lines = _continuation_lines(record, question)
+    if not lines:
+        return None
+    blob = " ".join(line for line, _needles in lines)
+    folded = _folded(blob)
+    if any(token in folded for token in ("kesil", "birak", "kullanmad", "kullaniyor", "halen")):
+        return None
+    match = _SON_RE.search(blob) or _FULL_DATE.search(blob)
+    if not match:
+        return None
+    date = match.group(1) if match.lastindex else match.group(0)
+    return f"Son reçete tarihi {date}, güncel kullanımı kayıtta görünmüyor."
 
 
 def _dated_head(text: str) -> str:
@@ -571,7 +700,7 @@ def _speak_lab(text: str) -> str:
 
 
 def _speak_clause(text: str) -> str:
-    raw = " ".join(text.strip().lstrip("-").split())
+    raw = " ".join(_exam_focus(text).strip().lstrip("-").split())
     if not raw:
         return ""
     if not _chartish(raw) and len(raw) <= 360:
@@ -584,22 +713,38 @@ def _speak_clause(text: str) -> str:
     return f"Kayıtta şunu görüyorum: {clause}."
 
 
-def _panel_lines(record: TextRecord, question: str) -> list[str]:
-    folded = _folded(question)
-    if "tahlil" not in folded or _analyte_needed(question):
-        return []
-    if not any(token in folded for token in ("iyi", "nasil", "normal", "kotu")):
-        return []
-    found: list[str] = []
+def _lab_lines(record: TextRecord) -> list:
+    rows = []
     for line in record.lines:
         if line.text.startswith("##"):
             continue
         section = _folded(record.sections[line.section_index].heading)
         if "laboratuvar" not in section:
             continue
+        rows.append(line)
+    return rows
+
+
+def _panel_lines(record: TextRecord, question: str) -> list[str]:
+    folded = _folded(question)
+    if "tahlil" not in folded or _analyte_needed(question) or _diagnosis_lines(record, question):
+        return []
+    if not any(token in folded for token in ("iyi", "nasil", "normal", "kotu", "kalp")):
+        return []
+    cardiac = any(token in folded for token in ("kalp", "kalbim", "kardiyak"))
+    found: list[str] = []
+    if cardiac:
+        for name in ("ldl", "nt-probnp", "troponin", "hdl"):
+            line = _analyte_line(record, name)
+            if line:
+                cleaned = line.strip().lstrip("-").strip()
+                if cleaned not in found:
+                    found.append(cleaned)
+        return found[:3]
+    for line in _lab_lines(record):
         if _FLAG_RE.search(line.text) and _flag_word(line.text) != "normal":
             found.append(line.text.strip().lstrip("-").strip())
-        if len(found) == 2:
+        if len(found) == 3:
             break
     return found
 
@@ -718,7 +863,9 @@ def _recent_piece(record: TextRecord, needles: tuple[str, ...]) -> str | None:
         line for line in hits if "basvuru" in _folded(record.sections[line.section_index].heading)
     ]
     line = max(visits or hits, key=lambda item: _date_key(item.text))
-    text = line.text.strip().lstrip("-").strip()
+    raw = line.text.strip().lstrip("-").strip()
+    focused = _exam_focus(raw) if _EXAM_HEAD.search(raw) else raw
+    text = focused if _line_has(focused, needles) else raw
     parts_all = _parts(text)
     parts = [part for part in parts_all if _line_has(part, needles)]
     piece = min(parts, key=len) if parts else text
@@ -798,16 +945,19 @@ def _topic_lines(record: TextRecord, question: str) -> list[str]:
 
 def _collect_extra(record: TextRecord, question: str, base: str, analyte: str | None) -> list[str]:
     extra: list[str] = []
-    if analyte:
-        line = _analyte_line(record, analyte)
-        if line:
-            value = next(
-                (found for name in _names_for(analyte) if (found := _value_after(line, name))),
-                None,
-            )
-            needles = [value] if value else [analyte]
-            if not _has_all(base, tuple(needles)):
-                extra.append(line.strip().lstrip("-").strip())
+    asked = [] if _diagnosis_lines(record, question) else _asked_analytes(question)
+    for name in asked:
+        line = _analyte_line(record, name)
+        if not line:
+            continue
+        value = next(
+            (found for alias in _names_for(name) if (found := _value_after(line, alias))),
+            None,
+        )
+        needles = [value] if value else [name]
+        cleaned = line.strip().lstrip("-").strip()
+        if not _has_all(base, tuple(needles)) and cleaned not in extra:
+            extra.append(cleaned)
     for line, needles in _continuation_lines(record, question):
         if not _has_all(base, needles):
             extra.append(line)
@@ -815,6 +965,7 @@ def _collect_extra(record: TextRecord, question: str, base: str, analyte: str | 
         if not _has_all(base, needles):
             extra.append(line)
     for line in (
+        *_diagnosis_lines(record, question),
         *_why_lines(record, question),
         *_panel_lines(record, question),
         *_topic_lines(record, question),
@@ -825,11 +976,25 @@ def _collect_extra(record: TextRecord, question: str, base: str, analyte: str | 
     follow = _followup_line(record, question)
     if follow and follow not in extra and not _has_all(base, (follow[:48],)):
         extra.append(follow)
+    stale = _stale_use_sentence(record, question)
+    if stale and stale not in extra and not _has_all(base, ("güncel kullanımı kayıtta görünmüyor",)):
+        extra.append(stale)
+    folded = _folded(question)
+    if (
+        "keyif" not in folded
+        and any(token in folded for token in ("anemi", "kansiz", "halsiz", "yorgun"))
+        and not _has_all(base, ("hemoglobin",))
+    ):
+        hb = _analyte_line(record, "hemoglobin")
+        if hb:
+            cleaned = hb.strip().lstrip("-").strip()
+            if cleaned not in extra:
+                extra.append(cleaned)
     unique: list[str] = []
     for line in extra:
         if line and line not in unique:
             unique.append(line)
-    return unique[:6]
+    return unique[:8]
 
 
 def align_answer(record: TextRecord, question: str, grounded: GroundingResult) -> GroundingResult:
@@ -844,12 +1009,19 @@ def align_answer(record: TextRecord, question: str, grounded: GroundingResult) -
                 return forced
             return grounded
 
-    analyte = _analyte_needed(question)
-    base = _drop_other_analytes(
-        _drop_broken(_drop_echo(
-            _drop_competitors(grounded.answer if grounded.ok else "", analyte), question,
-        )),
-        analyte,
+    asked = [] if _diagnosis_lines(record, question) else _asked_analytes(question)
+    analyte = asked[0] if len(asked) == 1 else None
+    base = _drop_general(
+        _drop_invented_stop(
+            _drop_other_analytes(
+                _drop_broken(_drop_echo(
+                    _drop_competitors(grounded.answer if grounded.ok else "", analyte), question,
+                )),
+                analyte,
+            ),
+            record,
+        ),
+        record,
     )
     extra = _collect_extra(record, question, base, analyte)
     original = grounded.answer if grounded.ok else ""

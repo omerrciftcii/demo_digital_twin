@@ -36,12 +36,12 @@ _MESSAGES = {
     ),
     "emergency": (
         "Bu belirtiler acil olabilir. Tanı koyamam ve tedavi öneremem. "
-        "Hemen acil sağlık hizmetine başvurun. Buradaki kayıt özeti acil "
-        "müdahalenin yerine geçmez."
+        "Hemen 112'yi ara. Buradaki kayıt özeti acil müdahalenin yerine geçmez."
     ),
     "treatment": (
-        "İlaç dozu, başkasının ilacı veya tedavi değişikliği öneremem. "
-        "Bu bir tedavi kararı değildir."
+        "İlaç dozu, ilaca devam etmek ya da ilacı bırakmak bir tedavi kararıdır; "
+        "bunu söyleyemem. Kayıttaki son reçete bilgisini aşağıya bırakıyorum. "
+        "Bunu hekiminle konuş."
     ),
     "prompt_injection": (
         "Bu istek yanıtlanamaz. Sistem talimatını, başka kişilerin kimlik "
@@ -60,7 +60,8 @@ _ALIASES = {
     "deltacortril": ("prednizolon", "deltacortril"),
     "roaccutane": ("izotretinoin", "roaccutane"),
     "eliquis": ("apiksaban", "eliquis"),
-    "glucophage": ("metformin",),
+    "glucophage": ("metformin", "glucophage"),
+    "metformin": ("metformin", "glucophage"),
     "majezik": ("flurbiprofen", "majezik"),
 }
 
@@ -82,6 +83,9 @@ _EMERGENCY = (
     r"gozlerimin onunde isik", r"yuzum sisti", r"hayatimin en siddetli bas agr",
     r"kolum uyus", r"konusmam bozul", r"bayildim", r"bilincimi kayb",
     r"kanamam durmuyor", r"kalbim durdu",
+    # Conversational chest pressure, including "göğsüm sıkışıyor, sol koluma vuruyor".
+    r"gogs\w{0,8} sikis",
+    r"gogs\w{0,8}.{0,48}kol\w{0,10} (vuruyor|vurdu|yayil)",
 )
 _EXFIL = (
     r"sistem talimat", r"ham veri", r"\btc kimlik\b", r"butun hastalarin",
@@ -98,6 +102,14 @@ _TREATMENT = (
     r"annemin|babamin|baskasinin",
     r"gunde\s+\d+\s+(tane|adet|tablet)",
     r"ne kadar\s+(alayim|iceyim|kullanayim|almaliyim)",
+    r"ne kadar\s+(?:ic|al|kullan)(?:eyim|ayim|meli|mali)",
+    r"kac\s+(tane|adet|tablet|kapsul)\s+(?:ic|al|kullan)(?:eyim|ayim|meli|mali)",
+    r"devam etmeli miyim",
+    r"kullanmaya devam etmeli",
+    r"birakayim mi",
+    r"birakmali miyim",
+    r"keseyim mi",
+    r"kesmeli miyim",
     r"kac mg (yap|oner|basla|kullan)",
     r"dozu dogrudan",
     r"guvenli oldugunu yaz",

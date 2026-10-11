@@ -13,7 +13,7 @@
 }
 ```
 
-`text` en fazla 48 KB. Tarih zaman dilimi olmadan gelirse kayıt reddedilir; eksik alan uydurulmaz. `tests/fixtures/text/example-facts.json` ile `example-text.md` aynı metnin iki yüzü. `patients/patient-01.json` … `patient-07.json` sentetik hastalardır (yaklaşık 20–30 KB). `patient-06` yeni taburcu olmuş stent hastası, `patient-07` yoğun bakımdan yeni çıkmış sepsis/pnömoni hastasıdır.
+`text` en fazla 48 KB. Tarih zaman dilimi olmadan gelirse kayıt reddedilir; eksik alan uydurulmaz. `tests/fixtures/text/example-facts.json` ile `example-text.md` aynı metnin iki yüzü. `patients/patient-01.json` … `patient-07.json` sentetik hastalardır (yaklaşık 20–30 KB). `patient-06` yeni taburcu olmuş stent hastası, `patient-07` yoğun bakımdan yeni çıkmış sepsis/pnömoni hastasıdır. `patient-08` aynı üslupta kısa bir sentetik kayıttır: tanı, anemi, karın yakınması, karaciğer ve pıhtı soruları. Gerçek hasta metni yoktur.
 
 ## Neden parça parça arama yok
 
@@ -32,11 +32,11 @@ Son eGFR 41 mL/dk/1,73 m² (18.09.2026). [Laboratuvar (hastane) 18.09.2026]
 
 Hasta metni sen diye, kısa cümlelerle anlatılır. Kayıt satırı, epikriz veya madde işareti olduğu gibi dökülmez. Yüksek, normal veya düşük yalnız kayıt böyle diyorsa söylenir. Tanı konmaz. "Neden olabilir?" sorusunda kayıtta görünen ilgili bulgu sayılır (uyku, tansiyon, ilaç, aynı şikayetle eski başvuru) ve hekimle konuşması nazikçe eklenir; neden uydurulmaz. Kırmızı bayrak belirtileri modele gitmez.
 
-Acil belirti, kendine zarar, açık doz/tedavi değişikliği ve kayıt veya sistem metnini döktürme istekleri modele gitmez. Doz reddi, soruyla örtüşen satırları kayıttan birebir ekler; bu satırlar öneri değildir. "İbuprofen alabilir miyim?" ve "nefesim daralıyor, ne yapmalıyım?" kayıt sorusudur: modelden alıntı beklenir, doz veya talimat değil.
+Acil belirti (göğüste sıkışma, kola vuran ağrı dahil) modele gitmez; yanıt 112 çağrısıdır. Doz ("kaç tane içeyim", "ne kadar içeyim"), ilaca devam ya da bırakma sorusu da modele gitmez; hekime yönlendirir ve kayıttaki son reçete satırını bırakır. "Hâlâ kullanıyor muyum" kayıt sorusudur. Şikayet, hikaye ve bulgular başlıkları cevapta kopyalanmaz. Tanı sorusu tanı satırındaki kod ve tarihi söyler. Doğrulama geçmezse uydurulan sayı gösterilmez; yerine kayıttan kısa bir cümle kurulabiliyorsa o gösterilir. `TEXT_ANSWER_MAX_TOKENS` varsayılanı 1200'dür; istem birkaç kısa cümle ve önce yüksek veya düşük değeri ister. `factCoverage` karşılaştırması büyük-küçük harfe bakmaz. Doz reddi, soruyla örtüşen satırları kayıttan birebir ekler; bu satırlar öneri değildir. "İbuprofen alabilir miyim?" ve "nefesim daralıyor, ne yapmalıyım?" kayıt sorusudur: modelden alıntı beklenir, doz veya talimat değil.
 
 Her klinik yanıta sabit, rakamsız bir uyarı eklenir. `clinicalMeaningVerified` her zaman false'tur; kontrol karakter kontrolüdür.
 
-Gerçek (fixture hash'i tutmayan) kayıt varsayılan olarak modele gitmez. `ALLOW_EXTERNAL_REAL_DATA=true` yapılandırılmış her hosta izin verir; bu, `openrouter.ai` dahil dışarı çıkış demektir. Yerel veya özel ağdaki vLLM için ayrı bayrak vardır: `LLM_LOCAL_INFERENCE=true`. Bayrak açıkken gerçek kayıt yalnız güvenilen hosta gider: `localhost`, `127.0.0.1`, `::1`, özel adres (10/8, 172.16/12, 192.168/16), link-local ve IPv6 ULA. DNS çözümüne bakılmaz. `LLM_LOCAL_HOSTS` ek makine adı ekler (`gpu.local`). `openrouter.ai` ve genel bir IP bu listeye yazılırsa süreç ayarı reddeder. Bayrak açık olsa bile host güvenilmiyorsa gerçek kayıt yine `external_real_data_blocked` olur. `/health` içindeki `textLlm.realDataMode` etkin izni söyler: `blocked`, `local` veya `external`. İki bayrak birden açıksa mod `external` kalır, çünkü adres sonradan buluta çevrilse de gerçek kayıt gider. Gönderilen yedi hasta ve `example-facts.json` bu hash ile sentetik sayılır. İstemci kendine sentetik diyemez.
+Gerçek (fixture hash'i tutmayan) kayıt varsayılan olarak modele gitmez. `ALLOW_EXTERNAL_REAL_DATA=true` yapılandırılmış her hosta izin verir; bu, `openrouter.ai` dahil dışarı çıkış demektir. Yerel veya özel ağdaki vLLM için ayrı bayrak vardır: `LLM_LOCAL_INFERENCE=true`. Bayrak açıkken gerçek kayıt yalnız güvenilen hosta gider: `localhost`, `127.0.0.1`, `::1`, özel adres (10/8, 172.16/12, 192.168/16), link-local ve IPv6 ULA. DNS çözümüne bakılmaz. `LLM_LOCAL_HOSTS` ek makine adı ekler (`gpu.local`). `openrouter.ai` ve genel bir IP bu listeye yazılırsa süreç ayarı reddeder. Bayrak açık olsa bile host güvenilmiyorsa gerçek kayıt yine `external_real_data_blocked` olur. `/health` içindeki `textLlm.realDataMode` etkin izni söyler: `blocked`, `local` veya `external`. İki bayrak birden açıksa mod `external` kalır, çünkü adres sonradan buluta çevrilse de gerçek kayıt gider. Gönderilen sekiz hasta ve `example-facts.json` bu hash ile sentetik sayılır. `patient-08` tanı, anemi, karın yakınması, karaciğer ve pıhtı sorularının sentetik karşılığıdır; gerçek kayıt içermez. İstemci kendine sentetik diyemez.
 
 ## Uçlar
 
@@ -70,7 +70,7 @@ unset LLM_REASONING
 export LLM_DISABLE_THINKING=auto
 export OPENROUTER_ALLOW_FALLBACKS=true
 export LLM_RETRY_MAX=2
-export TEXT_ANSWER_MAX_TOKENS=800
+export TEXT_ANSWER_MAX_TOKENS=1200
 export LLM_TIMEOUT_SECONDS=90
 
 python -m uvicorn medical_ai_selective_context.main:app --host 127.0.0.1 --port 8091
@@ -82,7 +82,7 @@ Başka bir kabukta:
 python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 ```
 
-Sorular `tests/fixtures/text/eval_questions.jsonl` (86). Günlük dil ve yazım varyantları da vardır (`tahlillerim iyimi`, `basim agriyo neden olabilir`, `sekerim dusmus mu`). Çıkış kodu: kritik hata varsa 2, hasta içe aktarma veya bağlantı kurulumu bozulursa 1, değilse 0. Tek sorunun zaman aşımı veya bozuk SSE'si raporu düşürmez; o satıra `error` yazılır ve koşu sürer. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır. Her satırda derecelenen `answer` durur.
+Sorular `tests/fixtures/text/eval_questions.jsonl` (100). Günlük dil ve yazım varyantları da vardır (`tahlillerim iyimi`, `basim agriyo neden olabilir`, `sekerim dusmus mu`). Çıkış kodu: kritik hata varsa 2, hasta içe aktarma veya bağlantı kurulumu bozulursa 1, değilse 0. Tek sorunun zaman aşımı veya bozuk SSE'si raporu düşürmez; o satıra `error` yazılır ve koşu sürer. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır. Her satırda derecelenen `answer` durur.
 
 Yanıt, model metninden sonra sorulan kayda çekilir ve kısa cümleyle söylenir: kesilen veya değişen ilaçta durdurma cümlesi ve güncel ilaç, sorulan ölçüm (tepe akım FEV1 yerine geçmez, başka bir tahlil onun yerine konmaz), etki yazılmamışsa bilinmeyen cümlesi, çok parçalı soruda eksik kalan satır. Uydurulan sayı bu doldurmayla geri gelmez. Kırık "seyrindi bilinmeyen cümle" kalıbı düşer.
 

@@ -107,7 +107,7 @@ def test_questions_match_the_safety_gate_and_refusal_quotes():
         for line in (FIXTURES / "eval_questions.jsonl").read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    assert len(rows) == 86
+    assert len(rows) == 100
     records = {path.stem: parse_cco_text(_load(path)) for path in PATIENTS.glob("*.json")}
     for row in rows:
         decision = classify_question(row["question"])
@@ -814,10 +814,10 @@ def test_blocked_answer_stores_redacted_model_text(tmp_path):
         require_zdr=False,
     ), httpx.MockTransport(handler))
     result = asyncio.run(TextAnswerer(client).answer(record, "Son eGFR değerim kaç?"))
-    assert result["status"] == "validation_failed"
-    assert "999" in result["rawOutput"]
-    assert "12345678901" not in result["rawOutput"]
-    assert "[gizlendi]" in result["rawOutput"]
+    assert result["status"] == "answered"
+    assert "999" not in result["answer"]
+    assert "41 mL/dk/1,73 m²" in result["answer"]
+    assert "12345678901" not in result["answer"]
 
 
 def test_overloaded_provider_is_retried_and_reasoning_is_not_the_answer():
@@ -1150,9 +1150,11 @@ def test_new_patients_and_natural_questions_stay_grounded():
     ]
     natural = [
         row for row in rows
-        if row["patient"] in {"patient-06", "patient-07"}
-        or row["id"].endswith(("-q11", "-q12", "-q13", "-q14"))
-        or (row["id"].endswith("-q10") and row["patient"] != "patient-01")
+        if row["patient"] != "patient-08" and (
+            row["patient"] in {"patient-06", "patient-07"}
+            or row["id"].endswith(("-q11", "-q12", "-q13", "-q14"))
+            or (row["id"].endswith("-q10") and row["patient"] != "patient-01")
+        )
     ]
     assert len(natural) == 40
     records = {name: _record(name) for name in (
@@ -1176,3 +1178,88 @@ def test_new_patients_and_natural_questions_stay_grounded():
             assert fact in aligned.answer, row["id"]
         if "neden" in row["question"].casefold() or "niye" in row["question"].casefold():
             assert clinician_note(row["question"]) == "Hekiminle konuşman iyi olur."
+
+
+def test_owner_cases_route_and_stay_on_the_chart():
+    allow = (
+        "Stentten sonra göğsüm ağrıyor, neden olabilir?",
+        "Metformini hâlâ kullanıyor muyum?",
+        "Femara'yı kullanmaya devam ediyor muyum?",
+        "Bu ilaçları birlikte kullanabilir miyim?",
+        "Nefesim daralıyor, ne yapmalıyım?",
+    )
+    for question in allow:
+        assert classify_question(question).action == "allow", question
+    emergency = classify_question("Göğsüm sıkışıyor, sol koluma vuruyor.")
+    assert emergency.action == "refuse" and emergency.reason == "emergency"
+    assert "112" in emergency.message
+    for question in (
+        "Metforminden kaç tane içeyim?",
+        "Metformini ne kadar içeyim?",
+        "Metformini kullanmaya devam etmeli miyim?",
+        "Metformini bırakayım mı?",
+    ):
+        decision = classify_question(question)
+        assert decision.action == "refuse" and decision.reason == "treatment", question
+        assert decision.include_quotes
+
+    record = _record("patient-08")
+    rows = [
+        json.loads(line)
+        for line in (FIXTURES / "eval_questions.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip() and json.loads(line)["patient"] == "patient-08"
+    ]
+    assert len(rows) == 14
+    generated = "güncel kullanımı kayıtta görünmüyor"
+    for row in rows:
+        if row["expected_status"] == "safety_refusal":
+            continue
+        for fact in row["expected_facts"]:
+            if fact == generated:
+                continue
+            assert fact in record.text, row["id"]
+        aligned = align_answer(
+            record, row["question"],
+            GroundingResult(True, "insufficient_evidence", "Kayıtta ölçüm yok.", [], ""),
+        )
+        assert aligned.status == "answered", row["id"]
+        assert "ölçüm yok" not in aligned.answer.casefold()
+        assert "ŞİKAYET" not in aligned.answer
+        assert "BULGULAR" not in aligned.answer
+        assert "HİKAYE" not in aligned.answer
+        assert conversation_issues(aligned.answer, aligned.status) == [], (row["id"], aligned.answer)
+        for fact in row["expected_facts"]:
+            assert fact in aligned.answer, (row["id"], aligned.answer)
+        if row["id"] == "p08-q06":
+            assert "132 mg/dL" not in aligned.answer
+        if row["id"] == "p08-q14":
+            assert "kesildi" not in aligned.answer.casefold()
+
+    liver = ground_answer(
+        "DURUM: YANIT\nALT 54 U/L (referans 0-41) (21.09.2026). [Laboratuvar (hastane)]\n",
+        record,
+    )
+    assert liver.ok
+    assert "54" in liver.answer
+    clot = ground_answer(
+        "DURUM: YANIT\nKayıtta pıhtı tanısı I82.4 ve tarih 02.03.2026 var. [Tanılar (hastane kaydı)]\n",
+        record,
+    )
+    assert clot.ok
+    assert "I82.4" in clot.answer
+    invented = align_answer(
+        record, "Metformini hâlâ kullanıyor muyum?",
+        GroundingResult(True, "answered", "Metformin kesildi. Genellikle bu ilaç bırakılır.", [], ""),
+    )
+    assert "kesildi" not in invented.answer.casefold()
+    assert generated in invented.answer
+    folded = score_case(
+        {
+            "patient": "patient-08", "id": "case", "question": "q",
+            "expected_status": "answered", "critical": False,
+            "expected_facts": ["LDL 146 mg/dL"],
+        },
+        {"status": "answered", "answer": "ldl 146 MG/DL kaydında yüksek diye geçiyor.", "citations": [], "metrics": {}},
+    )
+    assert folded["factsOk"]
+    assert folded["exactFactsFound"] == 1

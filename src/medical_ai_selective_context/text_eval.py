@@ -168,8 +168,14 @@ def conversation_issues(answer: str, status: str) -> list[str] | None:
             sentence.startswith("-")
             or "Şikâyet:" in sentence
             or "Şikayet:" in sentence
+            or "ŞİKAYET:" in sentence
+            or "Hikaye:" in sentence
+            or "Hikâye:" in sentence
+            or "HİKAYE:" in sentence
             or "Epikriz:" in sentence
             or "Bulgular:" in sentence
+            or "BULGULAR:" in sentence
+            or "Özgeçmiş:" in sentence
             or len(sentence) > 450
         )
         if dumped:
@@ -194,8 +200,9 @@ def score_case(case: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]
     facts = list(case.get("expected_facts") or [])
     missing: list[str] = []
     exact_found = 0
+    folded_haystack = haystack.casefold()
     for fact in facts:
-        if fact in haystack:
+        if fact in haystack or fact.casefold() in folded_haystack:
             exact_found += 1
         elif not tokens_cover(fact, haystack):
             missing.append(fact)

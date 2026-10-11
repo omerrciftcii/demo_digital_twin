@@ -43,6 +43,13 @@ _CAUSAL = (
     "nedeniyle", "yüzünden", "sebep oldu", "neden oldu", "bağlı olarak", "sonucu olarak",
 )
 _PAREN = re.compile(r"\([^)]*\)")
+# A code such as I82.4 or E11.9 is one token. Its inner digits are not a lab value.
+_ICD = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]\d{2}(?:\.\d{1,4})?(?!\d)")
+# "(referans 0-41)" and "(0–41)" are ranges the model often adds. They are not the result.
+_REF_PAREN = re.compile(
+    r"\([^)\n]{0,96}(?:referans|aral[ıi]k|\d+(?:[.,]\d+)?\s*[-–—]\s*\d+(?:[.,]\d+)?)[^)\n]{0,48}\)",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -190,8 +197,25 @@ def _near(blob: str, token: str, unit: str) -> bool:
         start = found + 1
 
 
+def _skipped_number(claim: str, match: re.Match[str]) -> bool:
+    """ICD digits and a parenthetical reference range are not separate measurements."""
+    for code in _ICD.finditer(claim):
+        if code.start() <= match.start() and match.end() <= code.end():
+            return True
+    return any(span.start() <= match.start() and match.end() <= span.end() for span in _REF_PAREN.finditer(claim))
+
+
+def _codes_supported(claim: str, blob: str) -> bool:
+    folded = blob.casefold()
+    return all(code.group(0).casefold() in folded for code in _ICD.finditer(claim))
+
+
 def _numbers_supported(claim: str, blob: str) -> bool:
+    if not _codes_supported(claim, blob):
+        return False
     for match in _numbers(claim):
+        if _skipped_number(claim, match):
+            continue
         token = match.group(0)
         if not _token_in_text(token, blob):
             return False

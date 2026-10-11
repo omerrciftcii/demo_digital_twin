@@ -43,7 +43,7 @@ _CAUSAL = (
     "nedeniyle", "yüzünden", "sebep oldu", "neden oldu", "bağlı olarak", "sonucu olarak",
 )
 _PAREN = re.compile(r"\([^)]*\)")
-# A code such as I82.4 or E11.9 is one token. Its inner digits are not a lab value.
+# A diagnosis code is one token. Its inner digits are not a lab value.
 _ICD = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]\d{2}(?:\.\d{1,4})?(?!\d)")
 # "(referans 0-41)" and "(0–41)" are ranges the model often adds. They are not the result.
 _REF_PAREN = re.compile(

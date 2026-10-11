@@ -13,8 +13,27 @@ from typing import Any
 
 from .index import normalize_text
 
+_MONTHS = (
+    "ocak", "subat", "mart", "nisan", "mayis", "haziran",
+    "temmuz", "agustos", "eylul", "ekim", "kasim", "aralik",
+)
+_MONTH_OF = {name: index for index, name in enumerate(_MONTHS, start=1)}
+_NAMED_DATE = re.compile(
+    r"\b(\d{1,2})\s+("
+    r"ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|"
+    r"ağustos|agustos|eylül|eylul|ekim|kasım|kasim|aralık|aralik"
+    r")\s+(\d{4})\b",
+    re.IGNORECASE,
+)
 _DATE = re.compile(r"\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{4}")
 _YEAR = re.compile(r"\d{4}")
+_LETTER_SUFFIXES = (
+    "lerinden", "larindan", "imizden", "imizdan",
+    "nin", "nın", "nun", "nün", "den", "dan", "ten", "tan",
+    "yi", "yı", "yu", "yü", "ler", "lar",
+    "in", "ın", "un", "ün", "de", "da", "te", "ta",
+    "i", "ı", "u", "ü", "e", "a",
+)
 _NUM_UNIT = re.compile(
     r"\d+(?:[.,]\d+)?\s*(?:mg/dL|g/dL|pg/mL|ng/mL|mIU/L|mmHg|mL/dk|µg|mcg|kg|mg|mL|mm|cm|g)\b",
     re.IGNORECASE,
@@ -40,12 +59,48 @@ def _spans(pattern: re.Pattern[str], text: str) -> list[tuple[int, int, str]]:
     return [(match.start(), match.end(), match.group(0)) for match in pattern.finditer(text)]
 
 
+def _canonical_date(day: str, month: int, year: str) -> str:
+    return f"{int(day):02d}.{month:02d}.{year}"
+
+
+def _month_forms(token: str) -> list[str]:
+    dated = re.fullmatch(r"0?(\d{1,2})\.0?(\d{1,2})\.(\d{4})", token)
+    if not dated:
+        return []
+    day, month, year = (int(part) for part in dated.groups())
+    if not 1 <= month <= 12:
+        return []
+    name = _MONTHS[month - 1]
+    return [f"{day} {name} {year}", f"{day:02d} {name} {year}"]
+
+
+def _letter_stems(token: str) -> list[str]:
+    """Stems of an all-letter token. Every suffix length is tried."""
+    folded = normalize_text(token)
+    if not folded.isalpha() or len(folded) < 5:
+        return []
+    stems: list[str] = []
+    for suffix in _LETTER_SUFFIXES:
+        ending = normalize_text(suffix)
+        if folded.endswith(ending) and len(folded) - len(ending) >= 4:
+            stem = folded[: len(folded) - len(ending)]
+            if stem not in stems:
+                stems.append(stem)
+    return stems
+
+
 def fact_tokens(fact: str) -> list[tuple[str, str]]:
     """Drug, measurement, date, and long words. Packaging and glue are ignored."""
     text = _PACK_PHRASE.sub(" ", fact)
     text = _DROP_WORDS.sub(" ", text).replace("(", " ").replace(")", " ")
     occupied: list[tuple[int, int]] = []
     tokens: list[tuple[str, str]] = []
+    for match in _NAMED_DATE.finditer(text):
+        month = _MONTH_OF.get(normalize_text(match.group(2)))
+        if not month:
+            continue
+        occupied.append((match.start(), match.end()))
+        tokens.append(("date", _canonical_date(match.group(1), month, match.group(3))))
     for match in _PHQ.finditer(text):
         occupied.append((match.start(1), match.end(1)))
         tokens.append(("scale", normalize_text(match.group(1))))
@@ -85,6 +140,13 @@ def _needle_in(needle: str, region: str) -> bool:
         day, month, year = (int(part) for part in dated.groups())
         if re.search(rf"(?<!\d)0?{day}\.0?{month}\.{year}(?!\d)", region):
             return True
+        for form in _month_forms(needle):
+            if form in region:
+                return True
+    if needle.isalpha():
+        for stem in _letter_stems(needle):
+            if re.search(rf"(?<![a-z]){re.escape(stem)}(?![a-z])", region):
+                return True
     if needle in _CHANGE and any(verb in region for verb in _CHANGE):
         return True
     clock = re.sub(r"saat(?:te|ta)$", "saat", needle)
@@ -94,29 +156,50 @@ def _needle_in(needle: str, region: str) -> bool:
     return bool(compact) and compact in region.replace(" ", "")
 
 
+def _anchor_hits(folded: str, anchor: str, start: int) -> list[tuple[int, int]]:
+    """Places the anchor can sit: the token, a month-name date, or a letter stem."""
+    found: list[tuple[int, int]] = []
+    at = folded.find(anchor, start)
+    if at >= 0:
+        found.append((at, len(anchor)))
+    for form in _month_forms(anchor):
+        alt = folded.find(form, start)
+        if alt >= 0:
+            found.append((alt, len(form)))
+    if anchor.isalpha():
+        for stem in _letter_stems(anchor):
+            match = re.search(rf"(?<![a-z]){re.escape(stem)}(?![a-z])", folded[start:])
+            if match:
+                found.append((start + match.start(), match.end() - match.start()))
+    return found
+
+
 def tokens_cover(fact: str, haystack: str) -> bool:
     tokens = fact_tokens(fact)
-    if len(tokens) < 2:
+    if not tokens:
+        return False
+    standalone = {"date", "unit", "plus", "scale", "limit", "days", "clock"}
+    if len(tokens) < 2 and tokens[0][0] not in standalone:
         return False
     folded = normalize_text(haystack)
     words = [token for kind, token in tokens if kind == "word"]
     anchor = max(words or [token for _kind, token in tokens], key=len)
     # A dose has to sit on a long drug name. A short anchor may sit further
-    # from its number ("son 2 günde" / "1,3 kg"). "Eliquis" stays tight so a
-    # Coumadin 5 mg does not satisfy an Eliquis 5 mg fact.
+    # from its number. A dose stays tied to its own drug name.
     tight = {"unit", "limit", "clock"}
     long_anchor = bool(words) and len(anchor) >= 7
     doses = [token for kind, token in tokens if kind == "unit"]
     flexible_change = len(doses) >= 2
     start = 0
     while True:
-        at = folded.find(anchor, start)
-        if at < 0:
+        hits = _anchor_hits(folded, anchor, start)
+        if not hits:
             return False
+        at, span = min(hits, key=lambda item: item[0])
         matched = True
         for kind, token in tokens:
             before, after = (8, 48) if kind in tight and long_anchor else (40, 72)
-            region = folded[max(0, at - before): at + len(anchor) + after]
+            region = folded[max(0, at - before): at + span + after]
             if token in _CHANGE and not flexible_change:
                 if token not in region:
                     matched = False

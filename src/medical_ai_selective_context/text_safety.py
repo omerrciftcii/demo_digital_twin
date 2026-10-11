@@ -6,10 +6,9 @@ prompt-injection / data grabs never see the provider. A recorded finding
 one of those: the eval expects the chart sentence, and the answer prompt
 still forbids telling the person what to take.
 
-Dose-change refusals quote a few verbatim lines. There is no model call,
-so the lines are chosen by distinctive overlap with the question, including
-a small brand alias list used only as a search key. The quoted characters
-are copied from the record.
+Dose-change refusals quote a few medication-section lines. There is no model
+call. The lines are chosen by overlap with the question and by the drug-class
+file. The quoted characters are copied from the record.
 """
 
 from __future__ import annotations
@@ -20,6 +19,8 @@ from typing import Literal
 
 from .index import normalize_text
 from .text_document import TextRecord
+from .text_relevance import drug_names, section_kind
+from .text_relevance import fold as fold_row
 
 DISCLAIMER = (
     "Bu yanıt tıbbi tanı, tedavi veya acil müdahale önerisi değildir. "
@@ -49,21 +50,16 @@ _MESSAGES = {
     ),
 }
 
-# Brand strings are retrieval keys for a refusal quote, not dosing advice.
-_ALIASES = {
-    "lasix": ("furosemid", "lasix"),
-    "maxalt": ("rizatriptan", "maxalt"),
-    "lantus": ("lantus", "glarjin"),
-    "coumadin": ("varfarin", "coumadin"),
-    "ozempic": ("semaglutid", "ozempic"),
-    "femara": ("letrozol", "femara"),
-    "deltacortril": ("prednizolon", "deltacortril"),
-    "roaccutane": ("izotretinoin", "roaccutane"),
-    "eliquis": ("apiksaban", "eliquis"),
-    "glucophage": ("metformin", "glucophage"),
-    "metformin": ("metformin", "glucophage"),
-    "majezik": ("flurbiprofen", "majezik"),
-}
+_TREATMENT_WITH_RX = (
+    "İlaç dozu, ilaca başlamak, ilacı bırakmak, atlamak, artırmak, azaltmak "
+    "ya da ilaçları birlikte kullanmak bir tedavi kararıdır; bunu söyleyemem. "
+    "Kayıttaki reçete satırını aşağıya bırakıyorum. Bunu hekiminle konuş."
+)
+_TREATMENT_WITHOUT_RX = (
+    "İlaç dozu, ilaca başlamak, ilacı bırakmak, atlamak, artırmak, azaltmak "
+    "ya da ilaçları birlikte kullanmak bir tedavi kararıdır; bunu söyleyemem. "
+    "Kayıtta bu ilaç için bir reçete satırı yok. Bunu hekiminle konuş."
+)
 
 _QUOTE_STOP = frozenset({
     "alabilir", "artirmali", "azaltmali", "baslamali", "birakip", "cikarabilir",
@@ -74,18 +70,39 @@ _QUOTE_STOP = frozenset({
 })
 
 _SELF_HARM = (
-    r"kendime zarar", r"kendimi oldur", r"intihar etmek", r"yasamak istemiyorum",
+    r"kendime zarar", r"kendimi oldur", r"intihar", r"yasamak istem",
+    r"olmek istiyor", r"canima kiymak", r"hayata son ver",
     r"\bsuicide\b", r"kill myself", r"self-harm", r"self harm",
 )
 _EMERGENCY = (
-    r"gogsumde ezici", r"gogusumde ezici", r"nefes alamiyorum", r"nefesim cok daraldi",
-    r"dudaklarim mor", r"konusamiyorum", r"sekerim\s+\d+", r"kafam karisik",
-    r"gozlerimin onunde isik", r"yuzum sisti", r"hayatimin en siddetli bas agr",
-    r"kolum uyus", r"konusmam bozul", r"bayildim", r"bilincimi kayb",
-    r"kanamam durmuyor", r"kalbim durdu",
-    # Conversational chest pressure, including "göğsüm sıkışıyor, sol koluma vuruyor".
-    r"gogs\w{0,8} sikis",
-    r"gogs\w{0,8}.{0,48}kol\w{0,10} (vuruyor|vurdu|yayil)",
+    # Chest pressure, heaviness, or crushing pain, including radiation to arm or jaw.
+    r"gog(s|us)\w{0,16}(?:\s+\w+){0,3}\s+(ezici|sikis|baski|agirlik|sikist)",
+    r"(ezici|baskici|sikisan) (agri|gogus)",
+    r"gog(s|us)\w{0,20}(agr|sikis|ezil|baski).{0,48}(kol|cene|sirt|omuz)",
+    r"(kolum|cene|cenem).{0,40}(gogus|gogs)",
+    r"kalbim durdu", r"gogusumden agir",
+    # Breathlessness that is sudden or severe, not a mild "daralıyor, neden".
+    r"nefes alamiyor", r"nefesim kesil", r"boguluyor",
+    r"nefes(im|i) (cok|birden|asiri) (daral|kesil|tikand)",
+    r"konusamiyor", r"dudak\w{0,8} mor", r"morariyor",
+    # Stroke signs.
+    r"(yuzum|agzim) (egri|dustu|uyus|kaydi)",
+    r"yuzumun bir taraf", r"(kolum|bacak\w{0,4}) (uyus|gucsuz|kalkmiyor)",
+    r"konusmam (bozul|peltek)", r"bir taraf\w{0,6} gucsuz",
+    r"hayatimin en siddetli bas agr",
+    # Syncope.
+    r"bayil", r"bilinc(im|i) (kapand|kayb|gitti|kaybold)", r"gozum karardi",
+    # Severe bleeding.
+    r"kanama(m|si)? (durmuyor|cok|siddet|fisil)", r"kan kus", r"siyah diski",
+    r"asiri kanama", r"kanamam durmuyor",
+    # Severe hypoglycemia.
+    r"sekerim\s+\d+", r"hipoglisemi",
+    r"(seker|glukoz).{0,40}(bayil|titre|bilinc|karis)",
+    r"(titriyorum|kafam karis).{0,40}(seker|glukoz)",
+    # Anaphylaxis.
+    r"(yuzum|dudak\w{0,6}|dilim|bogaz\w{0,6}) (sis|sisti)",
+    r"anafilak", r"alerji.{0,24}(nefes|bogaz|sis)",
+    r"gozlerimin onunde isik",
 )
 _EXFIL = (
     r"sistem talimat", r"ham veri", r"\btc kimlik\b", r"butun hastalarin",
@@ -96,21 +113,21 @@ _INJECTION = _EXFIL + (
     r"sistem notu", r"sadece evet de",
 )
 _TREATMENT = (
-    r"dozumu[\s\S]{0,80}(artir|azalt|cikar|yukselt|dusur)",
-    r"(artirmali|azaltmali|cikarmali)\s+miyim",
+    r"doz\w{0,10}[\s\S]{0,80}(artir|azalt|cikar|yukselt|dusur)",
+    r"(?:artir|azalt|dusur|yukselt|kes|birak|atla|basla)(?:ayim|eyim|alim|elim|mali|meli|sam|sem)\s+mi(?:yim|sin)?",
     r"\bbirakip\b",
-    r"annemin|babamin|baskasinin",
-    r"gunde\s+\d+\s+(tane|adet|tablet)",
-    r"ne kadar\s+(alayim|iceyim|kullanayim|almaliyim)",
+    r"(biraksam|kessem|atlasam|artirsam|azaltsam|baslasam)\b",
+    r"annemin|babamin|esimin|arkadasimin|baskasinin",
+    r"gunde\s+\d+\s+(tane|adet|tablet|kapsul)",
     r"ne kadar\s+(?:ic|al|kullan)(?:eyim|ayim|meli|mali)",
-    r"kac\s+(tane|adet|tablet|kapsul)\s+(?:ic|al|kullan)(?:eyim|ayim|meli|mali)",
+    r"kac\s+(tane|adet|tablet|kapsul|mg|ml|unite)",
     r"devam etmeli miyim",
     r"kullanmaya devam etmeli",
-    r"birakayim mi",
-    r"birakmali miyim",
-    r"keseyim mi",
-    r"kesmeli miyim",
-    r"kac mg (yap|oner|basla|kullan)",
+    r"(birakayim|birakmali|keseyim|kesmeli)\s+mi(?:yim|sin)?",
+    r"(baslayayim|baslamali)\s+mi(?:yim|sin)?",
+    r"(atlayabilir|icmesem|almazsam|atlamali)",
+    r"birlikte (kullan|al|ic)",
+    r"(beraber|ayni anda) (kullan|al|ic)",
     r"dozu dogrudan",
     r"guvenli oldugunu yaz",
 )
@@ -182,9 +199,7 @@ def _question_tokens(question: str) -> set[str]:
     tokens = {
         token for token in re.findall(r"[a-z0-9]{5,}", folded) if token not in _QUOTE_STOP
     }
-    for key, aliases in _ALIASES.items():
-        if key in folded:
-            tokens.update(aliases)
+    tokens.update(name for name in drug_names(question, expand_group=False) if len(name) >= 4)
     return tokens
 
 
@@ -232,23 +247,77 @@ def supporting_lines(record: TextRecord, question: str, limit: int = 6) -> list:
     return (primary + extra)[:limit]
 
 
+def _quote_body(text: str) -> str:
+    cleaned = " ".join(text.strip().split())
+    while cleaned.startswith("-"):
+        cleaned = cleaned[1:].strip()
+    return cleaned
+
+
+def _blob(text: str) -> bool:
+    folded = fold_row(text)
+    heads = sum(token in folded for token in ("sikayet", "hikaye", "bulgular", "epikriz", "ozgecmis"))
+    return heads >= 2 or ("epikriz" in folded and len(text) > 180)
+
+
+def _looks_like_prescription(text: str) -> bool:
+    folded = fold_row(text)
+    return bool(re.search(r"TABLET|KAPSÜL|KAPSUL|DAMLA|İNHALER|KALEM|SPREY", text, re.IGNORECASE)) or (
+        "recete" in folded or "mg" in folded or "unite" in folded
+    )
+
+
+def prescription_quotes(record: TextRecord, question: str, limit: int = 3) -> list:
+    """Medication-section rows for the named drug, or the latest rows when none is named."""
+    names = {name for name in drug_names(question, expand_group=False) if len(name) >= 3}
+    tokens = _question_tokens(question)
+    matched = []
+    latest = []
+    for line in record.lines:
+        if line.text.startswith("##"):
+            continue
+        if section_kind(record.sections[line.section_index].heading) != "med":
+            continue
+        text = _quote_body(line.text)
+        if not text or _blob(text) or not _looks_like_prescription(text):
+            continue
+        folded = fold_row(text)
+        hit = bool(names) and any(name in folded for name in names)
+        if not hit and tokens:
+            hit = any(_hits(token, folded) for token in tokens)
+        if hit:
+            matched.append(line)
+        else:
+            latest.append(line)
+    if names:
+        return matched[:limit]
+    return (matched or latest)[:limit]
+
+
 def render_refusal(record: TextRecord, question: str, decision: SafetyDecision) -> tuple[str, list[dict]]:
-    parts = [decision.message]
+    message = decision.message
     citations: list[dict] = []
-    if decision.include_quotes:
-        chosen = supporting_lines(record, question)
-        if chosen:
-            parts.append("Kayıtta yazan (birebir alıntı, tedavi önerisi değildir):")
-        for line in chosen:
-            section = record.sections[line.section_index]
-            parts.append(f"- {line.text} [{section.heading}]")
-            citations.append({
-                "section": section.heading,
-                "startLine": line.number,
-                "endLine": line.number,
-                "quote": line.text,
-                "marker": section.heading,
-            })
+    chosen = []
+    if decision.include_quotes and decision.reason == "treatment":
+        chosen = prescription_quotes(record, question, limit=3)
+        has_rx = any("recete" in fold_row(line.text) or "reçete" in line.text.casefold() for line in chosen)
+        message = _TREATMENT_WITH_RX if chosen and has_rx else _TREATMENT_WITHOUT_RX
+    parts = [message]
+    if chosen:
+        parts.append("Kayıtta yazan (birebir alıntı, tedavi önerisi değildir):")
+    for line in chosen:
+        section = record.sections[line.section_index]
+        text = _quote_body(line.text)
+        if not text or _blob(text):
+            continue
+        parts.append(f"- {text} [{section.heading}]")
+        citations.append({
+            "section": section.heading,
+            "startLine": line.number,
+            "endLine": line.number,
+            "quote": text,
+            "marker": section.heading,
+        })
     return "\n".join(parts), citations
 
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -19,7 +20,7 @@ import httpx
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from medical_ai_selective_context.text_eval import _latency, score_case, summarize
+from medical_ai_selective_context.text_eval import _latency, case_error, score_case, summarize
 
 DEFAULT_QUESTIONS = PROJECT_ROOT / "tests" / "fixtures" / "text" / "eval_questions.jsonl"
 DEFAULT_PATIENTS = PROJECT_ROOT / "tests" / "fixtures" / "text" / "patients"
@@ -54,10 +55,52 @@ def _numbers(rows: list[dict], key: str) -> list[float]:
     return [row[key] for row in rows if isinstance(row.get(key), (int, float))]
 
 
-def run(base_url: str, questions_path: Path, patients_dir: Path, timeout: float) -> dict:
+def _public_error(exc: Exception) -> str:
+    if isinstance(exc, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(exc, RuntimeError):
+        text = str(exc)
+        if re.fullmatch(r"[A-Za-z0-9_.:-]{1,80}", text):
+            return text
+    return type(exc).__name__
+
+
+def ask_case(client: httpx.Client, base_url: str, case: dict, record_id: str) -> dict:
+    start = time.perf_counter()
+    client_ttft = None
+    collected: list[str] = []
+    try:
+        with client.stream(
+            "POST", f"{base_url}/api/v1/text/answer",
+            json={"recordId": record_id, "question": case["question"], "stream": True},
+        ) as response:
+            if response.status_code != 200:
+                raise RuntimeError(f"answer_failed:{case['id']}:{response.status_code}")
+            for line in response.iter_lines():
+                if client_ttft is None and line.startswith("event: token"):
+                    client_ttft = round((time.perf_counter() - start) * 1000, 2)
+                collected.append(line)
+        done = None
+        for name, data in parse_events(collected):
+            if name == "done":
+                done = json.loads(data)
+        if not isinstance(done, dict):
+            raise RuntimeError(f"missing_done:{case['id']}")
+        row = score_case(case, done)
+    except (httpx.HTTPError, json.JSONDecodeError, OSError, RuntimeError, KeyError, ValueError) as exc:
+        row = case_error(case, _public_error(exc))
+    row["clientTimeToFirstTokenMs"] = client_ttft
+    row["clientTotalMs"] = round((time.perf_counter() - start) * 1000, 2)
+    return row
+
+
+def run(
+    base_url: str, questions_path: Path, patients_dir: Path, timeout: float,
+    transport: httpx.BaseTransport | None = None,
+) -> dict:
     questions = load_questions(questions_path)
     rows: list[dict] = []
-    with httpx.Client(timeout=timeout) as client:
+    with httpx.Client(timeout=timeout, transport=transport) as client:
         record_ids: dict[str, str] = {}
         for path in sorted(patients_dir.glob("*.json")):
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -68,29 +111,9 @@ def run(base_url: str, questions_path: Path, patients_dir: Path, timeout: float)
         for case in questions:
             record_id = record_ids.get(case["patient"])
             if record_id is None:
-                raise RuntimeError(f"missing_patient:{case['patient']}")
-            start = time.perf_counter()
-            client_ttft = None
-            collected: list[str] = []
-            with client.stream(
-                "POST", f"{base_url}/api/v1/text/answer",
-                json={"recordId": record_id, "question": case["question"], "stream": True},
-            ) as response:
-                if response.status_code != 200:
-                    raise RuntimeError(f"answer_failed:{case['id']}:{response.status_code}")
-                for line in response.iter_lines():
-                    if client_ttft is None and line.startswith("event: token"):
-                        client_ttft = round((time.perf_counter() - start) * 1000, 2)
-                    collected.append(line)
-            done = None
-            for name, data in parse_events(collected):
-                if name == "done":
-                    done = json.loads(data)
-            if not isinstance(done, dict):
-                raise RuntimeError(f"missing_done:{case['id']}")
-            row = score_case(case, done)
-            row["clientTimeToFirstTokenMs"] = client_ttft
-            row["clientTotalMs"] = round((time.perf_counter() - start) * 1000, 2)
+                row = case_error(case, f"missing_patient:{case['patient']}")
+            else:
+                row = ask_case(client, base_url, case, record_id)
             rows.append(row)
     summary = summarize(rows)
     summary["clientLatencyMs"] = {
@@ -112,8 +135,8 @@ def main() -> int:
     except RuntimeError as exc:
         print(f"Evaluation failed ({exc}).", file=sys.stderr)
         return 1
-    except (OSError, httpx.HTTPError, json.JSONDecodeError, KeyError):
-        print("Evaluation failed.", file=sys.stderr)
+    except (OSError, httpx.HTTPError, json.JSONDecodeError, KeyError) as exc:
+        print(f"Evaluation failed ({type(exc).__name__}).", file=sys.stderr)
         return 1
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     work_dir = PROJECT_ROOT / "data" / "evaluation" / f"text-run-{run_id}"
@@ -125,6 +148,8 @@ def main() -> int:
         {
             "id": row["id"], "status": row["status"], "expected": row["expectedStatus"],
             "missingFacts": row["missingFacts"],
+            "error": row.get("error"),
+            "validationError": row.get("validationError"),
         }
         for row in report["cases"]
         if not row["statusOk"] or not row["factsOk"]

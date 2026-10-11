@@ -15,7 +15,7 @@ from medical_ai_selective_context.text_document import (
     TextRecordStore,
     parse_cco_text,
 )
-from medical_ai_selective_context.text_eval import score_case, summarize
+from medical_ai_selective_context.text_eval import score_case, summarize, tokens_cover
 from medical_ai_selective_context.text_grounding import ground_answer
 from medical_ai_selective_context.text_llm import (
     ModelError,
@@ -24,7 +24,12 @@ from medical_ai_selective_context.text_llm import (
     ThinkFilter,
     chat_body,
 )
-from medical_ai_selective_context.text_qa import SYSTEM_PROMPT, build_messages
+from medical_ai_selective_context.text_qa import (
+    SYSTEM_PROMPT,
+    TextAnswerer,
+    build_messages,
+    quote_allergy,
+)
 from medical_ai_selective_context.text_safety import classify_question, render_refusal
 
 ROOT = Path(__file__).parents[1]
@@ -196,8 +201,10 @@ def test_chat_body_stays_portable():
     routed = chat_body(pinned, [])
     assert routed["provider"]["zdr"] is True
     assert routed["provider"]["data_collection"] == "deny"
+    assert routed["provider"]["allow_fallbacks"] is True
     assert routed["reasoning"] == {"enabled": False}
     assert "response_format" not in routed
+    assert "require_parameters" not in routed["provider"]
 
 
 def test_zdr_and_bool_env(monkeypatch):
@@ -432,6 +439,7 @@ def test_score_counts_status_facts_and_critical_misses():
     assert summary["criticalFailures"] == ["p01-q02"]
     assert summary["modelCalls"] == 1
     assert summary["factCoverage"] == 0.5
+    assert summary["exactFactCoverage"] == 0.5
 
 
 def test_store_reload_does_not_trust_a_rewritten_label(tmp_path):
@@ -447,3 +455,271 @@ def test_store_reload_does_not_trust_a_rewritten_label(tmp_path):
     reloaded = store.get(record.id)
     assert reloaded is not None
     assert reloaded.data_class == "real"
+
+
+def test_fallbacks_stay_in_zdr_and_qwen_thinking_stays_off():
+    qwen = TextModelSettings(
+        api_key="k", base_url="https://openrouter.ai/api/v1", model="qwen/qwen3.5-9b",
+        require_zdr=True, reasoning=None, allow_fallbacks=True, disable_thinking="auto",
+    )
+    body = chat_body(qwen, [])
+    assert body["provider"]["allow_fallbacks"] is True
+    assert body["provider"]["zdr"] is True
+    assert body["provider"]["data_collection"] == "deny"
+    assert body["reasoning"] == {"enabled": False}
+    llama = TextModelSettings(
+        api_key="k", base_url="https://openrouter.ai/api/v1",
+        model="meta-llama/llama-3.1-8b-instruct", require_zdr=True, reasoning=None,
+        allow_fallbacks=False, provider="DeepInfra", disable_thinking="auto",
+    )
+    pinned = chat_body(llama, [])
+    assert pinned["provider"]["allow_fallbacks"] is False
+    assert pinned["provider"]["only"] == ["DeepInfra"]
+    assert "reasoning" not in pinned
+    forced = TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="Qwen/Qwen3-8B",
+        require_zdr=False, reasoning=None, disable_thinking="true",
+    )
+    local = chat_body(forced, [])
+    assert local["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "reasoning" not in local
+    override = TextModelSettings(
+        api_key="k", base_url="https://openrouter.ai/api/v1", model="qwen/qwen3.5-9b",
+        require_zdr=True, reasoning=True, disable_thinking="auto",
+    )
+    assert chat_body(override, [])["reasoning"] == {"enabled": True}
+
+
+def test_small_model_format_keeps_real_numbers_and_drops_invented_ones():
+    record = _tiny("Giriş.\n\n## Laboratuvar (hastane)\n- eGFR 41 mL/dk (04.08.2026).\n")
+    bold = ground_answer(
+        "**DURUM: YANIT**\nSon eGFR 41 mL/dk (04.08.2026).\n",
+        record,
+    )
+    assert bold.ok and bold.status == "answered"
+    assert bold.citations[0]["section"] == "Laboratuvar (hastane)"
+    bare = ground_answer("Son eGFR 41 mL/dk (04.08.2026).\n", record)
+    assert bare.ok and bare.citations
+    wide = ground_answer(
+        "DURUM: YANIT\nSon eGFR 41 mL/dk (04.08.2026). 【Laboratuvar (hastane)】\n",
+        record,
+    )
+    assert wide.ok and wide.citations[0]["section"] == "Laboratuvar (hastane)"
+    mixed = ground_answer(
+        "DURUM: YANIT\n"
+        "Son eGFR 41 mL/dk (04.08.2026). [Laboratuvar (hastane)]\n"
+        "Ayrıca 999 mg uydurdum. Bu 3 yıl önceydi.\n",
+        record,
+    )
+    assert mixed.ok
+    assert "41 mL/dk" in mixed.answer
+    assert "999" not in mixed.answer
+    assert "yıl önce" not in mixed.answer
+
+
+def test_packaging_words_are_not_a_clinical_miss():
+    eliquis = score_case(
+        {
+            "patient": "patient-01", "id": "p01-q03", "question": "q",
+            "expected_status": "answered", "critical": True,
+            "expected_facts": ["ELIQUIS 5 MG 56 FİLM TABLET"],
+        },
+        {"status": "answered", "answer": "Eliquis 5 mg başlandı.", "citations": [], "metrics": {}},
+    )
+    assert eliquis["factsOk"] is True
+    assert eliquis["exactFactsFound"] == 0
+    assert eliquis["criticalFailure"] is False
+    borrowed = score_case(
+        {
+            "patient": "patient-01", "id": "p01-q03", "question": "q",
+            "expected_status": "answered", "critical": True,
+            "expected_facts": ["ELIQUIS 5 MG 56 FİLM TABLET"],
+        },
+        {
+            "status": "answered",
+            "answer": "Coumadin 5 mg kesildi, Eliquis başlandı.",
+            "citations": [], "metrics": {},
+        },
+    )
+    assert borrowed["factsOk"] is False
+    stopped = "letrozol 15.09.2026 tarihinde kesildi"
+    assert tokens_cover("letrozol 15.09.2026 itibarıyla kesildi", stopped)
+    limit = "rizatriptan 10 mg, 24 saatte en fazla 2"
+    assert tokens_cover("rizatriptan 10 mg (24 saatte en fazla 2)", limit)
+    assert not tokens_cover("09.09.2015", "2015 yılında")
+
+
+def test_ibuprofen_question_quotes_the_nsaid_line_instead_of_giving_up(tmp_path):
+    store = TextRecordStore(tmp_path)
+    record, _created = store.import_payload(_load(PATIENTS / "patient-02.json"))
+    assert record.data_class == "synthetic"
+    rescued = quote_allergy(record, "Ağrım var, ibuprofen alabilir miyim?")
+    assert rescued is not None
+    assert rescued.status == "answered"
+    assert "NSAİİ" in rescued.answer
+    assert quote_allergy(record, "Son tepe akım değerim kaç?") is None
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        text = "DURUM: BİLGİ_YOK\nKayıtta bu ilaç yok.\n"
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"},
+            content=_sse(text, body["model"]),
+        )
+
+    client = TextModelClient(TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="local-model",
+        require_zdr=False,
+    ), httpx.MockTransport(handler))
+    result = asyncio.run(TextAnswerer(client).answer(
+        record, "Ağrım var, ibuprofen alabilir miyim?",
+    ))
+    assert result["status"] == "answered"
+    assert "Aspirin ve diğer NSAİİ'ler" in result["answer"]
+    assert "rawOutput" not in result
+
+
+def test_blocked_answer_stores_redacted_model_text(tmp_path):
+    store = TextRecordStore(tmp_path)
+    record, _created = store.import_payload(_load(PATIENTS / "patient-01.json"))
+    assert record.data_class == "synthetic"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        text = (
+            "DURUM: YANIT\nUydurdum 999 mg. [Laboratuvar (hastane)]\n"
+            "No 12345678901\n"
+        )
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"},
+            content=_sse(text, body["model"]),
+        )
+
+    client = TextModelClient(TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="local-model",
+        require_zdr=False,
+    ), httpx.MockTransport(handler))
+    result = asyncio.run(TextAnswerer(client).answer(record, "Son eGFR değerim kaç?"))
+    assert result["status"] == "validation_failed"
+    assert "999" in result["rawOutput"]
+    assert "12345678901" not in result["rawOutput"]
+    assert "[gizlendi]" in result["rawOutput"]
+
+
+def test_overloaded_provider_is_retried_and_reasoning_is_not_the_answer():
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        body = json.loads(request.content)
+        if calls["n"] == 1:
+            return httpx.Response(429, json={"error": {"code": 429, "message": "engine_overloaded"}})
+        frames = [
+            {"model": body["model"], "choices": [{
+                "delta": {"reasoning_content": "gizli plan", "content": " \n"},
+                "finish_reason": None,
+            }]},
+            {"model": body["model"], "choices": [{
+                "delta": {"content": "DURUM: YANIT\nOldu.\n"},
+                "finish_reason": "length",
+            }]},
+        ]
+        raw = "".join(
+            "data: " + json.dumps(frame, ensure_ascii=False) + "\n\n" for frame in frames
+        )
+        raw += "data: [DONE]\n\n"
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, content=raw.encode(),
+        )
+
+    settings = TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="local-model",
+        require_zdr=False, retry_max=2, retry_backoff_seconds=0,
+    )
+    client = TextModelClient(settings, httpx.MockTransport(handler))
+
+    async def collect():
+        return [event async for event in client.complete([{"role": "user", "content": "q"}])]
+
+    events = asyncio.run(collect())
+    assert calls["n"] == 2
+    assert events[-1]["finishReason"] == "length"
+    assert "gizli" not in events[-1]["text"]
+    assert "DURUM: YANIT" in events[-1]["text"]
+
+    def reasoning_only(_request: httpx.Request) -> httpx.Response:
+        frame = {"model": "local-model", "choices": [{
+            "delta": {"reasoning_content": "sadece düşünce", "content": "   "},
+            "finish_reason": "stop",
+        }]}
+        raw = "data: " + json.dumps(frame) + "\n\ndata: [DONE]\n\n"
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, content=raw.encode(),
+        )
+
+    empty = TextModelClient(TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="local-model",
+        require_zdr=False, retry_max=0,
+    ), httpx.MockTransport(reasoning_only))
+
+    async def boom():
+        return [event async for event in empty.complete([])]
+
+    with pytest.raises(ModelError, match="reasoning_only"):
+        asyncio.run(boom())
+
+
+def test_eval_records_a_timeout_and_still_writes_the_other_cases(tmp_path):
+    import importlib.util
+
+    patients = tmp_path / "patients"
+    patients.mkdir()
+    (patients / "patient-01.json").write_text("{}\n", encoding="utf-8")
+    questions = tmp_path / "questions.jsonl"
+    rows = [
+        {
+            "patient": "patient-01", "id": "slow", "question": "a",
+            "expected_status": "answered", "critical": True, "expected_facts": ["41"],
+        },
+        {
+            "patient": "patient-01", "id": "ok", "question": "b",
+            "expected_status": "answered", "critical": False, "expected_facts": ["41 mL"],
+        },
+    ]
+    questions.write_text(
+        "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8",
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/text-records"):
+            return httpx.Response(201, json={"recordId": "rec"})
+        body = json.loads(request.content)
+        if body["question"] == "a":
+            raise httpx.ReadTimeout("slow", request=request)
+        done = {
+            "status": "validation_failed", "answer": "gizlendi", "citations": [],
+            "metrics": {"modelCalls": 1, "timeToFirstTokenMs": 3, "totalMs": 9},
+            "rawOutput": "ham model", "validation": {"error": "missing_status"},
+        }
+        payload = "event: done\ndata: " + json.dumps(done) + "\n\n"
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, content=payload.encode(),
+        )
+
+    spec = importlib.util.spec_from_file_location(
+        "evaluate_text_under_test", ROOT / "scripts" / "evaluate_text.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    report = module.run(
+        "http://127.0.0.1:8091", questions, patients, 5,
+        transport=httpx.MockTransport(handler),
+    )
+    assert report["summary"]["questions"] == 2
+    assert report["summary"]["caseErrors"] == 1
+    assert report["cases"][0]["error"] == "timeout"
+    assert report["cases"][0]["criticalFailure"] is True
+    assert report["cases"][1]["rawOutput"] == "ham model"
+    assert report["cases"][1]["validationError"] == "missing_status"
+    assert report["cases"][1]["statusOk"] is False

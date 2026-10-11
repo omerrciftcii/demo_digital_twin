@@ -1,12 +1,13 @@
 """One streaming chat completion on any OpenAI-compatible server.
 
-No response_format, no provider routing, no reasoning field unless the
-operator set LLM_REASONING. OpenRouter zero-data-retention is sent only to
+No response_format. OpenRouter zero-data-retention is sent only to
 openrouter.ai, and a ZDR request aimed at another host fails closed.
+Fallbacks stay inside that ZDR set unless the operator pins a provider.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import os
@@ -23,6 +24,12 @@ _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
 _THINK_OPEN = "<think>"
 _THINK_CLOSE = "</think>"
+_RETRY_STATUS = {408, 429, 502, 503, 529}
+_THINKING_NAMES = ("qwen3", "qwq", "deepseek-r1")
+
+
+class _Retryable(Exception):
+    """HTTP 429/5xx before any token. The caller retries; the message stays empty."""
 
 
 class ModelError(RuntimeError):
@@ -77,9 +84,15 @@ class TextModelSettings:
     require_zdr: bool = True
     allow_external_real_data: bool = False
     answer_max_tokens: int = 800
-    # None omits the field. Sending reasoning to a server that does not know it
-    # is how a "portable" client stops being portable.
+    # None omits an explicit override. Auto still disables thinking for known
+    # reasoning models on OpenRouter; LLM_REASONING wins when it is set.
     reasoning: bool | None = None
+    allow_fallbacks: bool = True
+    retry_max: int = 2
+    retry_backoff_seconds: float = 0.75
+    # auto | true | false. auto disables thinking only for known reasoning
+    # model names on openrouter.ai.
+    disable_thinking: str = "auto"
 
     @classmethod
     def from_env(cls) -> TextModelSettings:
@@ -100,6 +113,10 @@ class TextModelSettings:
             allow_external_real_data=env_bool("ALLOW_EXTERNAL_REAL_DATA", False),
             answer_max_tokens=int(env_number("TEXT_ANSWER_MAX_TOKENS", 800, 128, 4000, integer=True)),
             reasoning=env_optional_bool("LLM_REASONING"),
+            allow_fallbacks=env_bool("OPENROUTER_ALLOW_FALLBACKS", True),
+            retry_max=int(env_number("LLM_RETRY_MAX", 2, 0, 5, integer=True)),
+            retry_backoff_seconds=env_number("LLM_RETRY_BACKOFF_SECONDS", 0.75, 0, 30, integer=False),
+            disable_thinking=_thinking_mode("LLM_DISABLE_THINKING"),
         )
 
 
@@ -115,6 +132,36 @@ def _is_localhost(base_url: str) -> bool:
     return _hostname(base_url) in {"127.0.0.1", "localhost", "::1"}
 
 
+def _thinking_mode(name: str) -> str:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return "auto"
+    value = raw.strip().lower()
+    if value in {"auto"}:
+        return "auto"
+    if value in _TRUE:
+        return "true"
+    if value in _FALSE:
+        return "false"
+    raise ModelError("invalid_thinking_setting")
+
+
+def _known_thinking_model(model: str) -> bool:
+    name = model.lower()
+    return any(token in name for token in _THINKING_NAMES)
+
+
+def _disable_thinking(settings: TextModelSettings) -> bool:
+    """True only when we will send reasoning.enabled=false. Explicit LLM_REASONING wins."""
+    if settings.reasoning is not None or not _is_openrouter(settings.base_url):
+        return False
+    if settings.disable_thinking == "true":
+        return True
+    if settings.disable_thinking == "false":
+        return False
+    return _known_thinking_model(settings.model)
+
+
 def chat_body(settings: TextModelSettings, messages: list[dict[str, str]]) -> dict[str, Any]:
     """Portable chat-completions body. Patient text is already first in messages."""
     body: dict[str, Any] = {
@@ -126,9 +173,18 @@ def chat_body(settings: TextModelSettings, messages: list[dict[str, str]]) -> di
     }
     if settings.reasoning is not None:
         body["reasoning"] = {"enabled": settings.reasoning}
+    elif _disable_thinking(settings):
+        body["reasoning"] = {"enabled": False}
+    elif (
+        settings.disable_thinking == "true"
+        and not _is_openrouter(settings.base_url)
+    ):
+        # vLLM/Qwen chat templates. Sent only when the operator asked; auto
+        # stays silent so a server that does not know the field is not 400'd.
+        body["chat_template_kwargs"] = {"enable_thinking": False}
     if _is_openrouter(settings.base_url):
         provider: dict[str, Any] = {
-            "allow_fallbacks": False,
+            "allow_fallbacks": settings.allow_fallbacks,
             "data_collection": "deny",
             "zdr": settings.require_zdr,
         }
@@ -201,14 +257,44 @@ def _usage(raw: Any) -> dict[str, float]:
     return usage
 
 
-def _delta_text(payload: dict[str, Any]) -> tuple[str, str | None, str | None, dict[str, float]]:
+def _has_reasoning(container: dict[str, Any]) -> bool:
+    for key in ("reasoning", "reasoning_content"):
+        value = container.get(key)
+        if isinstance(value, str) and value.strip():
+            return True
+    return bool(container.get("reasoning_details"))
+
+
+def _payload_overloaded(payload: Any) -> bool:
+    if not isinstance(payload, dict) or not isinstance(payload.get("error"), dict):
+        return False
+    error = payload["error"]
+    code = error.get("code")
+    message = str(error.get("message") or "").lower()
+    return code in {429, 502, 503, 529} or "overload" in message or "rate limit" in message
+
+
+def _emit(shown: str, opened: bool) -> str:
+    """Drop a leading run of whitespace. Reasoning streams are often nothing else."""
+    if not shown:
+        return ""
+    if opened:
+        return shown
+    return shown.lstrip()
+
+
+def _delta_text(
+    payload: dict[str, Any],
+) -> tuple[str, str | None, str | None, dict[str, float], bool]:
     choices = payload.get("choices")
     text = ""
     finish = None
+    reasoning = False
     if isinstance(choices, list) and choices and isinstance(choices[0], dict):
         choice = choices[0]
         delta = choice.get("delta") if isinstance(choice.get("delta"), dict) else {}
         message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
+        reasoning = _has_reasoning(delta) or _has_reasoning(message)
         content = delta.get("content")
         if content is None:
             content = message.get("content")
@@ -218,7 +304,7 @@ def _delta_text(payload: dict[str, Any]) -> tuple[str, str | None, str | None, d
         if isinstance(finish_reason, str):
             finish = finish_reason
     model = payload.get("model") if isinstance(payload.get("model"), str) else None
-    return text, model, finish, _usage(payload.get("usage"))
+    return text, model, finish, _usage(payload.get("usage")), reasoning
 
 
 class TextModelClient:
@@ -236,6 +322,9 @@ class TextModelClient:
             "host": _hostname(self.settings.base_url),
             "requireZdr": self.settings.require_zdr,
             "reasoning": self.settings.reasoning,
+            "allowFallbacks": self.settings.allow_fallbacks,
+            "retryMax": self.settings.retry_max,
+            "disableThinking": self.settings.disable_thinking,
             "externalRealDataAllowed": self.settings.allow_external_real_data,
             "answerMaxTokens": self.settings.answer_max_tokens,
         }
@@ -261,7 +350,26 @@ class TextModelClient:
         return {"Authorization": f"Bearer {token}"}
 
     async def complete(self, messages: list[dict[str, str]]) -> AsyncIterator[dict[str, Any]]:
-        """Yield token events, then one end event. Raises ModelError on a bad stream."""
+        """Yield token events, then one end event. Raises ModelError on a bad stream.
+
+        A 429 or overloaded provider is retried with backoff only before the
+        first token. A stream that already spoke is not replayed.
+        """
+        delay = self.settings.retry_backoff_seconds
+        for attempt in range(self.settings.retry_max + 1):
+            try:
+                async for event in self._attempt(messages):
+                    yield event
+                return
+            except _Retryable:
+                if attempt >= self.settings.retry_max:
+                    break
+                if delay > 0:
+                    await asyncio.sleep(delay)
+                delay = min(delay * 2, 8.0)
+        raise ModelError("model_request_failed")
+
+    async def _attempt(self, messages: list[dict[str, str]]) -> AsyncIterator[dict[str, Any]]:
         body = chat_body(self.settings, messages)
         started = perf_counter()
         ttft_ms: float | None = None
@@ -270,20 +378,30 @@ class TextModelClient:
         reported_model: str | None = None
         finish_reason: str | None = None
         usage: dict[str, float] = {}
+        saw_reasoning = False
+        opened = False
         try:
             async with httpx.AsyncClient(
                 timeout=self.settings.timeout_seconds, transport=self._transport,
             ) as client, client.stream(
                 "POST", self._endpoint(), json=body, headers=self._headers(),
             ) as response:
+                if response.status_code in _RETRY_STATUS:
+                    await response.aread()
+                    raise _Retryable()
                 if response.status_code >= 400:
                     await response.aread()
                     raise ModelError("model_request_failed")
                 content_type = response.headers.get("content-type", "")
                 if "application/json" in content_type:
                     payload = json.loads((await response.aread()).decode("utf-8"))
-                    text, reported_model, finish_reason, usage = _read_json_completion(payload)
-                    shown = visible.feed(text) + visible.finish()
+                    if _payload_overloaded(payload):
+                        raise _Retryable()
+                    text, reported_model, finish_reason, usage, saw_reasoning = _read_json_completion(
+                        payload,
+                    )
+                    shown = _emit(visible.feed(text) + visible.finish(), opened)
+                    opened = opened or bool(shown)
                     if shown:
                         ttft_ms = round((perf_counter() - started) * 1000, 2)
                         parts.append(shown)
@@ -303,27 +421,33 @@ class TextModelClient:
                             raise ModelError("invalid_model_json") from exc
                         if not isinstance(payload, dict):
                             raise ModelError("invalid_model_json")
-                        text, model, finish, chunk_usage = _delta_text(payload)
+                        if _payload_overloaded(payload) and not parts:
+                            raise _Retryable()
+                        if isinstance(payload.get("error"), dict):
+                            raise ModelError("model_request_failed")
+                        text, model, finish, chunk_usage, chunk_reasoning = _delta_text(payload)
+                        saw_reasoning = saw_reasoning or chunk_reasoning
                         if model:
                             reported_model = model
                         if finish:
                             finish_reason = finish
                         if chunk_usage:
                             usage = chunk_usage
-                        shown = visible.feed(text)
+                        shown = _emit(visible.feed(text), opened)
                         if not shown:
                             continue
+                        opened = True
                         parts.append(shown)
                         if ttft_ms is None:
                             ttft_ms = round((perf_counter() - started) * 1000, 2)
                         yield {"type": "token", "text": shown}
-        except ModelError:
+        except (ModelError, _Retryable):
             raise
         except httpx.TimeoutException as exc:
             raise ModelError("model_timeout") from exc
         except (httpx.HTTPError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
             raise ModelError("model_request_failed") from exc
-        tail = visible.finish()
+        tail = _emit(visible.finish(), opened)
         if tail:
             parts.append(tail)
             if ttft_ms is None:
@@ -331,8 +455,10 @@ class TextModelClient:
             yield {"type": "token", "text": tail}
         full = "".join(parts).strip()
         if not full:
-            raise ModelError("invalid_model_json")
-        if finish_reason not in {None, "stop"}:
+            raise ModelError("reasoning_only" if saw_reasoning else "invalid_model_json")
+        # length means the cap was hit. Grounding still sees the text; a cut-off
+        # number fails there. Other stop reasons are not a usable answer.
+        if finish_reason not in {None, "stop", "length"}:
             raise ModelError("model_response_incomplete")
         if reported_model is not None:
             expected = self.settings.model.split(":", 1)[0].lower()
@@ -350,15 +476,18 @@ class TextModelClient:
         }
 
 
-def _read_json_completion(payload: Any) -> tuple[str, str | None, str | None, dict[str, float]]:
+def _read_json_completion(
+    payload: Any,
+) -> tuple[str, str | None, str | None, dict[str, float], bool]:
     if not isinstance(payload, dict) or not isinstance(payload.get("choices"), list):
         raise ModelError("invalid_model_json")
     choice = payload["choices"][0]
     if not isinstance(choice, dict) or not isinstance(choice.get("message"), dict):
         raise ModelError("invalid_model_json")
-    content = choice["message"].get("content")
+    message = choice["message"]
+    content = message.get("content")
     if not isinstance(content, str):
         raise ModelError("invalid_model_json")
     model = payload.get("model") if isinstance(payload.get("model"), str) else None
     finish = choice.get("finish_reason") if isinstance(choice.get("finish_reason"), str) else "stop"
-    return content, model, finish, _usage(payload.get("usage"))
+    return content, model, finish, _usage(payload.get("usage")), _has_reasoning(message)

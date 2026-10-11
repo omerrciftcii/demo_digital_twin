@@ -45,7 +45,11 @@ Gerçek (fixture hash'i tutmayan) kayıt, `ALLOW_EXTERNAL_REAL_DATA=true` olmada
 
 `done` gövdesi yetkilidir. Token olayları modelin ham akışıdır; sayı kontrolü bitince `done.answer` onları geçersiz kılabilir. `metrics.modelCalls`, `metrics.timeToFirstTokenMs` (sağlayıcıda ilk görünen token) ve `metrics.totalMs` döner.
 
-İstek gövdesinde `response_format` yoktur. `reasoning` yalnız `LLM_REASONING` doluysa gider. `provider.zdr` yalnız `openrouter.ai` için gider. ZDR açıkken başka host reddedilir (`zdr_requires_openrouter`).
+İstek gövdesinde `response_format` yoktur. `provider.zdr` ve `provider.data_collection=deny` yalnız `openrouter.ai` için gider. ZDR açıkken başka host reddedilir (`zdr_requires_openrouter`).
+
+`OPENROUTER_ALLOW_FALLBACKS` varsayılanı `true`: yedek sağlayıcı ZDR ve veri toplamama şartının içinde kalır. `false` tek sağlayıcıya kilitler; o sağlayıcı 429 verirse tur boşa gider. `OPENROUTER_PROVIDER` doluysa `only` yine o sağlayıcıyı sabitler. 429, 502, 503 ve 529, ilk tokenden önce `LLM_RETRY_MAX` (varsayılan 2) kez, `LLM_RETRY_BACKOFF_SECONDS` (varsayılan 0.75, ikiye katlanır) bekleyerek yeniden denenir.
+
+`LLM_DISABLE_THINKING` varsayılanı `auto`: OpenRouter'da model adında `qwen3`, `qwq` veya `deepseek-r1` varsa `reasoning.enabled=false` gider. `true` OpenRouter'da her modele kapatır; OpenRouter olmayan sunucuda `chat_template_kwargs.enable_thinking=false` gönderir. `false` hiç göndermez. `LLM_REASONING` doluysa o kazanır ve düşünme alanı ayrıca eklenmez. Akıştaki `reasoning` / `reasoning_content` yanıta yazılmaz. Yalnız boşluk veya düşünce gelirse durum `reasoning_only` olur; harness o soruyu kaydedip devam eder.
 
 ## Eval
 
@@ -59,8 +63,11 @@ export LLM_MODEL="qwen/qwen3.5-9b"
 export LLM_BASE_URL="https://openrouter.ai/api/v1"
 export OPENROUTER_REQUIRE_ZDR=true
 export ALLOW_EXTERNAL_REAL_DATA=false
-# LLM_REASONING boş kalsın. Sunucu alanı tanımıyorsa göndermeyin.
+# Qwen3 için auto, reasoning.enabled=false gönderir. LLM_REASONING doluysa o kazanır.
 unset LLM_REASONING
+export LLM_DISABLE_THINKING=auto
+export OPENROUTER_ALLOW_FALLBACKS=true
+export LLM_RETRY_MAX=2
 export TEXT_ANSWER_MAX_TOKENS=800
 export LLM_TIMEOUT_SECONDS=90
 
@@ -73,7 +80,9 @@ Başka bir kabukta:
 python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 ```
 
-Sorular `tests/fixtures/text/eval_questions.jsonl` (40). Çıkış kodu: kritik hata varsa 2, harness hatası 1, değilse 0. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır. Rapor soru kimliği, durum, eksik alt dizge, sunucu ve istemci gecikmesi, model çağrı sayısı tutar.
+Sorular `tests/fixtures/text/eval_questions.jsonl` (40). Çıkış kodu: kritik hata varsa 2, hasta içe aktarma veya bağlantı kurulumu bozulursa 1, değilse 0. Tek sorunun zaman aşımı veya bozuk SSE'si raporu düşürmez; o satıra `error` yazılır ve koşu sürer. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır.
+
+`factCoverage` ilaç, doz, tarih ve yük taşıyan sözcükler bir aradaysa sayar. `exactFactCoverage` eski alt dizge eşleşmesidir. Ambalaj (`56 FİLM TABLET`) ve `itibarıyla` tek başına kaçırılmaz; doz veya tarih yoksa yine kaçar. `validation_failed` ve modelden gelen `safety_refusal` satırında kısaltılmış `rawOutput` durur (düşünce bloğu ve 11 haneli numara silinir). Başarılı yanıtta ham metin tutulmaz.
 
 Yerel vLLM (48 GB L40S dahil, OpenAI uyumlu):
 
@@ -87,7 +96,7 @@ python -m uvicorn medical_ai_selective_context.main:app --host 127.0.0.1 --port 
 python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 ```
 
-`LLM_MODEL` ne ise o gider. Sağlayıcıya özel alan eklenmez. Düşünen modeller `<think>` bloğunu yanıtın dışında bırakır; yine de TTFT'yi şişirmemek için düşünmeyi sunucu tarafında kapatmak daha ucuzdur. Bunu ancak sunucu tanıyorsa `LLM_REASONING=false` ile isteyin.
+`LLM_MODEL` ne ise o gider. Düşünen modellerde `<think>` bloğu ve `reasoning_content` yanıtın dışında kalır. vLLM üzerinde Qwen3 düşünmesini kapatmak için `LLM_DISABLE_THINKING=true` kullanın; `auto` yerel sunucuya bu alanı göndermez.
 
 Mock sınamalar anahtarsızdır:
 

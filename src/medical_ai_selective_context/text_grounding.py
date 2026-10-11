@@ -502,4 +502,20 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     if status == "answered" and not citations:
         return GroundingResult(False, "validation_failed", "", [], "missing_citation")
     answer = body if len(kept) == sentence_count and not hide_markers and not moved else "\n".join(kept)
-    return GroundingResult(True, status, answer.strip(), citations)
+    answer = answer.strip()
+    if status == "answered" and _absence_only(answer):
+        status = "insufficient_evidence"
+    return GroundingResult(True, status, answer, citations)
+
+
+_ABSENCE = (
+    "bilinmiyor", "kayitta yok", "kayitta bulunmuyor", "planlandi", "bulunamadi", "bilgi yok",
+)
+
+
+def _absence_only(answer: str) -> bool:
+    """A supported answer that only says the fact is missing or still planned."""
+    if _numbers(answer) or _ICD.search(answer):
+        return False
+    folded = normalize_text(answer)
+    return any(phrase in folded for phrase in _ABSENCE)

@@ -236,7 +236,7 @@ def conversation_issues(answer: str, status: str) -> list[str] | None:
         return None
     body = clinical_body(answer)
     issues: list[str] = []
-    if len(body) < 30 or len(body) > 1200:
+    if len(body) < 30 or len(body) > 4000:
         issues.append("length")
     sentences = [
         part.strip() for part in re.split(r"\n+|(?<=[.!?])\s+", body) if part.strip()

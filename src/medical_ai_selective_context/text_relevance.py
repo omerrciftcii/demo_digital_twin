@@ -296,6 +296,33 @@ def lab_rows(record: TextRecord) -> list[str]:
     return rows
 
 
+def relevant_sections(record: TextRecord, question: str) -> list:
+    """Sections that share the question's words, highest overlap first.
+
+    Each section is returned whole. Nothing inside a hit section is clipped.
+    """
+    terms = question_terms(question)
+    names = drug_names(question)
+    search_terms = list(dict.fromkeys([*terms, *names]))
+    ranked: list[tuple[int, int]] = []
+    for index, section in enumerate(record.sections):
+        score = score_text(section.text, search_terms)
+        if names and any(
+            _name_in(name, fold(section.text), _terms_in(section.text)) for name in names
+        ):
+            score += 2
+        if score > 0:
+            ranked.append((score, index))
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return [record.sections[index] for _score, index in ranked]
+
+
+def relevant_context(record: TextRecord, question: str) -> str:
+    """Full text of every overlapping section. Empty when nothing overlaps."""
+    parts = [section.text.strip() for section in relevant_sections(record, question) if section.text.strip()]
+    return "\n\n".join(parts)
+
+
 def matched_lab_rows(record: TextRecord, question: str) -> list[str]:
     """Lab rows the question's words actually touch."""
     selected = select_rows(record, question, limit=4)

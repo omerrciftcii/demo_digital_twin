@@ -15,9 +15,9 @@
 
 `text` en fazla 48 KB. Tarih zaman dilimi olmadan gelirse kayıt reddedilir; eksik alan uydurulmaz. `tests/fixtures/text/example-facts.json` ile `example-text.md` aynı metnin iki yüzü. `patients/patient-01.json` … `patient-07.json` sentetik hastalardır (yaklaşık 20–30 KB). `patient-06` yeni taburcu olmuş stent hastası, `patient-07` yoğun bakımdan yeni çıkmış sepsis/pnömoni hastasıdır. `patient-08` aynı üslupta kısa bir sentetik kayıttır: tanı, anemi, karın yakınması, karaciğer ve pıhtı soruları. Gerçek hasta metni yoktur.
 
-## Neden parça parça arama yok
+## Bağlam
 
-20–30 KB, ucuz bir 32k bağlamına sığar. Bölüm seçmek ikinci bir model çağrısı ya da bir kelime kaçırınca yanlış `BİLGİ_YOK` demektir. Metnin tamamı ilk kullanıcı iletisindedir; soru son iletidir. Sistem yönergesi ve kayıt, aynı hasta için sorudan soruya değişmez — ön ek önbelleği buna göre durur. Atıf satır numarası modelden istenmez; sunucu `[Bölüm]` veya `[Bölüm 12.09.2026]` işaretini bölüme ve satıra çözer.
+20–30 KB, 32k bağlamına sığar. İlk kullanıcı iletisi kaydın tamamıdır ve aynı hasta için önbellekte kalır. Soru iletisi, soruyla örtüşen her bölümü bütünüyle tekrarlar; bölümün içi kesilmez. Örtüşme yoksa model kaydın tamamına bakar. Atıf satır numarası modelden istenmez; sunucu `[Bölüm]` işaretini bölüme ve satıra çözer. Model adı kodda sabit değildir; `LLM_MODEL` yeter.
 
 ## Yanıt biçimi
 
@@ -30,9 +30,9 @@ Son eGFR 41 mL/dk/1,73 m² (18.09.2026). [Laboratuvar (hastane) 18.09.2026]
 
 `DURUM: BİLGİ_YOK` kayıttaki "yok / bilinmiyor / planlandı" cümlesi içindir. Sayı, tarih ve birim, atıf yapılan bölümde birebir yoksa yanıt gösterilmez (`validation_failed`). Kısaltılmış `04.08`, kaynakta yalnız `04.08.2026` diye geçiyorsa kabul edilmez. Kayıtta olmayan "nedeniyle" veya "3 yıl önce" de düşer.
 
-Hasta metni sen diye, kısa cümlelerle anlatılır. Kayıt satırı, epikriz veya madde işareti olduğu gibi dökülmez. Yüksek, normal veya düşük yalnız kayıt böyle diyorsa söylenir. Tanı konmaz. "Neden olabilir?" sorusunda kayıtta görünen ilgili bulgu sayılır (uyku, tansiyon, ilaç, aynı şikayetle eski başvuru) ve hekimle konuşması nazikçe eklenir; neden uydurulmaz. Kırmızı bayrak belirtileri modele gitmez.
+Hasta metni sen diye, sıcak ve doğal Türkçe ile anlatılır. Cevap soruyu bütünüyle karşılar: satırdaki ad, tarih, uzmanlık dalı ve hekimin yazdığı öneri; kayıttaki terimin sade Türkçesi; sonuç ile hedef ayrı. Kalıp giriş cümlesi kurulmaz ve cevap tek cümleye sıkıştırılmaz. Kayıt satırı, epikriz veya madde işareti olduğu gibi dökülmez. Yüksek, normal veya düşük yalnız kayıt böyle diyorsa söylenir. Tanı konmaz. Neden, doz ve tedavi uydurulmaz. Kırmızı bayrak belirtileri modele gitmez.
 
-Acil belirti (göğüste sıkışma, kola vuran ağrı dahil) modele gitmez; yanıt 112 çağrısıdır. Doz ("kaç tane içeyim", "ne kadar içeyim"), ilaca devam ya da bırakma sorusu da modele gitmez; hekime yönlendirir ve kayıttaki son reçete satırını bırakır. "Hâlâ kullanıyor muyum" kayıt sorusudur. Şikayet, hikaye ve bulgular başlıkları cevapta kopyalanmaz. Tanı sorusu tanı satırındaki kod ve tarihi söyler. Doğrulama geçmezse uydurulan sayı gösterilmez; yerine kayıttan kısa bir cümle kurulabiliyorsa o gösterilir. `TEXT_ANSWER_MAX_TOKENS` varsayılanı 1200'dür; istem birkaç kısa cümle ve önce yüksek veya düşük değeri ister. `factCoverage` karşılaştırması büyük-küçük harfe bakmaz. Doz reddi, soruyla örtüşen satırları kayıttan birebir ekler; bu satırlar öneri değildir. "İbuprofen alabilir miyim?" ve "nefesim daralıyor, ne yapmalıyım?" kayıt sorusudur: modelden alıntı beklenir, doz veya talimat değil.
+Acil belirti (göğüste sıkışma, kola vuran ağrı dahil) modele gitmez; yanıt 112 çağrısıdır. Doz ("kaç tane içeyim", "ne kadar içeyim"), ilaca devam ya da bırakma sorusu da modele gitmez; hekime yönlendirir ve kayıttaki son reçete satırını bırakır. "Hâlâ kullanıyor muyum" kayıt sorusudur. Şikayet, hikaye ve bulgular başlıkları cevapta kopyalanmaz. Tanı sorusu tanı satırındaki kod ve tarihi söyler. Doğrulama geçmezse uydurulan sayı gösterilmez. Sunucu model cümlesinin yerine başka bir satır yazmaz. `TEXT_ANSWER_MAX_TOKENS` varsayılanı 2000'dür; model adı `LLM_MODEL` ile değişir. `factCoverage` karşılaştırması büyük-küçük harfe bakmaz. Doz reddi, soruyla örtüşen satırları kayıttan birebir ekler; bu satırlar öneri değildir. "Alabilir miyim" bir tedavi reddidir. "Nefesim daralıyor, ne yapmalıyım?" kayıt sorusudur.
 
 Her klinik yanıta sabit, rakamsız bir uyarı eklenir. `clinicalMeaningVerified` her zaman false'tur; kontrol karakter kontrolüdür.
 
@@ -70,7 +70,7 @@ unset LLM_REASONING
 export LLM_DISABLE_THINKING=auto
 export OPENROUTER_ALLOW_FALLBACKS=true
 export LLM_RETRY_MAX=2
-export TEXT_ANSWER_MAX_TOKENS=1200
+export TEXT_ANSWER_MAX_TOKENS=2000
 export LLM_TIMEOUT_SECONDS=90
 
 python -m uvicorn medical_ai_selective_context.main:app --host 127.0.0.1 --port 8091
@@ -84,7 +84,7 @@ python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 
 Sorular `tests/fixtures/text/eval_questions.jsonl` (100). Günlük dil ve yazım varyantları da vardır (`tahlillerim iyimi`, `basim agriyo neden olabilir`, `sekerim dusmus mu`). Çıkış kodu: kritik hata varsa 2, hasta içe aktarma veya bağlantı kurulumu bozulursa 1, değilse 0. Tek sorunun zaman aşımı veya bozuk SSE'si raporu düşürmez; o satıra `error` yazılır ve koşu sürer. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır. Her satırda derecelenen `answer` durur.
 
-Yanıt, model metninden sonra sorulan kayda çekilir ve kısa cümleyle söylenir: kesilen veya değişen ilaçta durdurma cümlesi ve güncel ilaç, sorulan ölçüm (tepe akım FEV1 yerine geçmez, başka bir tahlil onun yerine konmaz), etki yazılmamışsa bilinmeyen cümlesi, çok parçalı soruda eksik kalan satır. Uydurulan sayı bu doldurmayla geri gelmez. Kırık "seyrindi bilinmeyen cümle" kalıbı düşer.
+Soru iletisinde, soruyla örtüşen her bölüm bütünüyle durur. İlk kullanıcı iletisi kaydın tamamıdır. Model cümleleri, durum satırı ve atıflar doğrulamadan sonra durur. Uydurulan sayı düşer. Kırık "seyrindi bilinmeyen cümle" kalıbı konuşma ölçüsünde düşer.
 
 Stdout'taki `latencyMs` ve `clientLatencyMs` her seri için `average`, `p50` ve `p95` verir (`average` ile `mean` aynı sayıdır). `conversational` yanıtlanmış ve bilgi-yok satırlarında kayıt dökümü, kırık cümle ve uzunluk penceresini sayar; `average` bu satırlar içinde geçenlerin oranıdır. Güvenlik reddi ve doğrulama hatası bu ölçüye girmez.
 
@@ -94,7 +94,7 @@ Yerel vLLM (48 GB L40S dahil, OpenAI uyumlu):
 
 ```bash
 export LLM_BASE_URL="http://127.0.0.1:8000/v1"
-export LLM_MODEL="Qwen/Qwen2.5-7B-Instruct"
+export LLM_MODEL="Qwen/Qwen2.5-14B-Instruct-AWQ"
 export LLM_API_KEY=local
 export OPENROUTER_REQUIRE_ZDR=false
 # Gerçek kayıt için. Kapalıyken localhost bile gerçek kaydı dışarı vermez.
@@ -115,7 +115,7 @@ python -m pytest -q tests/test_text_answer.py
 python -m ruff check src/medical_ai_selective_context/text_document.py \
   src/medical_ai_selective_context/text_safety.py \
   src/medical_ai_selective_context/text_grounding.py \
-  src/medical_ai_selective_context/text_focus.py \
+  src/medical_ai_selective_context/text_relevance.py \
   src/medical_ai_selective_context/text_llm.py \
   src/medical_ai_selective_context/text_qa.py \
   src/medical_ai_selective_context/text_eval.py \

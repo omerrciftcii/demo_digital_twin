@@ -21,8 +21,7 @@ from medical_ai_selective_context.text_eval import (
     summarize,
     tokens_cover,
 )
-from medical_ai_selective_context.text_focus import align_answer
-from medical_ai_selective_context.text_grounding import GroundingResult, ground_answer
+from medical_ai_selective_context.text_grounding import ground_answer
 from medical_ai_selective_context.text_llm import (
     ModelError,
     TextModelClient,
@@ -36,6 +35,7 @@ from medical_ai_selective_context.text_qa import (
     TextAnswerer,
     build_messages,
 )
+from medical_ai_selective_context.text_relevance import relevant_context, relevant_sections
 from medical_ai_selective_context.text_safety import classify_question, render_refusal
 
 ROOT = Path(__file__).parents[1]
@@ -801,9 +801,11 @@ def test_blocked_answer_stores_redacted_model_text(tmp_path):
     store = TextRecordStore(tmp_path)
     record, _created = store.import_payload(_load(PATIENTS / "patient-01.json"))
     assert record.data_class == "synthetic"
+    seen: dict[str, str] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
+        seen["question"] = body["messages"][-1]["content"]
         text = (
             "DURUM: YANIT\nUydurdum 999 mg. [Laboratuvar (hastane)]\n"
             "No 12345678901\n"
@@ -818,10 +820,11 @@ def test_blocked_answer_stores_redacted_model_text(tmp_path):
         require_zdr=False,
     ), httpx.MockTransport(handler))
     result = asyncio.run(TextAnswerer(client).answer(record, "Son eGFR değerim kaç?"))
-    assert result["status"] == "answered"
+    assert "41 mL/dk/1,73 m²" in seen["question"]
+    assert result["status"] == "validation_failed"
     assert "999" not in result["answer"]
-    assert "41 mL/dk/1,73 m²" in result["answer"]
     assert "12345678901" not in result["answer"]
+    assert "12345678901" not in result["rawOutput"]
 
 
 def test_overloaded_provider_is_retried_and_reasoning_is_not_the_answer():
@@ -945,113 +948,60 @@ def test_eval_records_a_timeout_and_still_writes_the_other_cases(tmp_path):
     assert report["cases"][1]["answer"] == "gizlendi"
 
 
-def _gap(text: str) -> GroundingResult:
-    return GroundingResult(True, "insufficient_evidence", text, [], "")
+def test_overlapping_sections_go_to_the_model_in_full():
+    """The question message carries each hit section whole. The full chart stays cached above it."""
+    record = _record("patient-01")
+    question = "Hâlâ Coumadin kullanıyor muyum?"
+    sections = relevant_sections(record, question)
+    context = relevant_context(record, question)
+    assert sections
+    assert any("COUMADIN" in section.text for section in sections)
+    for section in sections:
+        assert section.text.strip() in context
+    messages = build_messages(record, question)
+    assert record.text in messages[1]["content"]
+    assert context in messages[-1]["content"]
+    assert messages[-1]["content"].endswith(question)
+    assert "Kalıp giriş" in messages[-1]["content"]
 
+    femara = relevant_context(_record("patient-03"), "Femara'yı kullanmaya devam ediyor muyum?")
+    assert "letrozol" in femara.casefold()
 
-def test_alignment_quotes_the_chart_line_the_question_asked():
-    """Lexical overlap and the drug file. No chart value is injected by name."""
-    patient = {name: _record(name) for name in (
-        "patient-01", "patient-02", "patient-03", "patient-04", "patient-05",
-    )}
-    coumadin = align_answer(
-        patient["patient-01"], "Hâlâ Coumadin kullanıyor muyum?",
-        GroundingResult(True, "answered", "COUMADIN son reçete 15.06.2025.", [], ""),
-    )
-    assert coumadin.ok
-    assert "COUMADIN" in coumadin.answer
-    assert "ELIQUIS" not in coumadin.answer
-    assert "Kayıtta şunu görüyorum" not in coumadin.answer
-
-    femara = align_answer(
-        patient["patient-03"], "Femara'yı kullanmaya devam ediyor muyum?",
-        GroundingResult(True, "answered", "FEMARA son reçete 15.06.2026.", [], ""),
-    )
-    assert "letrozol" in femara.answer.casefold()
-
-    stopped = align_answer(
-        patient["patient-04"],
-        "Roaccutane kullanıyordum, hâlâ kullanıyor muyum?",
-        _gap("Bu bilgi kayıtta yok."),
-    )
-    assert "kullanmadığını belirtti" in stopped.answer
-    assert "ROACCUTANE" in stopped.answer
-
-    course = align_answer(
-        patient["patient-02"], "Deltacortril'i hâlâ kullanmam gerekiyor mu?",
-        _gap("Bu bilgi kayıtta yok."),
-    )
-    assert "Prednizolon" in course.answer
-    assert "güncel kullanımı kayıtta görünmüyor" not in course.answer
-
+    fev_record = _record("patient-02")
+    fev_context = relevant_context(fev_record, "Solunum testimde FEV1 kaç çıktı?")
+    assert "FEV1 3,12 L (%71)" in fev_context
     fev = ground_answer(
-        "DURUM: YANIT\nFEV1 3,12 L (%71) (06.10.2026). [Hastane başvuruları]\n",
-        patient["patient-02"],
+        "DURUM: YANIT\n"
+        "Solunum testinde FEV1 3,12 L (%71) yazıyor.\n"
+        "Tarih 06.10.2026.\n"
+        "[Ameliyat ve işlemler]\n",
+        fev_record,
     )
-    assert fev.ok
-    assert fev.citations[0]["section"] == "Ameliyat ve işlemler"
-    assert "3,12" in fev.answer
+    assert fev.ok and fev.status == "answered"
+    assert "FEV1 3,12 L (%71)" in fev.answer
+    assert "06.10.2026" in fev.answer
+    assert fev.citations
     dotted = ground_answer(
         "DURUM: YANIT\nFEV1 3.12 L (%71) (06.10.2026). [Ameliyat ve işlemler]\n",
-        patient["patient-02"],
+        fev_record,
     )
     assert dotted.error == "unsupported_number"
     peak = ground_answer(
         "DURUM: YANIT\nTepe akım 560 L/dk. [Tepe akım ölçümü (evde, peak flow)]\n",
-        patient["patient-02"],
+        fev_record,
     )
-    replaced = align_answer(patient["patient-02"], "Solunum testimde FEV1 kaç çıktı?", peak)
-    assert "FEV1 3,12 L (%71)" in replaced.answer
-    assert "560 L/dk" not in replaced.answer
+    assert peak.ok
+    assert "560 L/dk" in peak.answer
+    assert "FEV1 3,12" not in peak.answer
 
-    effect = align_answer(
-        patient["patient-05"],
-        "Propranolol başladıktan sonra baş ağrılarım azaldı mı?",
-        GroundingResult(True, "answered", "Son 30 günde 13 baş ağrılı gün.", [], ""),
+    missing = ground_answer(
+        "DURUM: YANIT\nGüncel potasyum ve kreatinin bilinmiyor. [Hastane başvuruları]\n",
+        record,
     )
-    assert effect.ok
-    assert "13" in effect.answer
-    assert "kesildi" not in effect.answer.casefold()
-
-    echo = ground_answer(
-        "DURUM: YANIT\nKayıttaki cümle: Başım ağrıyor. [Hastalıklar]\n",
-        patient["patient-05"],
-    )
-    assert echo.ok is False
-    headache = align_answer(patient["patient-05"], "Başım ağrıyor.", echo)
-    assert headache.ok and headache.status == "answered"
-    assert "Başım ağrıyor" not in headache.answer
-    assert "baş ağrısı" in headache.answer.casefold()
-
-    mood = align_answer(
-        patient["patient-03"], "Çok yorgunum, hiçbir şeyden keyif alamıyorum.",
-        _gap("Bu bilgi kayıtta yok."),
-    )
-    assert "keyif" in mood.answer.casefold()
-    assert "Sertralin" not in mood.answer
-
-    holter = align_answer(
-        patient["patient-05"], "Holter sonucumda ne çıktı?", _gap("Bu bilgi kayıtta yok."),
-    )
-    assert "Holter" in holter.answer
-
-    planned = align_answer(
-        patient["patient-02"], "Uyku testi (polisomnografi) sonucum ne çıktı?",
-        _gap("Bu bilgi kayıtta yok."),
-    )
-    assert "polisomnografi" in planned.answer.casefold()
-
-    renal = align_answer(
-        patient["patient-01"], "Kreatinin değerim son tahlillerde nasıl değişti?",
-        _gap("Bu bilgi kayıtta yok."),
-    )
-    assert "Kreatinin 1,32 mg/dL" in renal.answer
-    pending = align_answer(
-        patient["patient-01"],
-        "Diüretik doz artışından sonraki kreatinin kontrolü geldi mi?",
-        _gap("Bu bilgi kayıtta yok."),
-    )
-    assert "kreatinin bilinmiyor" in pending.answer
+    assert missing.ok
+    assert missing.status == "insufficient_evidence"
+    assert missing.citations
+    assert "bilinmiyor" in missing.answer
 
 
 def test_invented_number_stays_blocked_and_real_fev1_does_not(tmp_path):
@@ -1112,22 +1062,20 @@ def test_conversation_rejects_a_dump_and_keeps_a_spoken_fact():
     assert summary["latencyMs"]["total"]["p50"] == 10
 
 
-def test_alt_is_not_answered_with_hemoglobin():
+def test_alt_question_receives_the_whole_lab_section():
     record = _record("patient-02")
-    aligned = align_answer(
+    question = "ALT değerim son tahlillerde nasıl seyretti?"
+    context = relevant_context(record, question)
+    assert "ALT 68 U/L" in context
+    lab = next(section for section in relevant_sections(record, question) if "ALT 68 U/L" in section.text)
+    assert lab.text.strip() in context
+    spoken = ground_answer(
+        "DURUM: YANIT\nALT 68 U/L (24.09.2026). [Laboratuvar (hastane)]\n",
         record,
-        "ALT değerim son tahlillerde nasıl seyretti?",
-        GroundingResult(
-            True, "answered",
-            "Hemoglobin 11,4 g/dL. Kayıtta hemoglobin değerinin son tahlillerde nasıl seyrindi bilinmeyen cümle.",
-            [], "",
-        ),
     )
-    assert aligned.ok
-    assert "ALT 68 U/L" in aligned.answer
-    assert "Hemoglobin" not in aligned.answer
-    assert "seyrindi" not in aligned.answer
-    assert conversation_issues(aligned.answer, aligned.status) == []
+    assert spoken.ok and spoken.citations
+    assert "ALT 68 U/L" in spoken.answer
+    assert "seyrindi" not in spoken.answer
 
 
 def test_new_patients_and_natural_questions_stay_grounded():
@@ -1159,14 +1107,14 @@ def test_new_patients_and_natural_questions_stay_grounded():
             assert fact in record.text, row["id"]
         if row["expected_status"] == "safety_refusal":
             continue
-        aligned = align_answer(
-            record, row["question"],
-            GroundingResult(True, "insufficient_evidence", "Bu bilgi kayıtta yok.", [], ""),
-        )
-        assert "Kayıtta şunu görüyorum" not in aligned.answer, row["id"]
-        issues = conversation_issues(aligned.answer, aligned.status) or []
-        assert "siz_form" not in issues, row["id"]
-        assert "broken" not in issues, row["id"]
+        context = relevant_context(record, row["question"])
+        message = build_messages(record, row["question"])[-1]["content"]
+        assert message.endswith(row["question"])
+        assert "Kayıtta şunu görüyorum" not in message
+        if context:
+            assert context in message
+            for section in relevant_sections(record, row["question"]):
+                assert section.text.strip() in context
 
 
 def test_owner_cases_route_and_stay_on_the_chart():
@@ -1208,20 +1156,16 @@ def test_owner_cases_route_and_stay_on_the_chart():
             if fact == generated:
                 continue
             assert fact in record.text, row["id"]
-        aligned = align_answer(
-            record, row["question"],
-            GroundingResult(True, "insufficient_evidence", "Kayıtta ölçüm yok.", [], ""),
-        )
-        assert "Kayıtta şunu görüyorum" not in aligned.answer, row["id"]
-        assert "ŞİKAYET" not in aligned.answer
-        assert "BULGULAR" not in aligned.answer
-        issues = conversation_issues(aligned.answer, aligned.status) or []
-        assert "siz_form" not in issues and "broken" not in issues, row["id"]
+        message = build_messages(record, row["question"])[-1]["content"]
+        assert "Kayıtta şunu görüyorum" not in message
+        assert generated not in message
         if row["id"] == "p08-q13":
-            assert "ALT 54" in aligned.answer and "AST 48" in aligned.answer
+            context = relevant_context(record, row["question"])
+            assert "ALT 54" in context and "AST 48" in context
         if row["id"] == "p08-q14":
-            assert "kesildi" not in aligned.answer.casefold()
-            assert generated not in aligned.answer
+            context = relevant_context(record, row["question"])
+            assert "14.06.2026" in context
+            assert generated not in context
 
     liver = ground_answer(
         "DURUM: YANIT\nALT 54 U/L (referans 0-41) (21.09.2026). [Laboratuvar (hastane)]\n",
@@ -1235,12 +1179,11 @@ def test_owner_cases_route_and_stay_on_the_chart():
     )
     assert clot.ok
     assert "I82.4" in clot.answer
-    invented = align_answer(
-        record, "Metformini hâlâ kullanıyor muyum?",
-        GroundingResult(True, "answered", "Metformin kesildi. Genellikle bu ilaç bırakılır.", [], ""),
-    )
-    assert "kesildi" not in invented.answer.casefold()
-    assert generated not in invented.answer
+    assert "kesildiğini" in SYSTEM_PROMPT
+    assert generated not in SYSTEM_PROMPT
+    assert "Tek cümleye sıkıştırma" in SYSTEM_PROMPT
+    assert "uzmanlık dalı" in SYSTEM_PROMPT
+    assert "hedef" in SYSTEM_PROMPT
     folded = score_case(
         {
             "patient": "patient-08", "id": "case", "question": "q",

@@ -93,7 +93,7 @@ class TextModelSettings:
     # Separate from the external opt-in. True still refuses a public host.
     local_inference: bool = False
     local_hosts: tuple[str, ...] = ()
-    answer_max_tokens: int = 1200
+    answer_max_tokens: int = 2000
     # None omits an explicit override. Auto still disables thinking for known
     # reasoning models on OpenRouter; LLM_REASONING wins when it is set.
     reasoning: bool | None = None
@@ -123,7 +123,7 @@ class TextModelSettings:
             allow_external_real_data=env_bool("ALLOW_EXTERNAL_REAL_DATA", False),
             local_inference=env_bool("LLM_LOCAL_INFERENCE", False),
             local_hosts=_local_hosts_from_env(),
-            answer_max_tokens=int(env_number("TEXT_ANSWER_MAX_TOKENS", 1200, 128, 4000, integer=True)),
+            answer_max_tokens=int(env_number("TEXT_ANSWER_MAX_TOKENS", 2000, 128, 4000, integer=True)),
             reasoning=env_optional_bool("LLM_REASONING"),
             allow_fallbacks=env_bool("OPENROUTER_ALLOW_FALLBACKS", True),
             retry_max=int(env_number("LLM_RETRY_MAX", 2, 0, 5, integer=True)),

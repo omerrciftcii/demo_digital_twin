@@ -130,6 +130,59 @@ def tokens_cover(fact: str, haystack: str) -> bool:
         start = at + 1
 
 
+_DISCLAIMER_MARK = "Bu yanıt tıbbi tanı, tedavi veya acil müdahale önerisi değildir."
+_SIZ = re.compile(
+    r"\b(yapmalisiniz|kullanmalisiniz|degeriniz|tahliliniz|hekiminize)\b"
+)
+
+
+def clinical_body(answer: str) -> str:
+    """The sentences the patient reads, without the fixed siz-form disclaimer."""
+    body = answer or ""
+    if _DISCLAIMER_MARK in body:
+        body = body.split(_DISCLAIMER_MARK)[0]
+    return re.sub(r"\s*\[[^\[\]\n]{2,160}\]", "", body).strip()
+
+
+def conversation_issues(answer: str, status: str) -> list[str] | None:
+    """None when the row is a refusal or a blocked validation. Otherwise a problem list.
+
+    A raw chart dump, a broken sentence, or a body outside the length window fails.
+    """
+    if status not in {"answered", "insufficient_evidence"}:
+        return None
+    body = clinical_body(answer)
+    issues: list[str] = []
+    if len(body) < 30 or len(body) > 1200:
+        issues.append("length")
+    sentences = [
+        part.strip() for part in re.split(r"\n+|(?<=[.!?])\s+", body) if part.strip()
+    ]
+    sentences = [part for part in sentences if not re.fullmatch(r"\[[^\[\]]+\]", part)]
+    if not sentences:
+        issues.append("unfinished")
+        return issues
+    for sentence in sentences:
+        folded = normalize_text(sentence)
+        dumped = (
+            sentence.startswith("-")
+            or "Şikâyet:" in sentence
+            or "Şikayet:" in sentence
+            or "Epikriz:" in sentence
+            or "Bulgular:" in sentence
+            or len(sentence) > 450
+        )
+        if dumped:
+            issues.append("dump")
+        if any(token in folded for token in ("seyrindi", "bilinmeyen cumle", "kayittaki cumleyi")):
+            issues.append("broken")
+        if sentence[-1] not in ".!?":
+            issues.append("unfinished")
+        if _SIZ.search(folded):
+            issues.append("siz_form")
+    return list(dict.fromkeys(issues))
+
+
 def score_case(case: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
     expected = case["expected_status"]
     status = response.get("status")
@@ -167,6 +220,9 @@ def score_case(case: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]
         "totalMs": metrics.get("totalMs"),
         "answer": response.get("answer") if isinstance(response.get("answer"), str) else None,
     }
+    issues = conversation_issues(row["answer"] or "", status or "")
+    row["conversationOk"] = None if issues is None else not issues
+    row["conversationIssues"] = issues
     raw = response.get("rawOutput")
     if isinstance(raw, str) and raw.strip():
         row["rawOutput"] = raw
@@ -197,6 +253,8 @@ def case_error(case: dict[str, Any], code: str) -> dict[str, Any]:
         "timeToFirstTokenMs": None,
         "totalMs": None,
         "answer": None,
+        "conversationOk": None,
+        "conversationIssues": None,
         "error": code,
     }
 
@@ -211,11 +269,13 @@ def _percentile(values: list[float], percent: float) -> float | None:
 
 def _latency(values: list[float]) -> dict[str, float | None]:
     if not values:
-        return {"p50": None, "p95": None, "mean": None}
+        return {"average": None, "p50": None, "p95": None, "mean": None}
+    average = round(sum(values) / len(values), 2)
     return {
+        "average": average,
         "p50": _percentile(values, 50),
         "p95": _percentile(values, 95),
-        "mean": round(sum(values) / len(values), 2),
+        "mean": average,
     }
 
 
@@ -227,6 +287,8 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     ttft = [row["timeToFirstTokenMs"] for row in rows if isinstance(row["timeToFirstTokenMs"], (int, float))]
     total = [row["totalMs"] for row in rows if isinstance(row["totalMs"], (int, float))]
     calls = [row["modelCalls"] for row in rows if isinstance(row["modelCalls"], int)]
+    checked = [row for row in rows if row.get("conversationOk") is not None]
+    passed = sum(1 for row in checked if row["conversationOk"])
     return {
         "questions": len(rows),
         "statusMatches": status_matches,
@@ -239,5 +301,10 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "criticalFailureCount": sum(1 for row in rows if row["criticalFailure"]),
         "criticalFailures": [row["id"] for row in rows if row["criticalFailure"]],
         "modelCalls": sum(calls),
+        "conversational": {
+            "checked": len(checked),
+            "passed": passed,
+            "average": round(passed / len(checked), 4) if checked else None,
+        },
         "latencyMs": {"timeToFirstToken": _latency(ttft), "total": _latency(total)},
     }

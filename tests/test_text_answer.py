@@ -15,8 +15,13 @@ from medical_ai_selective_context.text_document import (
     TextRecordStore,
     parse_cco_text,
 )
-from medical_ai_selective_context.text_eval import score_case, summarize, tokens_cover
-from medical_ai_selective_context.text_focus import align_answer
+from medical_ai_selective_context.text_eval import (
+    conversation_issues,
+    score_case,
+    summarize,
+    tokens_cover,
+)
+from medical_ai_selective_context.text_focus import align_answer, clinician_note
 from medical_ai_selective_context.text_grounding import GroundingResult, ground_answer
 from medical_ai_selective_context.text_llm import (
     ModelError,
@@ -101,7 +106,7 @@ def test_questions_match_the_safety_gate_and_refusal_quotes():
         for line in (FIXTURES / "eval_questions.jsonl").read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    assert len(rows) == 46
+    assert len(rows) == 86
     records = {path.stem: parse_cco_text(_load(path)) for path in PATIENTS.glob("*.json")}
     for row in rows:
         decision = classify_question(row["question"])
@@ -902,3 +907,89 @@ def test_invented_number_stays_blocked_and_real_fev1_does_not(tmp_path):
     assert blocked["status"] == "validation_failed"
     assert "1999" in blocked["rawOutput"]
     assert "semaglutide" not in blocked["answer"]
+
+
+def test_conversation_rejects_a_dump_and_keeps_a_spoken_fact():
+    dump = (
+        "- Şikâyet: Son 10 günde artan nefes darlığı. Epikriz: furosemid artırıldı. "
+        "Bulgular: TA 132/78 mmHg."
+    )
+    assert "dump" in conversation_issues(dump, "answered")
+    broken = "Kayıtta hemoglobin değerinin son tahlillerde nasıl seyrindi bilinmeyen cümle."
+    assert "broken" in conversation_issues(broken, "answered")
+    spoken = (
+        "Reçetende COUMADIN 5 MG 28 TABLET görünüyor; son reçete 15.06.2025. "
+        "Reçetende ELIQUIS 5 MG 56 FİLM TABLET görünüyor; son reçete 18.09.2026."
+    )
+    assert conversation_issues(spoken, "answered") == []
+    assert conversation_issues("Acil servise başvurun.", "safety_refusal") is None
+    row = score_case(
+        {
+            "patient": "patient-01", "id": "x", "question": "q",
+            "expected_status": "answered", "critical": False, "expected_facts": [],
+        },
+        {"status": "answered", "answer": spoken, "citations": [], "metrics": {"totalMs": 10}},
+    )
+    assert row["conversationOk"] is True
+    summary = summarize([row])
+    assert summary["conversational"]["passed"] == 1
+    assert summary["latencyMs"]["total"]["average"] == summary["latencyMs"]["total"]["mean"]
+    assert summary["latencyMs"]["total"]["p50"] == 10
+
+
+def test_alt_is_not_answered_with_hemoglobin():
+    record = _record("patient-02")
+    aligned = align_answer(
+        record,
+        "ALT değerim son tahlillerde nasıl seyretti?",
+        GroundingResult(
+            True, "answered",
+            "Hemoglobin 11,4 g/dL. Kayıtta hemoglobin değerinin son tahlillerde nasıl seyrindi bilinmeyen cümle.",
+            [], "",
+        ),
+    )
+    assert aligned.ok
+    assert "ALT 68 U/L" in aligned.answer
+    assert "Hemoglobin" not in aligned.answer
+    assert "seyrindi" not in aligned.answer
+    assert conversation_issues(aligned.answer, aligned.status) == []
+
+
+def test_new_patients_and_natural_questions_stay_grounded():
+    for name in ("patient-06", "patient-07"):
+        text = _load(PATIENTS / f"{name}.json")["text"]
+        size = len(text.encode())
+        assert 20 * 1024 <= size <= 30 * 1024, size
+    rows = [
+        json.loads(line)
+        for line in (FIXTURES / "eval_questions.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    natural = [
+        row for row in rows
+        if row["patient"] in {"patient-06", "patient-07"}
+        or row["id"].endswith(("-q11", "-q12", "-q13", "-q14"))
+        or (row["id"].endswith("-q10") and row["patient"] != "patient-01")
+    ]
+    assert len(natural) == 40
+    records = {name: _record(name) for name in (
+        "patient-01", "patient-02", "patient-03", "patient-04", "patient-05",
+        "patient-06", "patient-07",
+    )}
+    for row in natural:
+        record = records[row["patient"]]
+        for fact in row["expected_facts"]:
+            assert fact in record.text, row["id"]
+        if row["expected_status"] == "safety_refusal":
+            assert clinician_note(row["question"]) == ""
+            continue
+        aligned = align_answer(
+            record, row["question"],
+            GroundingResult(True, "insufficient_evidence", "Bu bilgi kayıtta yok.", [], ""),
+        )
+        assert aligned.status == row["expected_status"], row["id"]
+        assert conversation_issues(aligned.answer, aligned.status) == [], row["id"]
+        for fact in row["expected_facts"]:
+            assert fact in aligned.answer, row["id"]
+        if "neden" in row["question"].casefold() or "niye" in row["question"].casefold():
+            assert clinician_note(row["question"]) == "Hekiminle konuşman iyi olur."

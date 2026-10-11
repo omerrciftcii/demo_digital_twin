@@ -13,7 +13,7 @@
 }
 ```
 
-`text` en fazla 48 KB. Tarih zaman dilimi olmadan gelirse kayıt reddedilir; eksik alan uydurulmaz. `tests/fixtures/text/example-facts.json` ile `example-text.md` aynı metnin iki yüzü. `patients/patient-01.json` … `patient-05.json` sentetik hastalardır (yaklaşık 20–27 KB).
+`text` en fazla 48 KB. Tarih zaman dilimi olmadan gelirse kayıt reddedilir; eksik alan uydurulmaz. `tests/fixtures/text/example-facts.json` ile `example-text.md` aynı metnin iki yüzü. `patients/patient-01.json` … `patient-07.json` sentetik hastalardır (yaklaşık 20–30 KB). `patient-06` yeni taburcu olmuş stent hastası, `patient-07` yoğun bakımdan yeni çıkmış sepsis/pnömoni hastasıdır.
 
 ## Neden parça parça arama yok
 
@@ -29,6 +29,8 @@ Son eGFR 41 mL/dk/1,73 m² (18.09.2026). [Laboratuvar (hastane) 18.09.2026]
 ```
 
 `DURUM: BİLGİ_YOK` kayıttaki "yok / bilinmiyor / planlandı" cümlesi içindir. Sayı, tarih ve birim, atıf yapılan bölümde birebir yoksa yanıt gösterilmez (`validation_failed`). Kısaltılmış `04.08`, kaynakta yalnız `04.08.2026` diye geçiyorsa kabul edilmez. Kayıtta olmayan "nedeniyle" veya "3 yıl önce" de düşer.
+
+Hasta metni sen diye, kısa cümlelerle anlatılır. Kayıt satırı, epikriz veya madde işareti olduğu gibi dökülmez. Yüksek, normal veya düşük yalnız kayıt böyle diyorsa söylenir. Tanı konmaz. "Neden olabilir?" sorusunda kayıtta görünen ilgili bulgu sayılır (uyku, tansiyon, ilaç, aynı şikayetle eski başvuru) ve hekimle konuşması nazikçe eklenir; neden uydurulmaz. Kırmızı bayrak belirtileri modele gitmez.
 
 Acil belirti, kendine zarar, açık doz/tedavi değişikliği ve kayıt veya sistem metnini döktürme istekleri modele gitmez. Doz reddi, soruyla örtüşen satırları kayıttan birebir ekler; bu satırlar öneri değildir. "İbuprofen alabilir miyim?" ve "nefesim daralıyor, ne yapmalıyım?" kayıt sorusudur: modelden alıntı beklenir, doz veya talimat değil.
 
@@ -80,11 +82,13 @@ Başka bir kabukta:
 python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 ```
 
-Sorular `tests/fixtures/text/eval_questions.jsonl` (46). Çıkış kodu: kritik hata varsa 2, hasta içe aktarma veya bağlantı kurulumu bozulursa 1, değilse 0. Tek sorunun zaman aşımı veya bozuk SSE'si raporu düşürmez; o satıra `error` yazılır ve koşu sürer. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır. Her satırda derecelenen `answer` durur.
+Sorular `tests/fixtures/text/eval_questions.jsonl` (86). Günlük dil ve yazım varyantları da vardır (`tahlillerim iyimi`, `basim agriyo neden olabilir`, `sekerim dusmus mu`). Çıkış kodu: kritik hata varsa 2, hasta içe aktarma veya bağlantı kurulumu bozulursa 1, değilse 0. Tek sorunun zaman aşımı veya bozuk SSE'si raporu düşürmez; o satıra `error` yazılır ve koşu sürer. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır. Her satırda derecelenen `answer` durur.
 
-Yanıt, model metninden sonra kayıt satırına çekilir: kesilen veya değişen ilaçta durdurma cümlesi ve güncel ilaç, sorulan ölçüm (tepe akım FEV1 yerine geçmez), etki yazılmamışsa bilinmeyen cümlesi, çok parçalı soruda eksik kalan satır. Uydurulan sayı bu doldurmayla geri gelmez.
+Yanıt, model metninden sonra sorulan kayda çekilir ve kısa cümleyle söylenir: kesilen veya değişen ilaçta durdurma cümlesi ve güncel ilaç, sorulan ölçüm (tepe akım FEV1 yerine geçmez, başka bir tahlil onun yerine konmaz), etki yazılmamışsa bilinmeyen cümlesi, çok parçalı soruda eksik kalan satır. Uydurulan sayı bu doldurmayla geri gelmez. Kırık "seyrindi bilinmeyen cümle" kalıbı düşer.
 
-`factCoverage` ilaç, doz, tarih ve yük taşıyan sözcükler bir aradaysa sayar. `exactFactCoverage` eski alt dizge eşleşmesidir. Ambalaj (`56 FİLM TABLET`) ve `itibarıyla` tek başına kaçırılmaz; baştaki sıfırın düştüğü tarih, PHQ-9 ile artı derece, iki doz bir aradayken aynı anlama gelen değişim fiili de kaçar sayılmaz. Doz veya tarih yoksa yine kaçar. `validation_failed` ve modelden gelen `safety_refusal` satırında kısaltılmış `rawOutput` durur (düşünce bloğu ve 11 haneli numara silinir).
+Stdout'taki `latencyMs` ve `clientLatencyMs` her seri için `average`, `p50` ve `p95` verir (`average` ile `mean` aynı sayıdır). `conversational` yanıtlanmış ve bilgi-yok satırlarında kayıt dökümü, kırık cümle ve uzunluk penceresini sayar; `average` bu satırlar içinde geçenlerin oranıdır. Güvenlik reddi ve doğrulama hatası bu ölçüye girmez.
+
+`factCoverage` ilaç, doz, tarih ve yük taşıyan sözcükler bir aradaysa sayar. `exactFactCoverage` eski alt dizge eşleşmesidir. Beklenen olgular kayıttaki alt dizgelerdir. Ambalaj (`56 FİLM TABLET`) ve `itibarıyla` tek başına kaçırılmaz; baştaki sıfırın düştüğü tarih, PHQ-9 ile artı derece, iki doz bir aradayken aynı anlama gelen değişim fiili de kaçar sayılmaz. Doz veya tarih yoksa yine kaçar. `validation_failed` ve modelden gelen `safety_refusal` satırında kısaltılmış `rawOutput` durur (düşünce bloğu ve 11 haneli numara silinir).
 
 Yerel vLLM (48 GB L40S dahil, OpenAI uyumlu):
 

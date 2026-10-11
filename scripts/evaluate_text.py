@@ -162,6 +162,7 @@ def main() -> int:
         "factCoverage": summary["factCoverage"],
         "criticalFailures": summary["criticalFailures"],
         "modelCalls": summary["modelCalls"],
+        "conversational": summary["conversational"],
         "latencyMs": summary["latencyMs"],
         "clientLatencyMs": summary["clientLatencyMs"],
         "failures": failures,

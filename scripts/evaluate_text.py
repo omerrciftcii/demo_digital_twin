@@ -148,6 +148,7 @@ def main() -> int:
         {
             "id": row["id"], "status": row["status"], "expected": row["expectedStatus"],
             "missingFacts": row["missingFacts"],
+            "answer": (row.get("answer") or "")[:240],
             "error": row.get("error"),
             "validationError": row.get("validationError"),
         }

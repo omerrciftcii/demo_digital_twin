@@ -27,6 +27,13 @@ _PACK_PHRASE = re.compile(
 )
 _DROP_WORDS = re.compile(r"\b(?:film|tablet|kapsül|kapsul|draje|itibarıyla|itibariyla)\b", re.IGNORECASE)
 _WORD = re.compile(r"[^\W\d_]{5,}", re.UNICODE)
+_PHQ = re.compile(r"\b(PHQ-\d{1,2})(?:\s+(\d{1,2}))?", re.IGNORECASE)
+_PLUS = re.compile(r"\+\d+(?:,\d+)?")
+_DAYS = re.compile(r"\d+\s*gün(?:de|lük|luk)?", re.IGNORECASE)
+_CHANGE = frozenset({
+    "cikarildi", "yukseltildi", "artirildi", "arttirildi",
+    "dusuruldu", "azaltildi", "indirildi",
+})
 
 
 def _spans(pattern: re.Pattern[str], text: str) -> list[tuple[int, int, str]]:
@@ -39,8 +46,19 @@ def fact_tokens(fact: str) -> list[tuple[str, str]]:
     text = _DROP_WORDS.sub(" ", text).replace("(", " ").replace(")", " ")
     occupied: list[tuple[int, int]] = []
     tokens: list[tuple[str, str]] = []
+    for match in _PHQ.finditer(text):
+        occupied.append((match.start(1), match.end(1)))
+        tokens.append(("scale", normalize_text(match.group(1))))
+        if match.group(2):
+            occupied.append((match.start(2), match.end(2)))
+            tokens.append(("num", match.group(2)))
+    for match in _PLUS.finditer(text):
+        if any(match.start() < right and match.end() > left for left, right in occupied):
+            continue
+        occupied.append((match.start(), match.end()))
+        tokens.append(("plus", normalize_text(match.group(0))))
     for kind, pattern in (
-        ("date", _DATE), ("limit", _LIMIT), ("unit", _NUM_UNIT),
+        ("date", _DATE), ("days", _DAYS), ("limit", _LIMIT), ("unit", _NUM_UNIT),
         ("clock", _CLOCK), ("year", _YEAR),
     ):
         for start, end, raw in _spans(pattern, text):
@@ -58,6 +76,17 @@ def fact_tokens(fact: str) -> list[tuple[str, str]]:
 def _needle_in(needle: str, region: str) -> bool:
     if needle in region:
         return True
+    if needle.startswith("+"):
+        bare = re.escape(needle[1:])
+        if re.search(rf"(?<!\d)\+?{bare}(?!\d)", region):
+            return True
+    dated = re.fullmatch(r"0?(\d{1,2})\.0?(\d{1,2})\.(\d{4})", needle)
+    if dated:
+        day, month, year = (int(part) for part in dated.groups())
+        if re.search(rf"(?<!\d)0?{day}\.0?{month}\.{year}(?!\d)", region):
+            return True
+    if needle in _CHANGE and any(verb in region for verb in _CHANGE):
+        return True
     clock = re.sub(r"saat(?:te|ta)$", "saat", needle)
     if clock != needle and clock in region:
         return True
@@ -72,9 +101,13 @@ def tokens_cover(fact: str, haystack: str) -> bool:
     folded = normalize_text(haystack)
     words = [token for kind, token in tokens if kind == "word"]
     anchor = max(words or [token for _kind, token in tokens], key=len)
-    # A dose has to sit on the drug. A year or a verb may sit a few words away.
-    # "Coumadin 5 mg ... Eliquis" must not satisfy an Eliquis 5 mg fact.
+    # A dose has to sit on a long drug name. A short anchor may sit further
+    # from its number ("son 2 günde" / "1,3 kg"). "Eliquis" stays tight so a
+    # Coumadin 5 mg does not satisfy an Eliquis 5 mg fact.
     tight = {"unit", "limit", "clock"}
+    long_anchor = bool(words) and len(anchor) >= 7
+    doses = [token for kind, token in tokens if kind == "unit"]
+    flexible_change = len(doses) >= 2
     start = 0
     while True:
         at = folded.find(anchor, start)
@@ -82,8 +115,13 @@ def tokens_cover(fact: str, haystack: str) -> bool:
             return False
         matched = True
         for kind, token in tokens:
-            before, after = (8, 48) if kind in tight else (40, 72)
+            before, after = (8, 48) if kind in tight and long_anchor else (40, 72)
             region = folded[max(0, at - before): at + len(anchor) + after]
+            if token in _CHANGE and not flexible_change:
+                if token not in region:
+                    matched = False
+                    break
+                continue
             if not _needle_in(token, region):
                 matched = False
                 break
@@ -127,6 +165,7 @@ def score_case(case: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]
         "modelCalls": metrics.get("modelCalls"),
         "timeToFirstTokenMs": metrics.get("timeToFirstTokenMs"),
         "totalMs": metrics.get("totalMs"),
+        "answer": response.get("answer") if isinstance(response.get("answer"), str) else None,
     }
     raw = response.get("rawOutput")
     if isinstance(raw, str) and raw.strip():
@@ -157,6 +196,7 @@ def case_error(case: dict[str, Any], code: str) -> dict[str, Any]:
         "modelCalls": None,
         "timeToFirstTokenMs": None,
         "totalMs": None,
+        "answer": None,
         "error": code,
     }
 

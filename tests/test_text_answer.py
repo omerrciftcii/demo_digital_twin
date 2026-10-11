@@ -16,7 +16,8 @@ from medical_ai_selective_context.text_document import (
     parse_cco_text,
 )
 from medical_ai_selective_context.text_eval import score_case, summarize, tokens_cover
-from medical_ai_selective_context.text_grounding import ground_answer
+from medical_ai_selective_context.text_focus import align_answer
+from medical_ai_selective_context.text_grounding import GroundingResult, ground_answer
 from medical_ai_selective_context.text_llm import (
     ModelError,
     TextModelClient,
@@ -100,7 +101,7 @@ def test_questions_match_the_safety_gate_and_refusal_quotes():
         for line in (FIXTURES / "eval_questions.jsonl").read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    assert len(rows) == 40
+    assert len(rows) == 46
     records = {path.stem: parse_cco_text(_load(path)) for path in PATIENTS.glob("*.json")}
     for row in rows:
         decision = classify_question(row["question"])
@@ -547,6 +548,31 @@ def test_packaging_words_are_not_a_clinical_miss():
     limit = "rizatriptan 10 mg, 24 saatte en fazla 2"
     assert tokens_cover("rizatriptan 10 mg (24 saatte en fazla 2)", limit)
     assert not tokens_cover("09.09.2015", "2015 yılında")
+    assert tokens_cover(
+        "letrozol 15.09.2026 itibarıyla kesildi",
+        "letrozol 15.9.2026 tarihinde kesildi",
+    )
+    assert tokens_cover("PHQ-9 13", "PHQ-9 skoru 13")
+    assert tokens_cover("Pretibial +2 ödem", "pretibial ödem +2")
+    assert tokens_cover(
+        "son 2 günde +1,3 kg",
+        "kilo artışı 1,3 kg oldu ve bu son 2 günde görüldü",
+    )
+    assert tokens_cover(
+        "Sertralin 50 mg'dan 100 mg'a çıkarıldı",
+        "Sertralin 50 mg'dan 100 mg'a yükseltildi",
+    )
+    assert not tokens_cover("FEV1 3,12 L (%71)", "FEV1 3.12 L (%71)")
+    stored = score_case(
+        {
+            "patient": "patient-02", "id": "p02-q02", "question": "q",
+            "expected_status": "answered", "critical": False,
+            "expected_facts": ["FEV1 3,12 L (%71)"],
+        },
+        {"status": "answered", "answer": "FEV1 3,12 L (%71)", "citations": [], "metrics": {}},
+    )
+    assert stored["answer"] == "FEV1 3,12 L (%71)"
+    assert stored["factsOk"] is True
 
 
 def test_ibuprofen_question_quotes_the_nsaid_line_instead_of_giving_up(tmp_path):
@@ -723,3 +749,156 @@ def test_eval_records_a_timeout_and_still_writes_the_other_cases(tmp_path):
     assert report["cases"][1]["rawOutput"] == "ham model"
     assert report["cases"][1]["validationError"] == "missing_status"
     assert report["cases"][1]["statusOk"] is False
+    assert report["cases"][0]["answer"] is None
+    assert report["cases"][1]["answer"] == "gizlendi"
+
+
+def _gap(text: str) -> GroundingResult:
+    return GroundingResult(True, "insufficient_evidence", text, [], "")
+
+
+def test_alignment_quotes_the_chart_line_the_question_asked():
+    patient = {name: _record(name) for name in (
+        "patient-01", "patient-02", "patient-03", "patient-04", "patient-05",
+    )}
+    coumadin = align_answer(
+        patient["patient-01"], "Hâlâ Coumadin kullanıyor muyum?",
+        GroundingResult(True, "answered", "COUMADIN son reçete 15.06.2025.", [], ""),
+    )
+    assert coumadin.ok
+    assert "COUMADIN 5 MG 28 TABLET" in coumadin.answer
+    assert "ELIQUIS 5 MG 56 FİLM TABLET" in coumadin.answer
+
+    femara = align_answer(
+        patient["patient-03"], "Femara'yı kullanmaya devam ediyor muyum?",
+        GroundingResult(True, "answered", "FEMARA son reçete 15.06.2026.", [], ""),
+    )
+    assert "letrozol 15.09.2026 itibarıyla kesildi" in femara.answer
+
+    stopped = align_answer(
+        patient["patient-04"],
+        "Roaccutane kullanıyordum, hâlâ kullanıyor muyum?",
+        _gap("Bu bilgi kayıtta yok."),
+    )
+    assert "2015'ten beri kullanmadığını belirtti" in stopped.answer
+    assert "ROACCUTANE 20 MG 30 KAPSÜL" in stopped.answer
+
+    course = align_answer(
+        patient["patient-02"], "Deltacortril'i hâlâ kullanmam gerekiyor mu?",
+        _gap("Bu bilgi kayıtta yok."),
+    )
+    assert "Prednizolon 40 mg 5 gün ile taburcu edildi" in course.answer
+
+    fev = ground_answer(
+        "DURUM: YANIT\nFEV1 3,12 L (%71) (06.10.2026). [Hastane başvuruları]\n",
+        patient["patient-02"],
+    )
+    assert fev.ok
+    assert fev.citations[0]["section"] == "Ameliyat ve işlemler"
+    assert "3,12" in fev.answer
+    dotted = ground_answer(
+        "DURUM: YANIT\nFEV1 3.12 L (%71) (06.10.2026). [Ameliyat ve işlemler]\n",
+        patient["patient-02"],
+    )
+    assert dotted.error == "unsupported_number"
+    peak = ground_answer(
+        "DURUM: YANIT\nTepe akım 560 L/dk. [Tepe akım ölçümü (evde, peak flow)]\n",
+        patient["patient-02"],
+    )
+    replaced = align_answer(patient["patient-02"], "Solunum testimde FEV1 kaç çıktı?", peak)
+    assert "FEV1 3,12 L (%71)" in replaced.answer
+    assert "06.10.2026" in replaced.answer
+    assert "560 L/dk" not in replaced.answer
+
+    effect = align_answer(
+        patient["patient-05"],
+        "Propranolol başladıktan sonra baş ağrılarım azaldı mı?",
+        GroundingResult(True, "answered", "Son 30 günde 13 baş ağrılı gün.", [], ""),
+    )
+    assert effect.status == "insufficient_evidence"
+    assert "kullanmaya başlayıp başlamadığı ve tolerans bilinmiyor" in effect.answer
+    assert "13 baş ağrılı" not in effect.answer
+
+    echo = ground_answer(
+        "DURUM: YANIT\nKayıttaki cümle: Başım ağrıyor. [Hastalıklar]\n",
+        patient["patient-05"],
+    )
+    assert echo.ok is False
+    headache = align_answer(patient["patient-05"], "Başım ağrıyor.", echo)
+    assert headache.ok and headache.status == "answered"
+    assert "Başım ağrıyor" not in headache.answer
+    assert "rizatriptan 10 mg (24 saatte en fazla 2)" in headache.answer
+    assert "Son 30 günde 13 baş ağrılı gün" in headache.answer
+
+    mood = align_answer(
+        patient["patient-03"], "Çok yorgunum, hiçbir şeyden keyif alamıyorum.",
+        _gap("Bu bilgi kayıtta yok."),
+    )
+    assert "PHQ-9 13" in mood.answer
+    assert "Sertralin 50 mg'dan 100 mg'a çıkarıldı" in mood.answer
+
+    weight = align_answer(
+        patient["patient-01"],
+        "Son iki günde kilom arttı, ayaklarım şişti, nefesim daralıyor. Ne yapmalıyım?",
+        _gap("Bu bilgi kayıtta yok."),
+    )
+    assert "son 2 günde +1,3 kg" in weight.answer
+    assert "Pretibial +2 ödem" in weight.answer
+
+    holter = align_answer(
+        patient["patient-05"], "Holter sonucumda ne çıktı?", _gap("Bu bilgi kayıtta yok."),
+    )
+    assert "en yüksek 128/dk" in holter.answer
+    assert "Supraventriküler ekstrasistol toplam 14" in holter.answer
+
+    planned = align_answer(
+        patient["patient-02"], "Uyku testi (polisomnografi) sonucum ne çıktı?",
+        _gap("Bu bilgi kayıtta yok."),
+    )
+    assert planned.status == "insufficient_evidence"
+    assert "Polisomnografi — planlandı (19.05.2026), randevu kaydı yok." in planned.answer
+
+    renal = align_answer(
+        patient["patient-01"], "Kreatinin değerim son tahlillerde nasıl değişti?",
+        _gap("Bu bilgi kayıtta yok."),
+    )
+    assert "Kreatinin 1,32 mg/dL (18.09.2026)" in renal.answer
+    assert "önceki 1,38 (04.08.2026)" in renal.answer
+    assert "112 mg/g" not in renal.answer
+    pending = align_answer(
+        patient["patient-01"],
+        "Diüretik doz artışından sonraki kreatinin kontrolü geldi mi?",
+        _gap("Bu bilgi kayıtta yok."),
+    )
+    assert pending.status == "insufficient_evidence"
+    assert "güncel potasyum ve kreatinin bilinmiyor" in pending.answer
+
+
+def test_invented_number_stays_blocked_and_real_fev1_does_not(tmp_path):
+    store = TextRecordStore(tmp_path)
+    record, _created = store.import_payload(_load(PATIENTS / "patient-02.json"))
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if "FEV1" in body["messages"][-1]["content"]:
+            text = "DURUM: YANIT\nFEV1 3,12 L (%71) (06.10.2026). [Tepe akım ölçümü (evde, peak flow)]\n"
+        else:
+            text = "DURUM: YANIT\nsemaglutide 0,5 mg başlandı (01.01.1999). [Tanılar (hastane kaydı)]\n"
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"},
+            content=_sse(text, body["model"]),
+        )
+
+    client = TextModelClient(TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="local-model",
+        require_zdr=False,
+    ), httpx.MockTransport(handler))
+    answerer = TextAnswerer(client)
+    kept = asyncio.run(answerer.answer(record, "Solunum testimde FEV1 kaç çıktı?"))
+    assert kept["status"] == "answered"
+    assert "FEV1 3,12 L (%71)" in kept["answer"]
+    assert "rawOutput" not in kept
+    blocked = asyncio.run(answerer.answer(record, "Ozempic iğnesine başladım mı?"))
+    assert blocked["status"] == "validation_failed"
+    assert "1999" in blocked["rawOutput"]
+    assert "semaglutide" not in blocked["answer"]

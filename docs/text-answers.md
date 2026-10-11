@@ -80,9 +80,11 @@ Başka bir kabukta:
 python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 ```
 
-Sorular `tests/fixtures/text/eval_questions.jsonl` (40). Çıkış kodu: kritik hata varsa 2, hasta içe aktarma veya bağlantı kurulumu bozulursa 1, değilse 0. Tek sorunun zaman aşımı veya bozuk SSE'si raporu düşürmez; o satıra `error` yazılır ve koşu sürer. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır.
+Sorular `tests/fixtures/text/eval_questions.jsonl` (46). Çıkış kodu: kritik hata varsa 2, hasta içe aktarma veya bağlantı kurulumu bozulursa 1, değilse 0. Tek sorunun zaman aşımı veya bozuk SSE'si raporu düşürmez; o satıra `error` yazılır ve koşu sürer. Özet stdout'a, tam rapor `data/evaluation/text-run-*/report.json` altına yazılır. Her satırda derecelenen `answer` durur.
 
-`factCoverage` ilaç, doz, tarih ve yük taşıyan sözcükler bir aradaysa sayar. `exactFactCoverage` eski alt dizge eşleşmesidir. Ambalaj (`56 FİLM TABLET`) ve `itibarıyla` tek başına kaçırılmaz; doz veya tarih yoksa yine kaçar. `validation_failed` ve modelden gelen `safety_refusal` satırında kısaltılmış `rawOutput` durur (düşünce bloğu ve 11 haneli numara silinir). Başarılı yanıtta ham metin tutulmaz.
+Yanıt, model metninden sonra kayıt satırına çekilir: kesilen veya değişen ilaçta durdurma cümlesi ve güncel ilaç, sorulan ölçüm (tepe akım FEV1 yerine geçmez), etki yazılmamışsa bilinmeyen cümlesi, çok parçalı soruda eksik kalan satır. Uydurulan sayı bu doldurmayla geri gelmez.
+
+`factCoverage` ilaç, doz, tarih ve yük taşıyan sözcükler bir aradaysa sayar. `exactFactCoverage` eski alt dizge eşleşmesidir. Ambalaj (`56 FİLM TABLET`) ve `itibarıyla` tek başına kaçırılmaz; baştaki sıfırın düştüğü tarih, PHQ-9 ile artı derece, iki doz bir aradayken aynı anlama gelen değişim fiili de kaçar sayılmaz. Doz veya tarih yoksa yine kaçar. `validation_failed` ve modelden gelen `safety_refusal` satırında kısaltılmış `rawOutput` durur (düşünce bloğu ve 11 haneli numara silinir).
 
 Yerel vLLM (48 GB L40S dahil, OpenAI uyumlu):
 
@@ -105,6 +107,7 @@ python -m pytest -q tests/test_text_answer.py
 python -m ruff check src/medical_ai_selective_context/text_document.py \
   src/medical_ai_selective_context/text_safety.py \
   src/medical_ai_selective_context/text_grounding.py \
+  src/medical_ai_selective_context/text_focus.py \
   src/medical_ai_selective_context/text_llm.py \
   src/medical_ai_selective_context/text_qa.py \
   src/medical_ai_selective_context/text_eval.py \

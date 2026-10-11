@@ -243,21 +243,72 @@ def _resolve_section(marker: str, claim: str, record: TextRecord) -> int | None:
     return ranked[0]
 
 
+_GENERIC_WORDS = frozenset({
+    "atif", "bilgi", "bolum", "cumle", "cumleyi", "durum", "gibi", "hasta",
+    "kaydi", "kayit", "kayitta", "kayittaki", "olan", "olarak", "oldugu",
+    "yaz", "yazili", "yok", "yanit",
+})
+
+
+def content_words(text: str) -> list[str]:
+    folded = normalize_text(text)
+    return [
+        token for token in re.findall(r"[a-z]{5,}", folded)
+        if token not in _GENERIC_WORDS
+    ]
+
+
 def _best_line(section_index: int, claim: str, record: TextRecord) -> tuple[int, str]:
     section = record.sections[section_index]
     best_number = section.start_line
     best_text = section.lines[0] if section.lines else section.heading
     best_score = -1
     claim_numbers = [match.group(0) for match in _numbers(claim)]
+    words = content_words(claim)
     for line in record.lines:
         if line.section_index != section_index or line.text.startswith("##"):
             continue
-        score = sum(1 for token in claim_numbers if token in line.text)
+        folded = normalize_text(line.text)
+        score = sum(3 for token in claim_numbers if token in line.text)
+        score += sum(1 for word in words if word in folded)
         if score > best_score:
             best_score = score
             best_number = line.number
             best_text = line.text
     return best_number, best_text
+
+
+def _section_supporting_numbers(claim: str, record: TextRecord) -> int | None:
+    """The section that actually contains the claim's numbers, not the bracket that named one."""
+    numbers = _numbers(claim)
+    if not numbers and not _RELATIVE.search(claim):
+        return None
+    words = content_words(claim)
+    best: tuple[int, int] | None = None
+    for index, section in enumerate(record.sections):
+        if not _numbers_supported(claim, section.text):
+            continue
+        folded = normalize_text(section.text)
+        score = sum(1 for match in numbers if match.group(0) in section.text)
+        score += sum(2 for word in words if word in folded)
+        if best is None or score > best[0]:
+            best = (score, index)
+    return None if best is None else best[1]
+
+
+def _overlaps_section(sentence: str, blob: str) -> bool:
+    words = content_words(sentence)
+    if not words:
+        return False
+    folded = normalize_text(blob)
+    hits = [word for word in words if word in folded]
+    return any(len(word) >= 6 for word in hits) or len(hits) >= 2
+
+
+def _marker_supported(marker: str, record: TextRecord) -> bool:
+    if not _numbers(marker) and not _RELATIVE.search(marker):
+        return True
+    return any(_numbers_supported(marker, section.text) for section in record.sections)
 
 
 def _marker_text(match: re.Match[str]) -> str:
@@ -298,13 +349,31 @@ def _section_for_claim(claim: str, record: TextRecord) -> int | None:
         blob = record.sections[index].text
         if not _numbers_supported(claim, blob):
             continue
+        folded = normalize_text(blob)
         score = sum(1 for match in numbers if match.group(0) in blob)
+        score += sum(2 for word in content_words(claim) if word in folded)
         if score or not numbers:
             scored.append((score, index))
     if not scored:
         return None
     scored.sort(key=lambda item: (-item[0], item[1]))
     return scored[0][1]
+
+
+def _section_overlapping(sentence: str, record: TextRecord) -> int | None:
+    """A numberless chart clause still belongs to the section that contains its words."""
+    words = content_words(sentence)
+    if not words:
+        return None
+    best: tuple[int, int] | None = None
+    for index, section in enumerate(record.sections):
+        if not _overlaps_section(sentence, section.text):
+            continue
+        folded = normalize_text(section.text)
+        score = sum(2 if len(word) >= 6 else 1 for word in words if word in folded)
+        if best is None or score > best[0]:
+            best = (score, index)
+    return None if best is None else best[1]
 
 
 def _remember(
@@ -340,15 +409,17 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     saw_unsafe = False
     last_index: int | None = None
     sentence_count = 0
+    hide_markers = False
+    moved = False
     for claim, marker in _pairs(body):
         section_index: int | None = None
         if marker:
-            section_index = _resolve_section(marker, claim, record)
-            if section_index is not None:
-                section = record.sections[section_index]
-                if not _numbers_supported(marker, section.text):
-                    return GroundingResult(False, "validation_failed", "", [], "unsupported_number")
-                last_index = section_index
+            if not _marker_supported(marker, record):
+                hide_markers = True
+            else:
+                section_index = _resolve_section(marker, claim, record)
+                if section_index is not None:
+                    last_index = section_index
         pieces = _sentences(claim) or ([claim.strip()] if claim.strip() else [])
         for sentence in pieces:
             sentence_count += 1
@@ -361,11 +432,36 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
             blob = record.sections[index].text if index is not None else ""
             needs_number = bool(_numbers(sentence) or _RELATIVE.search(sentence))
             if needs_number and (index is None or not _numbers_supported(sentence, blob)):
-                errors.append("unsupported_number")
-                continue
+                relocated = _section_supporting_numbers(sentence, record)
+                if relocated is None:
+                    errors.append("unsupported_number")
+                    continue
+                if index != relocated:
+                    moved = True
+                index = relocated
+                blob = record.sections[index].text
+            elif needs_number and content_words(sentence) and not _overlaps_section(sentence, blob):
+                relocated = _section_supporting_numbers(sentence, record)
+                if (
+                    relocated is not None
+                    and _overlaps_section(sentence, record.sections[relocated].text)
+                    and relocated != index
+                ):
+                    moved = True
+                    index = relocated
+                    blob = record.sections[index].text
             if not _causal_supported(sentence, blob):
                 errors.append("unsupported_causal_link")
                 continue
+            if not needs_number and (index is None or not _overlaps_section(sentence, blob)):
+                relocated = _section_overlapping(sentence, record)
+                if relocated is None:
+                    errors.append("unsupported_claim" if index is not None else "missing_citation")
+                    continue
+                if index != relocated:
+                    moved = True
+                index = relocated
+                blob = record.sections[index].text
             if status == "answered" and index is None:
                 errors.append("missing_citation")
                 continue
@@ -381,5 +477,5 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
         )
     if status == "answered" and not citations:
         return GroundingResult(False, "validation_failed", "", [], "missing_citation")
-    answer = body if len(kept) == sentence_count else "\n".join(kept)
+    answer = body if len(kept) == sentence_count and not hide_markers and not moved else "\n".join(kept)
     return GroundingResult(True, status, answer.strip(), citations)

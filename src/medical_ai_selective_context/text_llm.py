@@ -3,14 +3,21 @@
 No response_format. OpenRouter zero-data-retention is sent only to
 openrouter.ai, and a ZDR request aimed at another host fails closed.
 Fallbacks stay inside that ZDR set unless the operator pins a provider.
+
+Real records stay off the model unless the operator opts in. External
+hosts need ALLOW_EXTERNAL_REAL_DATA. An on-prem vLLM needs the separate
+LLM_LOCAL_INFERENCE flag, and even then only a loopback, private, or
+explicitly listed host is accepted. openrouter.ai never counts as local.
 """
 
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import math
 import os
+import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from time import perf_counter
@@ -83,6 +90,9 @@ class TextModelSettings:
     provider: str = ""
     require_zdr: bool = True
     allow_external_real_data: bool = False
+    # Separate from the external opt-in. True still refuses a public host.
+    local_inference: bool = False
+    local_hosts: tuple[str, ...] = ()
     answer_max_tokens: int = 800
     # None omits an explicit override. Auto still disables thinking for known
     # reasoning models on OpenRouter; LLM_REASONING wins when it is set.
@@ -111,6 +121,8 @@ class TextModelSettings:
             provider=os.getenv("OPENROUTER_PROVIDER", "").strip(),
             require_zdr=env_bool("OPENROUTER_REQUIRE_ZDR", True),
             allow_external_real_data=env_bool("ALLOW_EXTERNAL_REAL_DATA", False),
+            local_inference=env_bool("LLM_LOCAL_INFERENCE", False),
+            local_hosts=_local_hosts_from_env(),
             answer_max_tokens=int(env_number("TEXT_ANSWER_MAX_TOKENS", 800, 128, 4000, integer=True)),
             reasoning=env_optional_bool("LLM_REASONING"),
             allow_fallbacks=env_bool("OPENROUTER_ALLOW_FALLBACKS", True),
@@ -128,8 +140,88 @@ def _is_openrouter(base_url: str) -> bool:
     return _hostname(base_url) == "openrouter.ai"
 
 
-def _is_localhost(base_url: str) -> bool:
-    return _hostname(base_url) in {"127.0.0.1", "localhost", "::1"}
+def _is_openrouter_host(host: str) -> bool:
+    return host == "openrouter.ai" or host.endswith(".openrouter.ai")
+
+
+def _ip_literal(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    try:
+        return ipaddress.ip_address(host)
+    except ValueError:
+        return None
+
+
+def _is_local_ip(host: str) -> bool:
+    """Loopback, RFC1918, link-local, or IPv6 ULA. No DNS lookup."""
+    ip = _ip_literal(host)
+    if ip is None:
+        return False
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        ip = mapped
+    return bool(ip.is_loopback or ip.is_private or ip.is_link_local)
+
+
+def _host_is_trusted_local(host: str, extra_hosts: tuple[str, ...] = ()) -> bool:
+    """On-prem only. A public name is trusted solely when the operator listed it."""
+    if not host or _is_openrouter_host(host):
+        return False
+    if host == "localhost" or _is_local_ip(host):
+        return True
+    return host in extra_hosts
+
+
+def _trusted_local_endpoint(settings: TextModelSettings) -> bool:
+    return _host_is_trusted_local(_hostname(settings.base_url), settings.local_hosts)
+
+
+def real_data_mode(settings: TextModelSettings) -> str:
+    """Effective permission for a non-synthetic record: blocked, local, or external."""
+    if settings.allow_external_real_data:
+        return "external"
+    if settings.local_inference and _trusted_local_endpoint(settings):
+        return "local"
+    return "blocked"
+
+
+def _normalize_host_token(piece: str) -> str | None:
+    token = piece.strip().lower().rstrip(".")
+    if not token:
+        return None
+    if token.startswith("[") and "]" in token:
+        host, _, rest = token[1:].partition("]")
+        port = rest.removeprefix(":")
+        if port and not port.isdigit():
+            raise ModelError("invalid_local_hosts")
+        token = host.rstrip(".")
+    elif token.count(":") == 1:
+        name, port = token.split(":")
+        if port.isdigit() and name:
+            token = name.rstrip(".")
+    return token or None
+
+
+def _host_token_ok(host: str) -> bool:
+    if not host or len(host) > 253 or not re.fullmatch(r"[a-z0-9._:-]+", host):
+        return False
+    if _is_openrouter_host(host):
+        return False
+    ip = _ip_literal(host)
+    return ip is None or _is_local_ip(host)
+
+
+def _local_hosts_from_env() -> tuple[str, ...]:
+    """Extra on-prem names. openrouter.ai and public IP literals are rejected."""
+    hosts: list[str] = []
+    for piece in os.getenv("LLM_LOCAL_HOSTS", "").split(","):
+        host = _normalize_host_token(piece)
+        if host is None:
+            continue
+        if not _host_token_ok(host):
+            raise ModelError("invalid_local_hosts")
+        if host not in hosts:
+            hosts.append(host)
+    return tuple(hosts)
 
 
 def _thinking_mode(name: str) -> str:
@@ -316,8 +408,9 @@ class TextModelClient:
         self._transport = transport
 
     def status(self) -> dict[str, Any]:
+        trusted = _trusted_local_endpoint(self.settings)
         return {
-            "configured": bool(self.settings.api_key) or _is_localhost(self.settings.base_url),
+            "configured": bool(self.settings.api_key) or trusted,
             "model": self.settings.model,
             "host": _hostname(self.settings.base_url),
             "requireZdr": self.settings.require_zdr,
@@ -326,20 +419,24 @@ class TextModelClient:
             "retryMax": self.settings.retry_max,
             "disableThinking": self.settings.disable_thinking,
             "externalRealDataAllowed": self.settings.allow_external_real_data,
+            "localInference": self.settings.local_inference,
+            "trustedLocalHost": trusted,
+            "realDataMode": real_data_mode(self.settings),
             "answerMaxTokens": self.settings.answer_max_tokens,
         }
 
     def guard(self, data_class: str) -> None:
-        if data_class != "synthetic" and not self.settings.allow_external_real_data:
+        if data_class != "synthetic" and real_data_mode(self.settings) == "blocked":
             raise ModelError("external_real_data_blocked")
-        if not self.settings.api_key and not _is_localhost(self.settings.base_url):
+        if not self.settings.api_key and not _trusted_local_endpoint(self.settings):
             raise ModelError("api_key_missing")
         if self.settings.require_zdr and not _is_openrouter(self.settings.base_url):
             raise ModelError("zdr_requires_openrouter")
 
     def _endpoint(self) -> str:
         parsed = urlparse(self.settings.base_url)
-        if parsed.scheme != "https" and not (parsed.scheme == "http" and _is_localhost(self.settings.base_url)):
+        local_http = parsed.scheme == "http" and _trusted_local_endpoint(self.settings)
+        if parsed.scheme != "https" and not local_http:
             raise ModelError("insecure_model_endpoint")
         if parsed.username or parsed.password or not parsed.hostname:
             raise ModelError("invalid_model_endpoint")

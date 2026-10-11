@@ -36,7 +36,7 @@ Acil belirti, kendine zarar, açık doz/tedavi değişikliği ve kayıt veya sis
 
 Her klinik yanıta sabit, rakamsız bir uyarı eklenir. `clinicalMeaningVerified` her zaman false'tur; kontrol karakter kontrolüdür.
 
-Gerçek (fixture hash'i tutmayan) kayıt, `ALLOW_EXTERNAL_REAL_DATA=true` olmadan dışarı çıkmaz. Gönderilen yedi hasta ve `example-facts.json` bu hash ile sentetik sayılır. İstemci kendine sentetik diyemez.
+Gerçek (fixture hash'i tutmayan) kayıt varsayılan olarak modele gitmez. `ALLOW_EXTERNAL_REAL_DATA=true` yapılandırılmış her hosta izin verir; bu, `openrouter.ai` dahil dışarı çıkış demektir. Yerel veya özel ağdaki vLLM için ayrı bayrak vardır: `LLM_LOCAL_INFERENCE=true`. Bayrak açıkken gerçek kayıt yalnız güvenilen hosta gider: `localhost`, `127.0.0.1`, `::1`, özel adres (10/8, 172.16/12, 192.168/16), link-local ve IPv6 ULA. DNS çözümüne bakılmaz. `LLM_LOCAL_HOSTS` ek makine adı ekler (`gpu.local`). `openrouter.ai` ve genel bir IP bu listeye yazılırsa süreç ayarı reddeder. Bayrak açık olsa bile host güvenilmiyorsa gerçek kayıt yine `external_real_data_blocked` olur. `/health` içindeki `textLlm.realDataMode` etkin izni söyler: `blocked`, `local` veya `external`. İki bayrak birden açıksa mod `external` kalır, çünkü adres sonradan buluta çevrilse de gerçek kayıt gider. Gönderilen yedi hasta ve `example-facts.json` bu hash ile sentetik sayılır. İstemci kendine sentetik diyemez.
 
 ## Uçlar
 
@@ -97,6 +97,10 @@ export LLM_BASE_URL="http://127.0.0.1:8000/v1"
 export LLM_MODEL="Qwen/Qwen2.5-7B-Instruct"
 export LLM_API_KEY=local
 export OPENROUTER_REQUIRE_ZDR=false
+# Gerçek kayıt için. Kapalıyken localhost bile gerçek kaydı dışarı vermez.
+# Özel ağ: LLM_BASE_URL=http://192.168.1.20:8000/v1
+# Ad ile: LLM_LOCAL_HOSTS=gpu.local
+export LLM_LOCAL_INFERENCE=true
 unset LLM_REASONING
 python -m uvicorn medical_ai_selective_context.main:app --host 127.0.0.1 --port 8091
 python scripts/evaluate_text.py --base-url http://127.0.0.1:8091

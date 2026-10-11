@@ -77,6 +77,7 @@ _FAILURES = {
     "invalid_numeric_setting": ("model_unavailable", "Model ayarı okunamadı."),
     "invalid_model_name": ("model_unavailable", "Model adı geçersiz."),
     "invalid_thinking_setting": ("model_unavailable", "Düşünme ayarı okunamadı."),
+    "invalid_local_hosts": ("model_unavailable", "Yerel model adres listesi okunamadı."),
     "reasoning_only": (
         "model_unavailable",
         "Model yalnız düşünce belirteci üretti; yanıt gösterilmedi.",

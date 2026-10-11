@@ -29,6 +29,7 @@ from medical_ai_selective_context.text_llm import (
     TextModelSettings,
     ThinkFilter,
     chat_body,
+    real_data_mode,
 )
 from medical_ai_selective_context.text_qa import (
     SYSTEM_PROMPT,
@@ -229,6 +230,120 @@ def test_zdr_and_bool_env(monkeypatch):
         client.guard("synthetic")
 
 
+def _local_settings(**overrides) -> TextModelSettings:
+    fields = {
+        "api_key": "k",
+        "base_url": "http://127.0.0.1:8000/v1",
+        "require_zdr": False,
+        "allow_external_real_data": False,
+        "local_inference": False,
+    }
+    fields.update(overrides)
+    return TextModelSettings(**fields)
+
+
+def test_local_inference_allows_real_data_only_on_a_trusted_host():
+    TextModelClient(_local_settings(local_inference=True)).guard("real")
+    blocked = TextModelClient(_local_settings())
+    with pytest.raises(ModelError, match="external_real_data_blocked"):
+        blocked.guard("real")
+    blocked.guard("synthetic")
+    assert blocked.status()["realDataMode"] == "blocked"
+    assert blocked.status()["trustedLocalHost"] is True
+    assert blocked.status()["localInference"] is False
+
+    cloud = TextModelClient(TextModelSettings(
+        api_key="k", base_url="https://openrouter.ai/api/v1", require_zdr=True,
+        local_inference=True,
+    ))
+    with pytest.raises(ModelError, match="external_real_data_blocked"):
+        cloud.guard("real")
+    cloud.guard("synthetic")
+    assert cloud.status()["realDataMode"] == "blocked"
+    assert cloud.status()["trustedLocalHost"] is False
+
+    private = TextModelClient(_local_settings(
+        api_key="", base_url="http://192.168.1.20:8000/v1", local_inference=True,
+    ))
+    private.guard("real")
+    assert private._endpoint() == "http://192.168.1.20:8000/v1/chat/completions"
+    assert private.status()["realDataMode"] == "local"
+    assert private.status()["configured"] is True
+
+    for base in (
+        "http://10.1.2.3:8000/v1",
+        "http://172.16.0.4:8000/v1",
+        "http://[::1]:8000/v1",
+        "http://[fe80::1]:8000/v1",
+        "https://[::ffff:192.168.0.8]/v1",
+    ):
+        TextModelClient(_local_settings(base_url=base, local_inference=True)).guard("real")
+
+    public_ip = TextModelClient(_local_settings(
+        base_url="https://8.8.8.8/v1", local_inference=True,
+    ))
+    with pytest.raises(ModelError, match="external_real_data_blocked"):
+        public_ip.guard("real")
+    named = TextModelClient(_local_settings(
+        api_key="", base_url="http://gpu.local:8000/v1", local_inference=True,
+        local_hosts=("gpu.local",),
+    ))
+    named.guard("real")
+    assert named._endpoint().startswith("http://gpu.local:8000/v1/")
+    unlisted = TextModelClient(_local_settings(
+        base_url="https://gpu.local/v1", local_inference=True,
+    ))
+    with pytest.raises(ModelError, match="external_real_data_blocked"):
+        unlisted.guard("real")
+    cleartext = TextModelClient(_local_settings(
+        base_url="http://example.com/v1", local_inference=True,
+    ))
+    with pytest.raises(ModelError, match="insecure_model_endpoint"):
+        cleartext._endpoint()
+
+    external = TextModelClient(TextModelSettings(
+        api_key="k", base_url="https://openrouter.ai/api/v1", require_zdr=True,
+        allow_external_real_data=True, local_inference=True,
+    ))
+    external.guard("real")
+    assert external.status()["realDataMode"] == "external"
+
+
+def test_local_hosts_reject_external_names(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_REQUIRE_ZDR", "false")
+    monkeypatch.setenv("LLM_LOCAL_INFERENCE", "true")
+    monkeypatch.setenv("LLM_BASE_URL", "http://10.1.2.3:8000/v1")
+    monkeypatch.setenv("ALLOW_EXTERNAL_REAL_DATA", "false")
+    monkeypatch.delenv("LLM_REASONING", raising=False)
+    for raw in ("openrouter.ai", "API.OpenRouter.ai", "8.8.8.8", "172.32.0.1", "not a host"):
+        monkeypatch.setenv("LLM_LOCAL_HOSTS", raw)
+        with pytest.raises(ModelError, match="invalid_local_hosts"):
+            TextModelSettings.from_env()
+    monkeypatch.setenv("LLM_LOCAL_HOSTS", "gpu.local, GPU.local:8000, 10.0.0.8, [::1]:8000")
+    parsed = TextModelSettings.from_env()
+    assert parsed.local_inference is True
+    assert parsed.local_hosts == ("gpu.local", "10.0.0.8", "::1")
+    assert real_data_mode(parsed) == "local"
+    monkeypatch.setenv("LLM_LOCAL_INFERENCE", "false")
+    assert real_data_mode(TextModelSettings.from_env()) == "blocked"
+
+
+def test_health_reports_local_real_data_mode(tmp_path):
+    model = TextModelClient(_local_settings(
+        api_key="", base_url="http://10.8.0.4:8000/v1", local_inference=True,
+    ))
+    with TestClient(create_app(
+        tmp_path / "cco", graph=OfflineGraph(), embedding_model="",
+        load_sample=False, model_client=None, text_model=model,
+    )) as client:
+        body = client.get("/health").json()["textLlm"]
+    assert body["realDataMode"] == "local"
+    assert body["localInference"] is True
+    assert body["trustedLocalHost"] is True
+    assert body["externalRealDataAllowed"] is False
+    assert body["host"] == "10.8.0.4"
+
+
 def _sse(text: str, model: str) -> bytes:
     frames = []
     for index in range(0, len(text), 18):
@@ -382,6 +497,68 @@ def test_import_answers_and_does_not_invent_a_number(text_client):
     assert len(text_client.calls) == 1
 
 
+def test_real_text_record_reaches_only_a_local_model(tmp_path):
+    payload = _load(PATIENTS / "patient-01.json")
+    payload["text"] = payload["text"].replace("71 yaşında", "72 yaşında", 1)
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(request.url.host)
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"},
+            content=_sse(_canned_answer(payload["text"]), body["model"]),
+        )
+
+    model = TextModelClient(TextModelSettings(
+        api_key="test", base_url="http://10.0.0.8:8000/v1", model="local-model",
+        require_zdr=False, local_inference=True,
+    ), httpx.MockTransport(handler))
+    with TestClient(create_app(
+        tmp_path / "local-cco", graph=OfflineGraph(), embedding_model="",
+        load_sample=False, model_client=None, text_model=model,
+    )) as client:
+        assert client.get("/health").json()["textLlm"]["realDataMode"] == "local"
+        created = client.post("/api/v1/text-records", json=payload)
+        assert created.status_code == 201
+        assert created.json()["dataClass"] == "real"
+        answered = client.post("/api/v1/text/answer", json={
+            "recordId": created.json()["recordId"],
+            "question": "Son eGFR değerim kaç?",
+        })
+    assert answered.status_code == 200, answered.text
+    assert answered.json()["status"] == "answered"
+    assert "41 mL/dk/1,73 m²" in answered.json()["answer"]
+    assert calls == ["10.0.0.8"]
+
+    cloud_calls = []
+
+    def cloud_handler(request: httpx.Request) -> httpx.Response:
+        cloud_calls.append(request.url.host)
+        return httpx.Response(500)
+
+    cloud = TextModelClient(TextModelSettings(
+        api_key="test", base_url="https://openrouter.ai/api/v1", model="local-model",
+        require_zdr=False, local_inference=True,
+    ), httpx.MockTransport(cloud_handler))
+    with TestClient(create_app(
+        tmp_path / "cloud-cco", graph=OfflineGraph(), embedding_model="",
+        load_sample=False, model_client=None, text_model=cloud,
+    )) as client:
+        health = client.get("/health").json()["textLlm"]
+        assert health["realDataMode"] == "blocked"
+        assert health["localInference"] is True
+        assert health["trustedLocalHost"] is False
+        created = client.post("/api/v1/text-records", json=payload)
+        blocked = client.post("/api/v1/text/answer", json={
+            "recordId": created.json()["recordId"],
+            "question": "Son eGFR değerim kaç?",
+        }).json()
+    assert blocked["status"] == "blocked"
+    assert blocked["validation"]["error"] == "external_real_data_blocked"
+    assert cloud_calls == []
+
+
 def test_stream_done_event_is_the_graded_answer(text_client):
     record_id = text_client.post(
         "/api/v1/text-records",
@@ -412,6 +589,11 @@ def test_stream_done_event_is_the_graded_answer(text_client):
 
 
 def test_real_text_never_reaches_the_model(text_client):
+    health = text_client.get("/health").json()["textLlm"]
+    assert health["realDataMode"] == "blocked"
+    assert health["localInference"] is False
+    assert health["trustedLocalHost"] is True
+    assert health["externalRealDataAllowed"] is False
     payload = _load(PATIENTS / "patient-01.json")
     payload["text"] = payload["text"].replace("71 yaşında", "72 yaşında", 1)
     imported = text_client.post("/api/v1/text-records", json=payload)
@@ -423,6 +605,7 @@ def test_real_text_never_reaches_the_model(text_client):
         "question": "Son eGFR değerim kaç?",
     }).json()
     assert result["status"] == "blocked"
+    assert result["validation"]["error"] == "external_real_data_blocked"
     assert result["metrics"]["modelCalls"] == 0
     assert len(text_client.calls) == before
 

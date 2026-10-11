@@ -36,7 +36,7 @@ Acil belirti, kendine zarar, açık doz/tedavi değişikliği ve kayıt veya sis
 
 Her klinik yanıta sabit, rakamsız bir uyarı eklenir. `clinicalMeaningVerified` her zaman false'tur; kontrol karakter kontrolüdür.
 
-Gerçek (fixture hash'i tutmayan) kayıt, `ALLOW_EXTERNAL_REAL_DATA=true` olmadan dışarı çıkmaz. Gönderilen beş hasta ve `example-facts.json` bu hash ile sentetik sayılır. İstemci kendine sentetik diyemez.
+Gerçek (fixture hash'i tutmayan) kayıt, `ALLOW_EXTERNAL_REAL_DATA=true` olmadan dışarı çıkmaz. Gönderilen yedi hasta ve `example-facts.json` bu hash ile sentetik sayılır. İstemci kendine sentetik diyemez.
 
 ## Uçlar
 

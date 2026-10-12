@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "key": "evidence-concepts-v1",
+  "concepts": [
+    {"id": "triglyceride", "aliases": ["trigliserit", "triglyceride"]},
+    {"id": "glucose", "aliases": ["glukoz", "glucose", "aclik kan sekeri", "aclik sekeri", "kan sekeri"]},
+    {"id": "hemoglobin", "aliases": ["hemoglobin", "hgb", "hb"]},
+    {"id": "hematocrit", "aliases": ["hematokrit", "hct"]},
+    {"id": "mcv", "aliases": ["mcv", "ortalama eritrosit hacmi"]},
+    {"id": "vitamin_b12", "aliases": ["vitamin b12", "b12 vitamini", "kobalamin", "b12"]},
+    {"id": "b12_deficiency", "aliases": ["b12 eksikligi", "vitamin b12 eksikligi", "kobalamin eksikligi"]},
+    {"id": "ferritin", "aliases": ["ferritin"]},
+    {"id": "iron", "aliases": ["serum demir", "demir", "iron"]},
+    {"id": "anemia", "aliases": ["anemi", "anemia"]},
+    {"id": "hba1c", "aliases": ["hba1c", "hb a1c"]},
+    {"id": "ldl", "aliases": ["ldl"]},
+    {"id": "hdl", "aliases": ["hdl"]},
+    {"id": "creatinine", "aliases": ["kreatinin", "creatinine"]},
+    {"id": "alt", "aliases": ["alt"]},
+    {"id": "ast", "aliases": ["ast"]},
+    {"id": "tsh", "aliases": ["tsh"]},
+    {"id": "egfr", "aliases": ["egfr"]}
+  ]
+}

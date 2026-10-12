@@ -219,8 +219,17 @@ def test_thinking_defaults_off_for_vllm_and_openrouter(monkeypatch):
     monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:8000/v1")
     monkeypatch.setenv("OPENROUTER_REQUIRE_ZDR", "false")
     quiet = chat_body(TextModelSettings.from_env(), [])
-    assert "chat_template_kwargs" not in quiet
+    assert quiet["chat_template_kwargs"] == {"enable_thinking": True}
     assert "reasoning" not in quiet
+    monkeypatch.setenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("OPENROUTER_REQUIRE_ZDR", "true")
+    routed_off = chat_body(TextModelSettings.from_env(), [])
+    assert "chat_template_kwargs" not in routed_off
+    monkeypatch.setenv("TEXT_ANSWER_MAX_TOKENS", "16000")
+    assert TextModelSettings.from_env().answer_max_tokens == 16000
+    monkeypatch.setenv("TEXT_ANSWER_MAX_TOKENS", "16001")
+    with pytest.raises(ModelError, match="invalid_numeric_setting"):
+        TextModelSettings.from_env()
 
 
 def test_chat_body_stays_portable():

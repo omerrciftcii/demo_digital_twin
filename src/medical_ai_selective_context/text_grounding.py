@@ -1599,12 +1599,12 @@ def _sentences(text: str) -> list[str]:
     for match in _SENTENCE_BREAK.finditer(text):
         if _keeps_together(text, match):
             continue
-        chunk = text[start:match.start()].strip()
-        if chunk:
+        chunk = clean_answer_line(text[start:match.start()])
+        if chunk and not _blank_sentence(chunk):
             parts.append(chunk)
         start = match.end()
-    tail = text[start:].strip()
-    if tail:
+    tail = clean_answer_line(text[start:])
+    if tail and not _blank_sentence(tail):
         parts.append(tail)
     return parts
 
@@ -1914,10 +1914,25 @@ def _align_flag(sentence: str, blob: str) -> str | None:
     return _rewrite_polarity(sentence, expected)
 
 
+_LEAD_PUNCT = re.compile(r"^(?:[.,;]+\s*)+")
+_BROKEN_PUNCT = re.compile(r"(?<!\d)\s*[.,]\s*[.,]+")
+
+
+def clean_answer_line(text: str) -> str:
+    """Drop a citation leftover. A line must not open with '.' or ','."""
+    cleaned = _LEAD_PUNCT.sub("", (text or "").strip())
+    cleaned = _BROKEN_PUNCT.sub(".", cleaned)
+    cleaned = re.sub(r"(?<!\d)\.{2,}", ".", cleaned)
+    return " ".join(cleaned.split())
+
+
 def _present_line(line: str) -> str:
-    shown = line.strip()
+    raw = line.strip()
+    shown = clean_answer_line(raw)
     if not shown or _blank_sentence(shown):
         return ""
+    if shown != raw:
+        shown = _capitalize_first(shown)
     return _end_sentence(shown)
 
 

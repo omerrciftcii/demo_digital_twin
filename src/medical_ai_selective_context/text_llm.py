@@ -103,6 +103,7 @@ class TextModelSettings:
     retry_backoff_seconds: float = 0.75
     # auto | true | false. Unset env is true: OpenRouter gets reasoning off,
     # and any other host gets chat_template_kwargs.enable_thinking false.
+    # false on a non-OpenRouter host sends enable_thinking true.
     # auto limits the OpenRouter flag to known reasoning model names.
     disable_thinking: str = "auto"
 
@@ -125,7 +126,7 @@ class TextModelSettings:
             allow_external_real_data=env_bool("ALLOW_EXTERNAL_REAL_DATA", False),
             local_inference=env_bool("LLM_LOCAL_INFERENCE", False),
             local_hosts=_local_hosts_from_env(),
-            answer_max_tokens=int(env_number("TEXT_ANSWER_MAX_TOKENS", 2000, 128, 4000, integer=True)),
+            answer_max_tokens=int(env_number("TEXT_ANSWER_MAX_TOKENS", 2000, 128, 16000, integer=True)),
             reasoning=env_optional_bool("LLM_REASONING"),
             allow_fallbacks=env_bool("OPENROUTER_ALLOW_FALLBACKS", True),
             retry_max=int(env_number("LLM_RETRY_MAX", 2, 0, 5, integer=True)),
@@ -269,12 +270,12 @@ def chat_body(settings: TextModelSettings, messages: list[dict[str, str]]) -> di
         body["reasoning"] = {"enabled": settings.reasoning}
     elif _disable_thinking(settings):
         body["reasoning"] = {"enabled": False}
-    elif (
-        settings.disable_thinking == "true"
-        and not _is_openrouter(settings.base_url)
-    ):
+    elif not _is_openrouter(settings.base_url):
         # vLLM Qwen3 chat template. auto stays silent so an unknown field is not a 400.
-        body["chat_template_kwargs"] = {"enable_thinking": False}
+        if settings.disable_thinking == "true":
+            body["chat_template_kwargs"] = {"enable_thinking": False}
+        elif settings.disable_thinking == "false":
+            body["chat_template_kwargs"] = {"enable_thinking": True}
     if _is_openrouter(settings.base_url):
         provider: dict[str, Any] = {
             "allow_fallbacks": settings.allow_fallbacks,

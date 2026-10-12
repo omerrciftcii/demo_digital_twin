@@ -55,7 +55,7 @@ Gerçek (fixture hash'i tutmayan) kayıt varsayılan olarak modele gitmez. `ALLO
 
 `OPENROUTER_ALLOW_FALLBACKS` varsayılanı `true`: yedek sağlayıcı ZDR ve veri toplamama şartının içinde kalır. `false` tek sağlayıcıya kilitler; o sağlayıcı 429 verirse tur boşa gider. `OPENROUTER_PROVIDER` doluysa `only` yine o sağlayıcıyı sabitler. 429, 502, 503 ve 529, ilk tokenden önce `LLM_RETRY_MAX` (varsayılan 2) kez, `LLM_RETRY_BACKOFF_SECONDS` (varsayılan 0.75, ikiye katlanır) bekleyerek yeniden denenir.
 
-`LLM_DISABLE_THINKING` varsayılanı `true`: OpenRouter'a `reasoning.enabled=false` gider; OpenRouter olmayan sunucuya (vLLM dahil) `chat_template_kwargs.enable_thinking=false` gider. `auto` bu OpenRouter alanını yalnız model adında `qwen3`, `qwq` veya `deepseek-r1` varsa gönderir ve yerel sunucuya alan koymaz. `false` hiç göndermez. `LLM_REASONING` doluysa o kazanır ve düşünme alanı ayrıca eklenmez. Akıştaki `reasoning` / `reasoning_content` yanıta yazılmaz. `<think>` bloğu, kapanmamış olsa bile, yanıttan silinir. Yalnız boşluk veya düşünce gelirse durum `reasoning_only` olur; harness o soruyu kaydedip devam eder.
+`LLM_DISABLE_THINKING` varsayılanı `true`: OpenRouter'a `reasoning.enabled=false` gider; OpenRouter olmayan sunucuya (vLLM dahil) `chat_template_kwargs.enable_thinking=false` gider. `auto` bu OpenRouter alanını yalnız model adında `qwen3`, `qwq` veya `deepseek-r1` varsa gönderir ve yerel sunucuya alan koymaz. `false` OpenRouter'a düşünme alanı koymaz; OpenRouter olmayan sunucuya `chat_template_kwargs.enable_thinking=true` gider. `LLM_REASONING` doluysa o kazanır ve düşünme alanı ayrıca eklenmez. `TEXT_ANSWER_MAX_TOKENS` üst sınırı 16000'dır; varsayılan 2000 kalır. Akıştaki `reasoning` / `reasoning_content` yanıta yazılmaz. `<think>` bloğu, kapanmamış olsa bile, yanıttan silinir. Yalnız boşluk veya düşünce gelirse durum `reasoning_only` olur; harness o soruyu kaydedip devam eder.
 
 ## Eval
 
@@ -110,7 +110,9 @@ python -m uvicorn medical_ai_selective_context.main:app --host 127.0.0.1 --port 
 python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 ```
 
-`LLM_MODEL` ne ise o gider. Düşünen modellerde `<think>` bloğu ve `reasoning_content` yanıtın dışında kalır. vLLM üzerinde Qwen3 düşünmesi varsayılan olarak kapalıdır (`chat_template_kwargs.enable_thinking=false`). Alanı göndermemek için `LLM_DISABLE_THINKING=false` kullanın.
+`LLM_MODEL` ne ise o gider. Düşünen modellerde `<think>` bloğu ve `reasoning_content` yanıtın dışında kalır. vLLM üzerinde Qwen3 düşünmesi varsayılan olarak kapalıdır (`chat_template_kwargs.enable_thinking=false`). Düşünmeyi açmak için `LLM_DISABLE_THINKING=false` kullanın; bu, OpenRouter olmayan sunucuya `enable_thinking=true` gönderir.
+
+`DETERMINISTIC_EVIDENCE_VERIFICATION_ENABLED` varsayılanı kapalıdır. Açıkken model iç JSON üretir, her olgusal cümle kanıt kimliğine bağlanır ve sayı, tarih, tanı durumu, ilaç aktivitesi, nedensellik ve güncellik kodla denetlenir. Kapalıyken bu katman çalışmaz; mevcut doğrulama aynen durur. İkinci bir model yok. Bir üretim hatalıysa aynı modele bir kez yeniden yazdırılır; o da geçmezse boş cevap yerine kayıttaki atomlardan kısa bir cevap döner.
 
 Mock sınamalar anahtarsızdır:
 

@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 from collections.abc import AsyncIterator
 from time import perf_counter
 from typing import Any
 
 from .text_document import TextRecord
+from .text_evidence import build_evidence, render_catalog
 from .text_grounding import GroundingResult, format_model_text, ground_answer
 from .text_llm import ModelError, TextModelClient, env_bool, env_number, strip_think_blocks
 from .text_relevance import prompt_plan
@@ -23,6 +25,17 @@ from .text_safety import (
     classify_question,
     render_refusal,
     with_disclaimer,
+)
+from .text_verify import (
+    VERIFIED_SYSTEM,
+    citations_for,
+    fallback_answer,
+    fallback_ids,
+    parse_model_payload,
+    public_status,
+    render_answer,
+    retry_instruction,
+    verify_payload,
 )
 
 log = logging.getLogger(__name__)
@@ -125,6 +138,11 @@ def validation_enabled(flag: bool | None) -> bool:
     if flag is not None:
         return flag
     return env_bool("QA_VALIDATION_ENABLED", True)
+
+
+def deterministic_verification_enabled() -> bool:
+    """Operator switch. Off leaves the existing grounding path untouched."""
+    return env_bool("DETERMINISTIC_EVIDENCE_VERIFICATION_ENABLED", False)
 
 
 # Two characters per token over-estimates Turkish so a long chart is cut
@@ -372,6 +390,10 @@ class TextAnswerer:
         except ModelError as exc:
             yield {"type": "done", **_failure(exc, record, self.model, started, calls=0)}
             return
+        if deterministic_verification_enabled():
+            async for event in self._verified_events(record, question, history, started):
+                yield event
+            return
         end: dict[str, Any] | None = None
         try:
             messages = build_messages(record, question, history)
@@ -477,6 +499,153 @@ class TextAnswerer:
             if event["type"] == "done":
                 done = {key: value for key, value in event.items() if key != "type"}
         return done
+
+    async def _verified_events(
+        self, record: TextRecord, question: str, history: list[dict[str, str]] | None, started: float,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """One JSON completion, one retry, then an evidence fallback. No second model."""
+        correlation = uuid.uuid4().hex
+        try:
+            messages = build_messages(record, question, history)
+        except ModelError as exc:
+            yield {"type": "done", **_failure(exc, record, self.model, started, calls=0)}
+            return
+        chart = _chart_from_record_message(messages[1]["content"])
+        package = build_evidence(record, chart)
+        messages, package = _fit_evidence(messages, package)
+        first = await _collect(self.model, messages)
+        if isinstance(first, ModelError):
+            yield {"type": "done", **_failure(first, record, self.model, started, calls=1)}
+            return
+        verdict = verify_payload(parse_model_payload(first["text"]), package)
+        retried = False
+        calls = 1
+        usage = dict(first.get("usage") or {})
+        ttft = first.get("ttftMs")
+        if not verdict.fully_ok:
+            retried = True
+            retry_messages = [
+                *messages,
+                {"role": "assistant", "content": first["text"][:8000]},
+                {"role": "user", "content": retry_instruction(verdict.reasons)},
+            ]
+            second = await _collect(self.model, retry_messages)
+            calls = 2
+            if not isinstance(second, ModelError):
+                usage = _merge_usage(usage, second.get("usage") or {})
+                verdict = verify_payload(parse_model_payload(second["text"]), package)
+        fallback = False
+        if verdict.fully_ok and verdict.texts:
+            answer = render_answer(verdict.texts, package)
+            status = public_status(verdict)
+            evidence_ids = verdict.evidence_ids
+            passed = True
+        else:
+            fallback = True
+            answer = fallback_answer(package, question)
+            status = (
+                "insufficient_evidence"
+                if "doğrulayan bir cümle kurulamadı" in answer
+                else "answered"
+            )
+            evidence_ids = fallback_ids(package, question)
+            passed = False
+        if not answer.strip():
+            answer = fallback_answer([], question)
+            status = "insufficient_evidence"
+            fallback = True
+            passed = False
+        citations = citations_for(record, evidence_ids, package)
+        metrics = {
+            "timeToFirstTokenMs": ttft,
+            "totalMs": _ms(started),
+            "modelCalls": calls,
+            "usage": usage,
+            "correlationId": correlation,
+            "retry": retried,
+            "fallback": fallback,
+        }
+        validation = {
+            "enabled": True,
+            "deterministicEvidence": True,
+            "passed": passed,
+            "evidenceIds": evidence_ids,
+            "errorCodes": [] if passed else verdict.codes,
+            "retried": retried,
+            "fallback": fallback,
+            "citationsValid": True,
+            "numbersVerified": True,
+            "clinicalMeaningVerified": False,
+            "requiresClinicianReview": verdict.requires_review,
+            "correlationId": correlation,
+        }
+        if verdict.debug and not passed:
+            validation["debug"] = verdict.debug
+        log.info(
+            "deterministic_evidence correlation=%s evidence_ids=%s passed=%s codes=%s "
+            "retried=%s fallback=%s ttft_ms=%s total_ms=%s prompt_tokens=%s completion_tokens=%s",
+            correlation,
+            ",".join(evidence_ids),
+            passed,
+            ",".join(validation["errorCodes"]),
+            retried,
+            fallback,
+            ttft,
+            metrics["totalMs"],
+            usage.get("prompt_tokens"),
+            usage.get("completion_tokens"),
+        )
+        payload = _public(
+            status=status, answer=answer, citations=citations, record_id=record.id,
+            model=first.get("model") or self.model.settings.model, metrics=metrics, provider=None,
+            validation=validation,
+        )
+        yield {"type": "token", "text": payload["answer"]}
+        yield {"type": "done", **payload}
+
+
+def _chart_from_record_message(content: str) -> str:
+    marker = "METİN:\n"
+    at = content.find(marker)
+    if at < 0:
+        return ""
+    return content[at + len(marker):].strip()
+
+
+def _fit_evidence(messages: list[dict[str, str]], package: list) -> tuple[list[dict[str, str]], list]:
+    """Swap in the JSON prompt and keep the catalog inside the token budget."""
+    budget = context_token_budget()
+    kept = list(package)
+    base = messages[-1]["content"]
+    while True:
+        catalog = render_catalog(kept)
+        trial = [dict(item) for item in messages]
+        trial[0] = {"role": "system", "content": VERIFIED_SYSTEM}
+        trial[-1] = {"role": "user", "content": base + "\n\n" + catalog}
+        if _prompt_tokens(trial) <= budget or not kept:
+            return trial, kept
+        kept = kept[:-1]
+
+
+def _merge_usage(left: dict, right: dict) -> dict:
+    merged = dict(left)
+    for key, value in right.items():
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            merged[key] = (merged.get(key) or 0) + value
+    return merged
+
+
+async def _collect(model: TextModelClient, messages: list[dict[str, str]]) -> dict | ModelError:
+    end: dict[str, Any] | None = None
+    try:
+        async for piece in model.complete(messages):
+            if piece["type"] != "token":
+                end = piece
+    except ModelError as exc:
+        return exc
+    if end is None:
+        return ModelError("invalid_model_json")
+    return end
 
 
 def _failure(

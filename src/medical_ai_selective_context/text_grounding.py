@@ -110,14 +110,20 @@ _UP_DOWN = (
     ("çıkıyor", "iniyor"),
 )
 _DATE_TOKEN = re.compile(r"\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2}")
+# Unit, then an optional apostrophe and a Turkish case ending (ms'den, ms'ye, ms'sinden).
+_APOSTROPHE = r"['’‘ʼ´]"
+_CASE_BUFFER = r"(?:s[ıiuü]n|n|y)?"
+_FROM_CASE = rf"\s*{_APOSTROPHE}?\s*{_CASE_BUFFER}(?:dan|den|tan|ten)"
+_TO_CASE = rf"\s*{_APOSTROPHE}?\s*{_CASE_BUFFER}(?:ya|ye|na|ne|[ae])"
+_UNIT_TOKEN = r"(?:\s*[A-Za-zµμ°/%][\wµμ°/%^]*)?"
 _TREND_FROM_TO = re.compile(
-    r"(?P<a>\d+(?:[.,]\d+)?)"
-    r"(?P<ua>(?:\s*[A-Za-zµμ°/%][\wµμ°/%^]*)?)"
-    r"\s*['’‘]?(?P<from>dan|den|tan|ten)\s+"
-    r"(?P<b>\d+(?:[.,]\d+)?)"
-    r"(?P<ub>(?:\s*[A-Za-zµμ°/%][\wµμ°/%^]*)?)"
-    r"\s*['’‘]?(?P<to>ya|ye|[ae])\s+"
-    r"(?P<verb>[A-Za-zÇĞİÖŞÜçğıöşü]+)",
+    rf"(?P<a>\d+(?:[.,]\d+)?)"
+    rf"(?P<ua>{_UNIT_TOKEN})"
+    rf"(?P<from>{_FROM_CASE})\s+"
+    rf"(?P<b>\d+(?:[.,]\d+)?)"
+    rf"(?P<ub>{_UNIT_TOKEN})"
+    rf"(?P<to>{_TO_CASE})\s+"
+    rf"(?P<verb>[A-Za-zÇĞİÖŞÜçğıöşü]+)",
     re.IGNORECASE,
 )
 _TREND_ARROW = re.compile(
@@ -328,7 +334,7 @@ def _unit_surfaces() -> tuple[tuple[str, str], ...]:
 _UNIT_SURFACES = _unit_surfaces()
 _BSA_SUFFIX = re.compile(r"/1[.,]73\s*m2")
 _RATIO_TAIL = re.compile(r"^\s*/\s*\d+(?:[.,]\d+)?")
-_UNIT_CUT = re.compile(r"[\(\[;\n]|\.(?!\d)")
+_UNIT_CUT = re.compile(r"[\(\[;\n'’‘ʼ´]|\.(?!\d)")
 _SYMBOLIC_UNIT = re.compile(r"^(?:10\^\d+/[a-z0-9]+)")
 
 
@@ -515,8 +521,85 @@ def _can_stand_alone(text: str) -> bool:
     return any(_finite_word(token) for token in re.findall(r"[a-z]{4,}", folded))
 
 
+# These connectives put the cause after the marker. The others put it before.
+_CAUSE_AFTER = frozenset({"cunku", "zira"})
+
+
 def _cause_content(text: str) -> list[str]:
     return [token for token in _key_tokens(text) if token not in _EVENT_WORDS]
+
+
+def _forms_match(left: str, right: str) -> bool:
+    """Stem or a short inflection of the same word. A one-edit typo still matches."""
+    if not left or not right:
+        return False
+    if left == right:
+        return True
+    short, long = (left, right) if len(left) <= len(right) else (right, left)
+    if len(short) >= 4 and long.startswith(short) and len(long) - len(short) <= 4:
+        return True
+    shared = 0
+    for char_a, char_b in zip(left, right, strict=False):
+        if char_a != char_b:
+            break
+        shared += 1
+    if shared >= 4 and len(left) - shared <= 4 and len(right) - shared <= 4:
+        return True
+    return (
+        len(short) >= 6
+        and abs(len(left) - len(right)) <= 2
+        and fuzz.ratio(left, right) >= 90
+    )
+
+
+def _line_words(line: str) -> list[str]:
+    return re.findall(r"[a-z]{3,}", normalize_text(line))
+
+
+def _line_has_token(line: str, token: str) -> bool:
+    return any(_forms_match(token, word) for word in _line_words(line))
+
+
+def _cause_clause(left: str, marker: str, right: str) -> tuple[str, str]:
+    """Return the cause text and the other clause. Marker direction is grammar."""
+    key = normalize_text(marker).strip(" .,:;\"'")
+    if key in _CAUSE_AFTER or any(key.startswith(item) for item in _CAUSE_AFTER):
+        return right, left
+    return left, right
+
+
+def _cause_on_item_line(cause: str, other: str, blob: str) -> bool:
+    """Cause tokens must match one line that also carries the sentence's item."""
+    cause_tokens = _cause_content(cause)
+    if not cause_tokens or not blob:
+        return False
+    lines = [line for line in blob.splitlines() if line.strip()] or [blob]
+    other_tokens = _cause_content(other)
+    other_numbers = [
+        match.group(0) for match in _numbers(other)
+        if _parse_quantity(match.group(0)) is not None
+    ]
+
+    def covers(line: str) -> bool:
+        return all(_line_has_token(line, token) for token in cause_tokens)
+
+    anchored = [
+        line for line in lines
+        if (other_tokens and any(_line_has_token(line, token) for token in other_tokens))
+        or (other_numbers and any(number in line for number in other_numbers))
+    ]
+    if anchored:
+        return any(covers(line) for line in anchored)
+    # The item name sits in the cause clause. Use the line of its rarest token.
+    ranked: list[tuple[int, int, list[str]]] = []
+    for token in cause_tokens:
+        matched = [line for line in lines if _line_has_token(line, token)]
+        if matched:
+            ranked.append((len(matched), -len(token), matched))
+    if not ranked:
+        return False
+    ranked.sort()
+    return any(covers(line) for line in ranked[0][2])
 
 
 def _measured_amount(side: str, blob: str) -> bool:
@@ -541,31 +624,44 @@ def _side_supported(side: str, blob: str) -> bool:
 
 
 def _without_unsupported_cause(sentence: str, blob: str) -> str | None:
-    """Drop a cause clause whose words are not in the cited section.
+    """Drop a cause clause whose words are not on the item's line.
 
-    A date or a record-keeping event does not support the cause. If the remaining
-    words are not a measurement or a finite clause, the whole sentence drops.
+    Stemming and a short inflection count. A date or a record-keeping event does
+    not. When the cause matches, the whole sentence stays. When it does not, the
+    other clause stays only if it is still a measurement or a finite clause.
     """
     parts = _cause_split(sentence)
     if parts is None:
         return sentence
-    left, _marker, right = parts
-    left_ok = _side_supported(left, blob)
-    right_ok = _side_supported(right, blob)
-    if left_ok and right_ok:
+    left, marker, right = parts
+    cause, other = _cause_clause(left, marker, right)
+    if _cause_on_item_line(cause, other, blob):
         return sentence
-    if left_ok:
-        kept = left
-    elif right_ok:
-        kept = right
-    else:
-        return None
-    kept = kept.strip(" ,;:-")
-    if not kept or not _can_stand_alone(kept):
-        return None
-    if kept[-1] not in ".!?":
-        kept += "."
-    return kept
+    # The cause did not match the item line. Keep a side that still stands and
+    # is supported: the result clause first, then the cause clause when the
+    # result is only an unsupported fragment.
+    for candidate in (other, cause):
+        kept = candidate.strip(" ,;:-")
+        if not kept or not _can_stand_alone(kept) or not _clause_supported(kept, blob):
+            continue
+        if kept[-1] not in ".!?":
+            kept += "."
+        return kept
+    return None
+
+
+def _clause_supported(text: str, blob: str) -> bool:
+    """A leftover clause needs a supported amount or a word the record actually uses."""
+    if any(_parse_quantity(match.group(0)) is not None for match in _numbers(text)):
+        return _unsupported_token(text, blob) == ""
+    blob_tokens = set(re.findall(r"[a-z]{4,}", normalize_text(blob)))
+    tokens = re.findall(r"[a-z]{4,}", normalize_text(text))
+    return any(token in blob_tokens for token in tokens)
+
+
+def _blank_sentence(text: str) -> bool:
+    """A period or other punctuation with no word and no number is not a claim."""
+    return re.search(r"[0-9A-Za-zÇĞİÖŞÜçğıöşü]", text) is None
 
 
 def _parse_date(token: str) -> tuple[int, int, int] | None:
@@ -660,10 +756,28 @@ def _nearest_role(blob: str, start: int) -> str | None:
     return min(claimed, key=rank_label)[1]
 
 
-def _measurement_words(sentence: str) -> list[str]:
-    skip = _CAUSE_STOP | _GENERIC_WORDS
+# "değer", "sonuç" and case crumbs are not the measurement's name.
+_MEASURE_FILLERS = frozenset({
+    "deger", "degeri", "degerin", "degerinin", "degerini", "degerinde",
+    "seviye", "seviyesi", "seviyesinde", "sonuc", "sonucu", "sonucunda",
+    "olcum", "olcumu", "olcumunde", "duzey", "duzeyi", "duzeyinde",
+    "miktar", "miktari", "ortalama", "ortalamasi", "ortalamasinin",
+})
+_NAME_CRUMBS = frozenset({
+    "nin", "nun", "dan", "den", "tan", "ten", "ya", "ye", "na", "ne",
+    "icin", "gore", "kadar", "olan", "sonra", "once",
+})
+
+
+def _name_skip() -> frozenset[str]:
+    skip = _CAUSE_STOP | _GENERIC_WORDS | _MEASURE_FILLERS | _NAME_CRUMBS
     for up, down in _UP_DOWN:
         skip = skip | {normalize_text(up), normalize_text(down)}
+    return skip
+
+
+def _measurement_words(sentence: str) -> list[str]:
+    skip = _name_skip()
     folded = normalize_text(sentence)
     return [
         token for token in re.findall(r"[a-z]{3,}", folded)
@@ -671,11 +785,62 @@ def _measurement_words(sentence: str) -> list[str]:
     ]
 
 
+def _trend_names(sentence: str, start: int) -> list[str]:
+    """Name tokens a few words before the first amount. Fillers such as değeri drop out."""
+    prefix = sentence[:start]
+    tail = re.split(r"[.!?;\n]+", prefix)[-1]
+    tokens = [
+        token for token in re.findall(r"[a-z]{3,}", normalize_text(tail))
+        if token not in _name_skip()
+    ]
+    return tokens[-3:]
+
+
+def _keeps_period(blob: str, index: int) -> bool:
+    """A period inside a date, a decimal, or an ordinal is not a sentence end."""
+    if index <= 0 or not blob[index - 1].isdigit():
+        return False
+    stripped = blob[index + 1:].lstrip()
+    if not stripped:
+        return False
+    return stripped[0].isdigit() or stripped[0].islower()
+
+
+def _sentence_bounds(blob: str, start: int) -> tuple[int, int]:
+    left = 0
+    for match in re.finditer(r"[.!?](?:\s+|$)", blob):
+        if blob[match.start()] == "." and _keeps_period(blob, match.start()):
+            continue
+        if match.end() <= start:
+            left = match.end()
+            continue
+        if match.start() >= start:
+            return left, match.start()
+    return left, len(blob)
+
+
+def _context_tokens(blob: str, start: int) -> set[str]:
+    """Tokens of this sentence plus the section heading. A later sentence is not included."""
+    left, right = _sentence_bounds(blob, start)
+    chunks = [blob[left:right], blob.split("\n", 1)[0]]
+    tokens: set[str] = set()
+    for chunk in chunks:
+        tokens.update(re.findall(r"[a-z0-9]{2,}", normalize_text(chunk)))
+    return tokens
+
+
+def _token_matches(name: str, tokens: set[str]) -> bool:
+    if name in tokens:
+        return True
+    return any(_forms_match(name, token) for token in tokens)
+
+
 def _words_near_span(blob: str, start: int, end: int, words: list[str]) -> bool:
     if not words:
         return True
     window = normalize_text(blob[max(0, start - 80):end + 80])
-    return any(word in window for word in words)
+    tokens = set(re.findall(r"[a-z0-9]{2,}", window))
+    return any(_token_matches(word, tokens) for word in words)
 
 
 def _within(left: float, right: float, abs_limit: float, rel_limit: float) -> bool:
@@ -685,8 +850,13 @@ def _within(left: float, right: float, abs_limit: float, rel_limit: float) -> bo
 
 def _snapped_hits(
     blob: str, value: float, family: str | None, words: list[str],
+    names: list[str] | None = None,
 ) -> list[dict]:
-    """Recorded amounts within a small tolerance, keeping only the nearest ones."""
+    """Recorded amounts within a small tolerance, keeping only the nearest ones.
+
+    When the claim names a measurement, only amounts in that measurement's
+    sentence are eligible. An exact number in a later sentence does not win.
+    """
     pool: list[dict] = []
     for match in _numbers(blob):
         parsed = _parse_quantity(match.group(0))
@@ -705,11 +875,19 @@ def _snapped_hits(
         })
     if not pool:
         return []
-    near = [
-        hit for hit in pool
-        if _words_near_span(blob, hit["start"], hit["end"], words)
-    ]
-    chosen = near or pool
+    if names:
+        chosen = [
+            hit for hit in pool
+            if any(_token_matches(name, _context_tokens(blob, hit["start"])) for name in names)
+        ]
+    else:
+        near = [
+            hit for hit in pool
+            if _words_near_span(blob, hit["start"], hit["end"], words)
+        ]
+        chosen = near or pool
+    if not chosen:
+        return []
     closest = min(hit["gap"] for hit in chosen)
     return [hit for hit in chosen if hit["gap"] == closest]
 
@@ -806,6 +984,7 @@ def _assess_trend(sentence: str, blob: str) -> _TrendResult:
     if start_value is None or end_value is None:
         return _TrendResult("skip", sentence)
     words = _measurement_words(sentence)
+    names = _trend_names(sentence, match.start())
     start_span = match.span("a")
     end_span = match.span("b")
     start_family = _match_family(_unit_window(sentence, start_span[1]))
@@ -815,8 +994,8 @@ def _assess_trend(sentence: str, blob: str) -> _TrendResult:
         return _TrendResult("fail", issues=[_issue(
             "unsupported_trend", sentence, match.group("a"), detail="unit_family",
         )])
-    left = _snapped_hits(blob, start_value, shared, words)
-    right = _snapped_hits(blob, end_value, shared, words)
+    left = _snapped_hits(blob, start_value, shared, words, names)
+    right = _snapped_hits(blob, end_value, shared, words, names)
     if not left or not right:
         missing = match.group("a") if not left else match.group("b")
         return _TrendResult("fail", issues=[_issue(
@@ -1228,6 +1407,9 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                     last_index = section_index
         pieces = _sentences(claim) or ([claim.strip()] if claim.strip() else [])
         for sentence in pieces:
+            if _blank_sentence(sentence):
+                edited = True
+                continue
             sentence_count += 1
             if answer_has_unsafe_advice(sentence):
                 saw_unsafe = True
@@ -1309,7 +1491,11 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                     errors, debug, "incompatible_unit", sentence, _cite(marker, record, index),
                 )
                 continue
-            if not needs_number and (index is None or not _overlaps_section(sentence, blob)):
+            if (
+                not needs_number
+                and not _states_absence(sentence)
+                and (index is None or not _overlaps_section(sentence, blob))
+            ):
                 relocated = _section_overlapping(sentence, record)
                 if relocated is None:
                     _failure(
@@ -1322,7 +1508,7 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                     moved = True
                 index = relocated
                 blob = record.sections[index].text
-            if status == "answered" and index is None:
+            if status == "answered" and index is None and not _states_absence(sentence):
                 _failure(
                     errors, debug, "missing_citation", sentence, _cite(marker, record, index),
                 )
@@ -1361,14 +1547,26 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     return GroundingResult(True, status, answer, citations)
 
 
-_ABSENCE = (
-    "bilinmiyor", "kayitta yok", "kayitta bulunmuyor", "planlandi", "bulunamadi", "bilgi yok",
+_ABSENCE_PHRASES = (
+    "bilinmiyor", "bilgi yok", "planlandi", "bulunmuyor", "bulunmamakta",
+    "bulunamadi", "bulunmamaktadir", "gorulmuyor", "gorulmemekte", "gecmiyor",
+    "yer almiyor", "soz edilmiyor", "kayitli degil", "mevcut degil",
+    "kayitta yok", "kayitta bulunmuyor",
 )
+_ABSENCE_TOKENS = frozenset({"yok", "yoktur"})
+
+
+def _states_absence(text: str) -> bool:
+    """An absence sentence with no amount, date, or code adds no new chart fact."""
+    if _numbers(text) or _DATE_TOKEN.search(text) or _ICD.search(text) or _RELATIVE.search(text):
+        return False
+    folded = normalize_text(text)
+    if any(phrase in folded for phrase in _ABSENCE_PHRASES):
+        return True
+    tokens = set(re.findall(r"[a-z]+", folded))
+    return bool(tokens & _ABSENCE_TOKENS)
 
 
 def _absence_only(answer: str) -> bool:
     """A supported answer that only says the fact is missing or still planned."""
-    if _numbers(answer) or _ICD.search(answer):
-        return False
-    folded = normalize_text(answer)
-    return any(phrase in folded for phrase in _ABSENCE)
+    return _states_absence(answer)

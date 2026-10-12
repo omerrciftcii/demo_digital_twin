@@ -283,6 +283,51 @@ def test_trend_direction_follows_the_record_order():
     assert "yükseldi" in backward.answer
 
 
+def test_named_trend_ignores_a_later_sentence_and_reads_case_endings():
+    wearable = _tiny(
+        "Giriş.\n\n## Giyilebilir\n"
+        "Dinlenik nabız 71/dk (11.10); son 7 gün: 71, 74, 76, 69, 73, 70, 68. "
+        "HRV 41 ms (11.10), kişinin olağanı 78 ms; son 7 gün: 34, 31, 29, 36, 38, 44. "
+        "Uyku skoru değeri 79.\n"
+    )
+    leaked = ground_answer(
+        "DURUM: YANIT\nHRV değeri 41 ms'den 79 ms'ye arttı. [Giyilebilir]\n",
+        wearable,
+    )
+    assert not leaked.ok
+    assert leaked.error == "wrong_value"
+    flagged = next(item for item in leaked.debug if item["number"] == "79")
+    assert flagged["nearest"] == "78"
+    possessive = ground_answer(
+        "DURUM: YANIT\nHRV değeri 41 ms'sinden 79 ms'sine arttı. [Giyilebilir]\n",
+        wearable,
+    )
+    assert not possessive.ok
+    assert possessive.error == "wrong_value"
+    assert any(item["number"] == "79" and item["nearest"] == "78" for item in possessive.debug)
+
+
+def test_absence_without_a_new_fact_passes_grounding():
+    record = _tiny("Giriş.\n\n## Giyilebilir\n- HRV olağanı 78 ms, güncel 41 ms.\n")
+    missing = ground_answer(
+        "DURUM: YANIT\nBunu gösteren bir kayıt bulunmuyor. [Giyilebilir]\n",
+        record,
+    )
+    assert missing.ok, missing.debug
+    assert "bulunmuyor" in missing.answer.casefold()
+    gap = ground_answer(
+        "DURUM: YANIT\nKayıtta bu yakınma yok. [Giyilebilir]\n",
+        record,
+    )
+    assert gap.ok, gap.debug
+    assert "yok" in gap.answer.casefold()
+    invented = ground_answer(
+        "DURUM: YANIT\nKayıtta 999 yok. [Giyilebilir]\n",
+        record,
+    )
+    assert not invented.ok
+
+
 def test_line_unit_covers_a_later_bare_amount_and_its_difference():
     record = _tiny(
         "Giriş.\n\n## Laboratuvar\n"
@@ -310,16 +355,40 @@ def test_line_unit_covers_a_later_bare_amount_and_its_difference():
     assert any(item["check"] == "unsupported_number" and item["number"] == "97" for item in other.debug)
 
 
-def test_cause_fragment_and_record_event_are_not_kept():
+def test_cause_on_the_item_line_is_kept_and_a_blank_sentence_is_ignored():
     symptoms = _tiny("Giriş.\n\n## Not\n- Alfa kabus ve uyku sorunu yazıyor. Alfa 10 mg.\n")
-    broken = ground_answer(
+    kept = ground_answer(
         "DURUM: YANIT\nAlfa 10 mg. Alfa'yı kabus ve uyku sorunu nedeniyle kestin. [Not]\n",
         symptoms,
     )
-    assert broken.ok
-    assert "10 mg" in broken.answer
-    assert "kabus" not in broken.answer.casefold()
-    assert "nedeniyle" not in broken.answer.casefold()
+    assert kept.ok, kept.debug
+    assert "10 mg" in kept.answer
+    assert "kabus" in kept.answer.casefold()
+    assert "nedeniyle" in kept.answer.casefold()
+    inflected = _tiny("Giriş.\n\n## İlaçlar\n- Betafil 10 mg, kabuslar ve uyku sorunları.\n")
+    stemmed = ground_answer(
+        "DURUM: YANIT\nBetafil'i kabus ve uyku sorunu nedeniyle bırakmıştık. [İlaçlar]\n",
+        inflected,
+    )
+    assert stemmed.ok, stemmed.debug
+    assert "kabus" in stemmed.answer.casefold()
+    assert "nedeniyle" in stemmed.answer.casefold()
+    split = _tiny("Giriş.\n\n## İlaçlar\n- Alfa 10 mg.\n- Kabus ve uyku sorunu başka satırda.\n")
+    other_line = ground_answer(
+        "DURUM: YANIT\nAlfa'yı kabus ve uyku sorunu nedeniyle kestin. [İlaçlar]\n",
+        split,
+    )
+    assert not other_line.ok
+    assert "kabus" not in other_line.answer.casefold()
+    blank = ground_answer("DURUM: YANIT\nAlfa 10 mg. . [Not]\n", symptoms)
+    assert blank.ok, blank.debug
+    assert "10" in blank.answer
+    assert blank.error != "unsupported_claim"
+    only_dot = ground_answer("DURUM: YANIT\n. [Not]\n", symptoms)
+    assert not only_dot.ok
+
+
+def test_cause_fragment_and_record_event_are_not_kept():
     dated = _tiny(
         "Giriş.\n\n## İlaçlar\n- Alfa 02.2025'te kesildi. Son reçete 01.02.2025.\n"
     )

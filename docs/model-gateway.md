@@ -21,7 +21,7 @@ Varsayılan bağ `127.0.0.1:8095`. `0.0.0.0` veya `::` yalnız `GATEWAY_ALLOW_PU
 - `GET /models` — yapılandırma dosyasındaki modeller: kimlik, ad, start/stop betiği, argümanlar. Dosya `src/` altında durmaz.
 - `GET /models/status` — `idle`, `stopping`, `starting`, `ready`, `failed`; `progress`, `activeId`, `error`.
 - `POST /models/switch` — `{ "id": "..." }`. Önce stop betiği, sonra start betiği ve argümanları. Betik proje kökünün dışına `..` ile çıkamaz. Süreç meşgulse ikinci çağrı 409 alır; kilit, bekleyen `await` olmadan alınır.
-- `POST /qa` — gövdeyi yalnız `GATEWAY_QA_BASE_URL` altındaki `/api/v1/text/answer` adresine iletir. İstek gövdesindeki adres yok sayılır. İletilen alanlar `recordId`, `question`, `history`, `stream`. 8091 şemasına yeni alan eklenmez.
+- `POST /qa` — gövdeyi yalnız `GATEWAY_QA_BASE_URL` altındaki `/api/v1/text/answer` adresine iletir. İstek gövdesindeki adres yok sayılır. İletilen alanlar `recordId`, `question`, `history`, `stream` ve varsa `validation`. `validation` 8091 üzerindeki doğrulama anahtarıdır; kapalıyken model metni olduğu gibi döner.
 
 `GATEWAY_LOG_CONTENT` varsayılanı kapalıdır. Log satırı yöntem, yol, durum ve `elapsed_ms` tutar. İleti metni yazılmaz; gerçek kayıt bu uçtan geçebilir. Betiğin standart çıktısı da loglanmaz, yalnız betik adı ve çıkış kodu yazılır.
 

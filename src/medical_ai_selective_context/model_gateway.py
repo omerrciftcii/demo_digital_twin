@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 _PUBLIC_BIND = frozenset({"0.0.0.0", "::", "[::]"})
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 _HASH_CHARS = frozenset("0123456789abcdef")
-_QA_FIELDS = ("recordId", "question", "history", "stream")
+_QA_FIELDS = ("recordId", "question", "history", "stream", "validation")
 _SYSTEM_ROLE = "system"
 _UPSTREAM_TIMEOUT = 120.0
 

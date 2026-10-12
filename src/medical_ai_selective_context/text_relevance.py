@@ -27,6 +27,11 @@ __all__ = ["drug_names", "matched_entries", "question_terms", "relevant_context"
 _STEMMER = stemmer("turkish")
 _STOP_PATH = Path(__file__).resolve().parent / "data" / "stopwords-tr.txt"
 _WORD = re.compile(r"[a-z0-9]{3,}", re.IGNORECASE)
+# A chart abbreviation is an all-caps token of a few letters. It is a metric name
+# even when no digit sits beside it. Longer surfaces stay ordinary words.
+_ABBR = re.compile(
+    r"(?<![A-Za-zÇĞİÖŞÜçğıöşü])[A-ZÇĞİÖŞÜ]{2,5}(?![A-Za-zÇĞİÖŞÜçğıöşü])"
+)
 _FULL_DATE = re.compile(r"\d{1,2}\.\d{1,2}\.\d{4}")
 _UNIT = re.compile(
     r"\d+(?:[.,]\d+)?\s*(?:mg/dL|g/dL|pg/mL|ng/mL|mIU/L|U/L|mmHg|µg|mcg|kg|mg|mL|mm|cm)\b",
@@ -101,13 +106,20 @@ def _same(left: str, right: str) -> bool:
     return bool(len(short) >= 5 and long.startswith(short) and len(long) - len(short) <= 3)
 
 
+def _abbreviations(text: str) -> set[str]:
+    return {fold(match.group(0)) for match in _ABBR.finditer(text)}
+
+
 def overlaps(text: str, terms: list[str] | set[str]) -> bool:
     if not terms:
         return False
     hay = _terms_in(text)
     folded = fold(text)
+    abbrs = _abbreviations(text)
     for term in terms:
         if len(term) <= 3:
+            if term in abbrs:
+                return True
             if re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", folded):
                 window = _window(folded, term)
                 if window and (re.search(r"\d", window) or _UNIT.search(window)):
@@ -130,9 +142,13 @@ def score_text(text: str, terms: list[str] | set[str]) -> int:
         return 0
     hay = _terms_in(text)
     folded = fold(text)
+    abbrs = _abbreviations(text)
     score = 0
     for term in terms:
         if len(term) <= 3:
+            if term in abbrs:
+                score += 3
+                continue
             if re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", folded):
                 window = _window(folded, term)
                 if window and (re.search(r"\d", window) or _UNIT.search(window)):

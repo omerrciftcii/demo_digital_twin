@@ -159,6 +159,24 @@ def test_qa_forwards_to_the_text_answer_api(tmp_path: Path):
     assert all(request.url.host != "169.254.169.254" for request in seen)
 
 
+def test_qa_forwards_the_validation_flag(tmp_path: Path):
+    app, seen = _gateway(tmp_path)
+    client = TestClient(app)
+    reply = client.post("/qa", headers=_auth(), json={
+        "recordId": "rec-1",
+        "question": QUESTION,
+        "validation": False,
+        "qaBaseUrl": "http://169.254.169.254/latest",
+    })
+    assert reply.status_code == 200
+    sent = json.loads(seen[-1].content)
+    assert sent["validation"] is False
+    assert "qaBaseUrl" not in sent
+    assert seen[-1].url.host == "127.0.0.1"
+    assert seen[-1].url.port == 8091
+    assert all(request.url.host != "169.254.169.254" for request in seen)
+
+
 def test_logs_timings_without_message_content(tmp_path: Path, caplog):
     caplog.set_level(logging.INFO)
     app, _seen = _gateway(tmp_path)

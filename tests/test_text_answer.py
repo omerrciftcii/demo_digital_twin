@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from medical_ai_selective_context.main import create_app
+from medical_ai_selective_context.models import TextAnswerRequest
 from medical_ai_selective_context.text_document import (
     TextRecordError,
     TextRecordStore,
@@ -35,9 +36,10 @@ from medical_ai_selective_context.text_qa import (
     SYSTEM_PROMPT,
     TextAnswerer,
     build_messages,
+    validation_enabled,
 )
 from medical_ai_selective_context.text_relevance import relevant_context, relevant_sections
-from medical_ai_selective_context.text_safety import classify_question, render_refusal
+from medical_ai_selective_context.text_safety import DISCLAIMER, classify_question, render_refusal
 
 ROOT = Path(__file__).parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "text"
@@ -502,6 +504,7 @@ def test_import_answers_and_does_not_invent_a_number(text_client):
     assert body["metrics"]["modelCalls"] == 1
     assert body["metrics"]["timeToFirstTokenMs"] is not None
     assert body["validation"]["clinicalMeaningVerified"] is False
+    assert body["validation"]["enabled"] is True
     assert "tıbbi tanı" in body["answer"]
     assert len(text_client.calls) == 1
     assert text_client.calls[0]["messages"][-1]["content"].endswith("Son eGFR değerim kaç?")
@@ -525,6 +528,19 @@ def test_import_answers_and_does_not_invent_a_number(text_client):
     assert dumped.json()["status"] == "safety_refusal"
     assert "NT-proBNP" not in dumped.json()["answer"]
     assert len(text_client.calls) == 1
+
+    raw = text_client.post("/api/v1/text/answer", json={
+        "recordId": record_id,
+        "question": "Son eGFR değerim kaç?",
+        "validation": False,
+    })
+    assert raw.status_code == 200, raw.text
+    opened = raw.json()
+    assert opened["status"] == "answered"
+    assert opened["validation"] == {"enabled": False}
+    assert opened["answer"].startswith("DURUM: YANIT")
+    assert "tıbbi tanı" not in opened["answer"]
+    assert len(text_client.calls) == 2
 
 
 def test_text_answer_accepts_history_after_the_cached_record(text_client):
@@ -1332,3 +1348,52 @@ def test_real_chart_rejects_a_reversed_trend_a_date_cause_and_a_broken_fragment(
     assert fragment["status"] == "validation_failed"
     assert "kabus" not in fragment["answer"].casefold()
     assert "sorunu" not in fragment["answer"].casefold()
+
+
+def test_validation_switch_returns_raw_text_and_keeps_safety(tmp_path, monkeypatch):
+    store = TextRecordStore(tmp_path)
+    record, _created = store.import_payload(_load(PATIENTS / "patient-01.json"))
+    assert record.data_class == "synthetic"
+    raw = "DURUM: YANIT\nAteş 99 °C oldu ve kesildi çünkü uydurma.\n"
+    monkeypatch.delenv("QA_VALIDATION_ENABLED", raising=False)
+    assert validation_enabled(None) is True
+    blocked = asyncio.run(TextAnswerer(_scripted_model(raw)).answer(record, "Ölçüm ne?"))
+    assert blocked["status"] == "validation_failed"
+    assert blocked["validation"]["enabled"] is True
+    assert "99" not in blocked["answer"]
+
+    opened = asyncio.run(TextAnswerer(_scripted_model(raw)).answer(
+        record, "Ölçüm ne?", validate=False,
+    ))
+    assert opened["status"] == "answered"
+    assert opened["validation"] == {"enabled": False}
+    assert opened["answer"] == raw.strip()
+    assert DISCLAIMER not in opened["answer"]
+    assert "99" in opened["answer"]
+    assert "çünkü" in opened["answer"]
+
+    monkeypatch.setenv("QA_VALIDATION_ENABLED", "false")
+    assert validation_enabled(None) is False
+    from_env = asyncio.run(TextAnswerer(_scripted_model(raw)).answer(record, "Ölçüm ne?"))
+    assert from_env["validation"] == {"enabled": False}
+    assert from_env["answer"] == raw.strip()
+    forced = asyncio.run(TextAnswerer(_scripted_model(raw)).answer(
+        record, "Ölçüm ne?", validate=True,
+    ))
+    assert forced["status"] == "validation_failed"
+    assert "99" not in forced["answer"]
+
+    dose = asyncio.run(TextAnswerer(_scripted_model(raw)).answer(
+        record, "Metforminden kaç tane içeyim?", validate=False,
+    ))
+    assert dose["status"] == "safety_refusal"
+    assert dose["validation"]["enabled"] is False
+    assert dose["metrics"]["modelCalls"] == 0
+    assert "99" not in dose["answer"]
+
+    body = TextAnswerRequest.model_validate({
+        "recordId": "rec-1", "question": "Ölçüm ne?", "validation": False,
+    })
+    assert body.validation is False
+    omitted = TextAnswerRequest.model_validate({"recordId": "rec-1", "question": "Ölçüm ne?"})
+    assert omitted.validation is None

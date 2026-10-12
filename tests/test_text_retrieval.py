@@ -120,6 +120,10 @@ def test_flat_semantic_scores_do_not_add_sections(monkeypatch):
 
 def test_prompt_states_general_answer_shape_without_digits():
     assert "Önce sorunun kendisini cevapla" in SYSTEM_PROMPT
+    assert "Evet" in SYSTEM_PROMPT and "Hayır" in SYSTEM_PROMPT
+    assert "Kısmen" in SYSTEM_PROMPT
+    assert "Kayıtta yeterli bilgi yok" in SYSTEM_PROMPT
+    assert "hüküm değildir" in SYSTEM_PROMPT
     assert "sen diye" in SYSTEM_PROMPT
     assert "atım sıklığı" in SYSTEM_PROMPT
     assert "Aynı cümleyi tekrarlama" in SYSTEM_PROMPT
@@ -400,6 +404,107 @@ def test_cause_fragment_and_record_event_are_not_kept():
     assert "çünkü" not in cause.answer.casefold()
     assert "kesildi" in cause.answer.casefold()
     assert "reçete" not in cause.answer.casefold()
+
+
+def test_unsupported_cause_fragment_drops_the_sentence_and_a_supported_cause_stays():
+    """A dose left behind after the verb is not a sentence. A reason on the item line stays."""
+    bare = _tiny("Giriş.\n\n## İlaçlar\n- Alfa 10 MG 28 TABLET.\n")
+    broken = ground_answer(
+        "DURUM: YANIT\n"
+        "Alfa 10 MG 28 TABLET ilacını kabus ve uyku sorunu nedeniyle bıraktık. [İlaçlar]\n",
+        bare,
+    )
+    assert not broken.ok
+    assert "kabus" not in broken.answer.casefold()
+    assert "ilacını" not in broken.answer.casefold()
+    dated = ground_answer(
+        "DURUM: YANIT\n"
+        "Ayrıca Alfa 10 MG ilacın, 03.2025 tarihinde kabus ve uyku sorunu nedeniyle kesildi. "
+        "[İlaçlar]\n",
+        _tiny("Giriş.\n\n## İlaçlar\n- Alfa 10 MG. İlk satır 03.2025.\n"),
+    )
+    assert not dated.ok
+    assert "kabus" not in dated.answer.casefold()
+    assert "sorunu" not in dated.answer.casefold()
+    supported = _tiny(
+        "Giriş.\n\n## İlaçlar\n- Alfa 10 MG 28 TABLET, kabus ve uyku sorunu.\n"
+    )
+    kept = ground_answer(
+        "DURUM: YANIT\n"
+        "Alfa 10 MG 28 TABLET ilacını kabus ve uyku sorunu nedeniyle bıraktık. [İlaçlar]\n",
+        supported,
+    )
+    assert kept.ok, kept.debug
+    assert "kabus" in kept.answer.casefold()
+    assert "nedeniyle" in kept.answer.casefold()
+    assert "bıraktık" in kept.answer.casefold()
+
+
+def test_decimal_spellings_match_and_one_bad_sentence_does_not_block_the_rest():
+    record = _tiny("Giriş.\n\n## Ölçüm\n- Ateş 38,5 °C.\n- Nabız 80/dk.\n")
+    dotted = ground_answer("DURUM: YANIT\nAteş 38.5 °C ölçüldü. [Ölçüm]\n", record)
+    assert dotted.ok, dotted.debug
+    assert "38" in dotted.answer
+    bare = ground_answer("DURUM: YANIT\nAteş 38.5 C ölçüldü. [Ölçüm]\n", record)
+    assert bare.ok, bare.debug
+    mixed = ground_answer(
+        "DURUM: YANIT\nAteş 38.5 °C ölçüldü. Nabız 999/dk oldu. [Ölçüm]\n",
+        record,
+    )
+    assert mixed.ok, mixed.debug
+    assert "38" in mixed.answer
+    assert "999" not in mixed.answer
+    assert mixed.debug
+    blocked = ground_answer("DURUM: YANIT\nAteş 99 °C ölçüldü. [Ölçüm]\n", record)
+    assert not blocked.ok
+    assert blocked.answer == ""
+
+
+def test_trimmed_answer_capitalizes_the_first_letter():
+    record = _tiny(
+        "Giriş.\n\n## Not\n"
+        "- İstanbul notu duruyor.\n"
+        "- Israrla not düzeldi.\n"
+        "- Diyetisyene yönlendirildin.\n"
+        "- eGFR 41 mL/dk duruyor.\n"
+    )
+    istanbul = ground_answer(
+        "DURUM: YANIT\nUydurma 999 mg eklendi. istanbul notu duruyor. [Not]\n",
+        record,
+    )
+    assert istanbul.ok, istanbul.debug
+    assert istanbul.answer.startswith("İstanbul")
+    assert "999" not in istanbul.answer
+    dotless = ground_answer(
+        "DURUM: YANIT\nUydurma 999 mg eklendi. ısrarla not düzeldi. [Not]\n",
+        record,
+    )
+    assert dotless.ok, dotless.debug
+    assert dotless.answer.startswith("Israrla")
+    diet = ground_answer(
+        "DURUM: YANIT\nUydurma 999 mg eklendi. diyetisyene yönlendirildin. [Not]\n",
+        record,
+    )
+    assert diet.ok, diet.debug
+    assert diet.answer.startswith("Diyetisyene")
+    kidney = ground_answer(
+        "DURUM: YANIT\nUydurma 999 mg eklendi. eGFR 41 mL/dk duruyor. [Not]\n",
+        record,
+    )
+    assert kidney.ok, kidney.debug
+    assert kidney.answer.startswith("eGFR")
+
+
+def test_chart_abbreviation_is_recalled_without_a_nearby_digit():
+    record = _tiny(
+        "Giriş.\n\n## Giyilebilir\nHRV ölçümü güvenilir değil.\n\n"
+        "## Laboratuvar\nTSH sonucu burada.\n"
+    )
+    context = relevant_context(record, "HRV değerim ne durumda?")
+    assert "güvenilir" in context
+    thyroid = relevant_context(record, "Tiroid hormon tahlilimde TSH ne çıktı?")
+    assert "TSH" in thyroid
+    assert "HRV" not in thyroid
 
 
 def test_history_follows_the_cached_record_and_feeds_retrieval():

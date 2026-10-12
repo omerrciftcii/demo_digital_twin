@@ -405,10 +405,14 @@ def create_app(
             raise HTTPException(404, "Kayıt bulunamadı.")
         history = [item.model_dump() for item in body.history]
         if not body.stream:
-            return await svc.text_answers.answer(record, body.question, history)
+            return await svc.text_answers.answer(
+                record, body.question, history, body.validation,
+            )
 
         async def events():
-            async for event in svc.text_answers.events(record, body.question, history):
+            async for event in svc.text_answers.events(
+                record, body.question, history, body.validation,
+            ):
                 name = "token" if event["type"] == "token" else "done"
                 data = {key: value for key, value in event.items() if key != "type"}
                 yield _sse(name, data)

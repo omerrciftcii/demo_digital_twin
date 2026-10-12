@@ -254,7 +254,27 @@ def _numbers(text: str) -> list[re.Match[str]]:
     ]
 
 
-def _token_in_text(token: str, blob: str) -> bool:
+def _alt_decimal(token: str) -> str | None:
+    """Comma and dot are the same decimal point. A day.month token is not a decimal.
+
+    A dotted pair that cannot be a day and month matches the comma spelling.
+    A day and month does not. A thousands group is not rewritten.
+    """
+    if re.fullmatch(r"\d+,\d+", token):
+        swapped = token.replace(",", ".")
+        if re.fullmatch(r"\d{1,2}\.\d{1,2}", swapped) and _parse_quantity(swapped) is None:
+            return None
+        return swapped
+    if re.fullmatch(r"\d{1,2}\.\d{1,2}", token) and _parse_quantity(token) is not None:
+        return token.replace(".", ",")
+    return None
+
+
+def _same_amount_token(left: str, right: str) -> bool:
+    return left == right or _alt_decimal(left) == right
+
+
+def _spelled_in(token: str, blob: str) -> bool:
     if re.fullmatch(r"\d{1,2}\.\d{1,2}", token):
         start = 0
         while True:
@@ -266,6 +286,13 @@ def _token_in_text(token: str, blob: str) -> bool:
                 return True
             start = found + 1
     return token in blob
+
+
+def _token_in_text(token: str, blob: str) -> bool:
+    if _spelled_in(token, blob):
+        return True
+    alt = _alt_decimal(token)
+    return alt is not None and _spelled_in(alt, blob)
 
 
 def _unit_after(text: str, end: int) -> str | None:
@@ -296,7 +323,7 @@ _UNIT_FAMILIES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("uiu_per_ml", ("µiu/ml",)),
     ("u_per_l", ("iu/l", "u/l")),
     ("mmhg", ("mm hg", "mmhg")),
-    ("celsius", ("celsius", "°c")),
+    ("celsius", ("celsius", "°c", "c")),
     ("percent", ("%",)),
     ("ms", ("milisaniye", "millisaniye", "msec", "ms")),
     ("minute", ("dakika", "dk")),
@@ -370,7 +397,7 @@ def _unit_family(text: str, match: re.Match[str]) -> str | None:
 def _families_for_token(blob: str, token: str) -> set[str]:
     found: set[str] = set()
     for match in _numbers(blob):
-        if match.group(0) != token:
+        if not _same_amount_token(token, match.group(0)):
             continue
         family = _unit_family(blob, match)
         if family:
@@ -395,10 +422,22 @@ def _unit_conflict(claim: str, blob: str) -> bool:
 
 
 def _parse_quantity(token: str) -> float | None:
-    """A measured amount. Dates, clock times, and day.month fragments are not amounts."""
+    """A measured amount. Dates, clock times, and day.month fragments are not amounts.
+
+    A dotted pair is a decimal when it cannot be a day and month: the day part is
+    past 31, or the month part is past 12. A day and month stays a date. A month
+    and year stays a month.
+    """
     if re.search(r"[:T]|^\d{4}-|^\d{1,2}\.\d{1,2}\.\d{4}", token):
         return None
-    if re.fullmatch(r"\d{1,2}\.\d{1,2}|\d{1,2}\.\d{4}", token):
+    if re.fullmatch(r"\d{1,2}\.\d{4}", token):
+        return None
+    dotted = re.fullmatch(r"(\d{1,2})\.(\d{1,2})", token)
+    if dotted:
+        whole = int(dotted.group(1))
+        frac = int(dotted.group(2))
+        if whole > 31 or frac > 12:
+            return float(token)
         return None
     if re.fullmatch(r"\d{1,3}(?:\.\d{3})+,\d+", token):
         return float(token.replace(".", "").replace(",", "."))
@@ -521,22 +560,81 @@ def _accusative_object(text: str) -> bool:
     return _OBJECT_MARK.search(text) is not None
 
 
-def _can_stand_alone(text: str) -> bool:
-    """A shortened clause needs a finite verb or a bare measurement.
-
-    An object phrase that still names a dose is not a sentence once the verb is gone.
-    """
+def _has_finite_predicate(text: str) -> bool:
     folded = normalize_text(text)
-    if any(_finite_word(token) for token in re.findall(r"[a-z]{4,}", folded)):
-        return True
+    return any(_finite_word(token) for token in re.findall(r"[a-z]{4,}", folded))
+
+
+def _capitalize_first(text: str) -> str:
+    """Uppercase a sentence that starts with a letter. A second capital, as in eGFR, stays.
+
+    A sentence that starts with a number, such as an ordinal, is left as written.
+    Turkish i becomes İ. ı becomes I.
+    """
+    for index, char in enumerate(text):
+        if char.isspace():
+            continue
+        if not char.isalpha():
+            return text
+        if not char.islower():
+            return text
+        nxt = text[index + 1] if index + 1 < len(text) else ""
+        if nxt.isupper():
+            return text
+        if char == "i":
+            upper = "İ"
+        elif char == "ı":
+            upper = "I"
+        else:
+            upper = char.upper()
+        return text[:index] + upper + text[index + 1:]
+    return text
+
+
+def _side_words(text: str) -> list[str]:
+    return [
+        token for token in re.findall(r"[a-z]{4,}", normalize_text(text))
+        if token not in _CAUSE_STOP and token not in _GENERIC_WORDS and token not in _EVENT_WORDS
+    ]
+
+
+def _measurement_only(text: str, blob: str) -> bool:
+    """A unit-bearing amount whose other words sit on that amount's line.
+
+    An object waiting for a verb is not a measurement, even when a dose is still there.
+    """
     if _accusative_object(text):
         return False
+    amounts: list[str] = []
     for match in _numbers(text):
         if _skipped_number(text, match) or _parse_quantity(match.group(0)) is None:
             continue
-        if _unit_family(text, match):
-            return True
-    return False
+        if _unit_family(text, match) is None:
+            continue
+        token = match.group(0)
+        if _token_in_text(token, blob) or _derived_quantity(text, match, blob):
+            amounts.append(token)
+    if not amounts:
+        return False
+    words = _side_words(text)
+    if not words:
+        return True
+    lines = [line for line in blob.splitlines() if line.strip()] or [blob]
+    for word in words:
+        placed = any(
+            _line_has_token(line, word) and any(_token_in_text(amount, line) for amount in amounts)
+            for line in lines
+        )
+        if not placed:
+            return False
+    return True
+
+
+def _finish_clause(text: str) -> str:
+    kept = text.strip()
+    if kept[-1:] not in ".!?":
+        kept += "."
+    return _capitalize_first(kept)
 
 
 # These connectives put the cause after the marker. The others put it before.
@@ -587,11 +685,26 @@ def _cause_clause(left: str, marker: str, right: str) -> tuple[str, str]:
 
 
 def _cause_on_item_line(cause: str, other: str, blob: str) -> bool:
-    """Cause tokens must match one line that also carries the sentence's item."""
-    cause_tokens = _cause_content(cause)
-    if not cause_tokens or not blob:
+    """Cause tokens must match one line that also carries the sentence's item.
+
+    A word the chart never uses does not veto a reason that does sit on the line.
+    The item name alone is not that reason: if the missing words are at least as
+    many as the words the chart contains, the cause is not supported.
+    """
+    raw = _cause_content(cause)
+    if not raw or not blob:
         return False
-    lines = [line for line in blob.splitlines() if line.strip()] or [blob]
+    # A section title is not the item line, so it cannot supply a cause word.
+    lines = [
+        line for line in blob.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ] or [line for line in blob.splitlines() if line.strip()] or [blob]
+    words = [word for line in lines for word in _line_words(line)]
+    present = [token for token in raw if any(_forms_match(token, word) for word in words)]
+    absent = len(raw) - len(present)
+    if not present or absent >= len(present):
+        return False
+    cause_tokens = present
     other_tokens = _cause_content(other)
     other_numbers = [
         match.group(0) for match in _numbers(other)
@@ -645,8 +758,10 @@ def _without_unsupported_cause(sentence: str, blob: str) -> str | None:
     """Drop a cause clause whose words are not on the item's line.
 
     Stemming and a short inflection count. A date or a record-keeping event does
-    not. When the cause matches, the whole sentence stays. When it does not, the
-    other clause stays only if it is still a measurement or a finite clause.
+    not. When the cause matches, the whole sentence stays. When it does not, a
+    side stays only if it still has a finite verb, or it is only the measurement
+    on that amount's line. A noun phrase left after the verb is removed drops
+    the whole sentence.
     """
     parts = _cause_split(sentence)
     if parts is None:
@@ -655,16 +770,12 @@ def _without_unsupported_cause(sentence: str, blob: str) -> str | None:
     cause, other = _cause_clause(left, marker, right)
     if _cause_on_item_line(cause, other, blob):
         return sentence
-    # The cause did not match the item line. Keep a side that still stands and
-    # is supported: the result clause first, then the cause clause when the
-    # result is only an unsupported fragment.
     for candidate in (other, cause):
         kept = candidate.strip(" ,;:-")
-        if not kept or not _can_stand_alone(kept) or not _clause_supported(kept, blob):
+        if not kept or not _clause_supported(kept, blob):
             continue
-        if kept[-1] not in ".!?":
-            kept += "."
-        return kept
+        if _has_finite_predicate(kept) or _measurement_only(kept, blob):
+            return _finish_clause(kept)
     return None
 
 
@@ -1230,7 +1341,7 @@ def _unit_attached(claim: str, match: re.Match[str], blob: str) -> bool:
     if family is None:
         return True
     for other in _numbers(blob):
-        if other.group(0) != match.group(0):
+        if not _same_amount_token(match.group(0), other.group(0)):
             continue
         if _family_at(blob, other) == family:
             return True
@@ -1284,7 +1395,10 @@ def _resolve_section(marker: str, claim: str, record: TextRecord) -> int | None:
 
     def score(index: int) -> int:
         section = record.sections[index]
-        return sum(1 for match in _numbers(claim + " " + marker) if match.group(0) in section.text)
+        return sum(
+            1 for match in _numbers(claim + " " + marker)
+            if _token_in_text(match.group(0), section.text)
+        )
 
     ranked = sorted(candidates, key=score, reverse=True)
     if score(ranked[0]) == 0:
@@ -1318,7 +1432,7 @@ def _best_line(section_index: int, claim: str, record: TextRecord) -> tuple[int,
         if line.section_index != section_index or line.text.startswith("##"):
             continue
         folded = normalize_text(line.text)
-        score = sum(3 for token in claim_numbers if token in line.text)
+        score = sum(3 for token in claim_numbers if _token_in_text(token, line.text))
         score += sum(1 for word in words if word in folded)
         if score > best_score:
             best_score = score
@@ -1338,7 +1452,7 @@ def _section_supporting_numbers(claim: str, record: TextRecord) -> int | None:
         if not _numbers_supported(claim, section.text):
             continue
         folded = normalize_text(section.text)
-        score = sum(1 for match in numbers if match.group(0) in section.text)
+        score = sum(1 for match in numbers if _token_in_text(match.group(0), section.text))
         score += sum(2 for word in words if word in folded)
         if best is None or score > best[0]:
             best = (score, index)
@@ -1606,7 +1720,7 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                 _take_issues(errors, debug, trend.issues, _cite(marker, record, index))
                 continue
             if trend.action == "rewrite":
-                sentence = trend.text
+                sentence = _capitalize_first(trend.text)
                 edited = True
             if _unit_conflict(sentence, record.text):
                 _failure(
@@ -1659,14 +1773,15 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                 "citation": "", "sentence": "", "detail": "",
             }],
         )
-    answer = (
-        body if len(kept) == sentence_count and not hide_markers and not moved and not edited
-        else "\n".join(kept)
-    )
-    answer = answer.strip()
+    changed = len(kept) != sentence_count or hide_markers or moved or edited
+    if changed:
+        answer = "\n".join(_capitalize_first(part) for part in kept).strip()
+        answer = _capitalize_first(answer)
+    else:
+        answer = body.strip()
     if status == "answered" and _absence_only(answer):
         status = "insufficient_evidence"
-    return GroundingResult(True, status, answer, citations)
+    return GroundingResult(True, status, answer, citations, "", debug if errors else [])
 
 
 _ABSENCE_PHRASES = (

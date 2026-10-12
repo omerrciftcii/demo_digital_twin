@@ -129,15 +129,14 @@ def test_prompt_states_general_answer_shape_without_digits():
     assert "Kayıtta yeterli bilgi yok" in SYSTEM_PROMPT
     assert "hüküm değildir" in SYSTEM_PROMPT
     assert "Evet, düzelmiş" in SYSTEM_PROMPT
-    assert "hekiminle konuşabilirsin" in SYSTEM_PROMPT
     assert "Klinik rapor gibi yazma" in SYSTEM_PROMPT
-    assert "alt alta tek ölçüm" in SYSTEM_PROMPT
-    assert "günlük dille" in SYSTEM_PROMPT
-    assert "en fazla iki" in SYSTEM_PROMPT
-    assert "son ölçümde" in SYSTEM_PROMPT
-    assert "birkaç ay önceye göre" in SYSTEM_PROMPT
-    assert "ne yapabilirsin" in SYSTEM_PROMPT
-    assert "iki, üç ya da dört" in SYSTEM_PROMPT
+    assert "Geçmiş olsun" in SYSTEM_PROMPT
+    assert "Dikkat:" in SYSTEM_PROMPT
+    assert "merak ediyorsun" in SYSTEM_PROMPT
+    assert "Hekimden en fazla bir kez" in SYSTEM_PROMPT
+    assert "tire ile" in SYSTEM_PROMPT
+    assert "- kısa bir mola" in SYSTEM_PROMPT
+    assert "on ile yirmi" in SYSTEM_PROMPT
     assert "sen diye" in SYSTEM_PROMPT
     assert "atım sıklığı" in SYSTEM_PROMPT
     assert "Aynı cümleyi tekrarlama" in SYSTEM_PROMPT
@@ -623,6 +622,70 @@ def test_any_durum_line_is_a_status_line():
     assert named.status == "answered"
     assert "DURUM" not in named.answer
     assert "BELIRSIZ" not in named.answer
+
+
+def test_wrapped_decimal_stays_one_sentence_and_bullets_stay():
+    record = _tiny("Giriş.\n\n## Ölçüm\n- Önceki %7,6. Daha önceki %7,2.\n")
+    wrapped = (
+        "DURUM: YANIT\n"
+        "Bir önceki ölçüm %7,6\n"
+        ", ondan önceki ise %7,2\n"
+        "olarak kaydedilmiş. [Ölçüm]\n"
+    )
+    _status, shown, _citations = format_model_text(wrapped, record)
+    assert "%7,6.\n," not in shown
+    assert "%7,6, ondan önceki ise %7,2" in shown
+    grounded = ground_answer(wrapped, record)
+    assert grounded.ok, grounded.debug
+    assert "7,6" in grounded.answer
+    assert "7,2" in grounded.answer
+    assert "%7,6.\n," not in grounded.answer
+    dotted = _sentences("Değer 7. 6 kaldı. Sonra durdu.")
+    assert dotted[0].startswith("Değer 7. 6")
+    assert "Sonra durdu." in dotted
+    listed = (
+        "DURUM: YANIT\n"
+        "Geçmiş olsun. Değer duruyor.\n\n"
+        "Şunlar iyi gelir:\n"
+        "- dinlen\n"
+        "- su iç\n\n"
+        "Dikkat: ağırlaşırsa yardım iste. [Ölçüm]\n"
+    )
+    _listed_status, layout, cites = format_model_text(listed, record)
+    assert "\n\n" in layout
+    assert "- dinlen" in layout
+    assert "- su iç" in layout
+    assert "Dikkat:" in layout
+    assert "gelir:." not in layout
+    assert "DURUM" not in layout
+    assert "[" not in layout
+    assert cites and cites[0]["section"] == "Ölçüm"
+
+
+def test_dose_schedule_and_visit_date_in_the_section_are_kept():
+    record = _tiny(
+        "Giriş.\n\n## İlaçlar\n- Alfa 2x2 puf.\n\n## Başvuru\n- Kontrol 12.04.2024.\n"
+    )
+    dose = ground_answer(
+        "DURUM: YANIT\nGeçmiş olsun. Günde 2x2 puf kullanıyorsun. [İlaçlar]\n",
+        record,
+    )
+    assert dose.ok, dose.debug
+    assert dose.answer.strip()
+    assert "2x2" in dose.answer
+    assert "Geçmiş olsun" in dose.answer
+    visit = ground_answer(
+        "DURUM: YANIT\n12.04.2024 tarihinde kontrole gittin. [Başvuru]\n",
+        record,
+    )
+    assert visit.ok, visit.debug
+    assert "12.04.2024" in visit.answer
+    missing = ground_answer(
+        "DURUM: YANIT\nGünde 9x9 puf kullanıyorsun. [İlaçlar]\n",
+        record,
+    )
+    assert missing.ok is False
+    assert missing.answer == ""
 
 
 def test_chart_abbreviation_is_recalled_without_a_nearby_digit():

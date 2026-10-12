@@ -43,6 +43,10 @@ _RELATIVE = re.compile(
     r"\d+(?:[.,]\d+)?\s*(?:gün|gun|ay|yıl|yil|hafta)\s+önce",
     re.IGNORECASE,
 )
+# A repeated dose such as N x N. The letters are the schedule mark, not a drug name.
+_SCHEDULE = re.compile(r"\d+(?:\s*[x×]\s*\d+)+", re.IGNORECASE)
+_BULLET = re.compile(r"^(?:[-*•])\s+\S")
+_SOFT_DROPS = frozenset({"unsupported_claim", "missing_citation"})
 # Causal connectives. Longer phrases win. These are grammar, not chart values.
 _CAUSE_MARKERS = (
     "sonucu olarak",
@@ -225,8 +229,12 @@ def _status_and_body(text: str) -> tuple[str, str] | None:
             continue
         status = _status_of_line(line)
         tail = "" if _line_is_only_status(line) else _tail_after_status(line)
-        body = "\n".join(part for part in (tail, *lines[index + 1 :]) if part).strip()
-        return status or "answered", body
+        body_lines = ([tail] if tail else []) + lines[index + 1 :]
+        while body_lines and not body_lines[0].strip():
+            body_lines.pop(0)
+        while body_lines and not body_lines[-1].strip():
+            body_lines.pop()
+        return status or "answered", "\n".join(body_lines).strip()
     inferred = _infer_status(text)
     if inferred is None:
         return None
@@ -1508,6 +1516,50 @@ def _pairs(body: str) -> list[tuple[str, str | None]]:
     return pairs
 
 
+def _is_bullet(line: str) -> bool:
+    return _BULLET.match(line.lstrip()) is not None
+
+
+def _continues_line(prev: str, line: str) -> bool:
+    """A wrapped line stays in the sentence. A bullet or a new paragraph does not."""
+    if not prev.strip() or not line.strip():
+        return False
+    nxt = line.lstrip()
+    if _is_bullet(nxt):
+        return False
+    if nxt[0] in ",;":
+        return True
+    if nxt[0].islower():
+        return True
+    tail = prev.rstrip()
+    if len(tail) >= 2 and tail[-1] in ",." and tail[-2].isdigit() and nxt[:1].isdigit():
+        return True
+    return bool(tail[-1:].isdigit() and len(nxt) > 1 and nxt[0] in ",." and nxt[1].isdigit())
+
+
+def _glue_line(prev: str, line: str) -> str:
+    left = prev.rstrip()
+    right = line.lstrip()
+    if left[-1].isdigit() and right[0] in ",.":
+        return left + right
+    if left[-1] in ",." and right[:1].isdigit():
+        return left + right
+    if right[0] in ",;":
+        return left + right
+    return left + " " + right
+
+
+def _normalize_layout(text: str) -> str:
+    """Join a line break that falls inside a sentence or a decimal number."""
+    merged: list[str] = []
+    for line in text.split("\n"):
+        if merged and _continues_line(merged[-1], line):
+            merged[-1] = _glue_line(merged[-1], line)
+        else:
+            merged.append(line)
+    return "\n".join(merged)
+
+
 def _ordinal_period(text: str, match: re.Match[str]) -> bool:
     """A digit, a period, and a lowercase word is an ordinal, not a sentence end."""
     if match.start() == 0 or text[match.start() - 1] != ".":
@@ -1518,11 +1570,28 @@ def _ordinal_period(text: str, match: re.Match[str]) -> bool:
     return bool(after[:1].islower())
 
 
+def _decimal_boundary(text: str, match: re.Match[str]) -> bool:
+    """A dot between digits is a decimal point, not a sentence end."""
+    punct_at = match.start() - 1
+    if punct_at < 1 or text[punct_at] not in ".,":
+        return False
+    if not text[punct_at - 1].isdigit():
+        return False
+    return text[match.end():].lstrip()[:1].isdigit()
+
+
+def _keeps_together(text: str, match: re.Match[str]) -> bool:
+    if _ordinal_period(text, match) or _decimal_boundary(text, match):
+        return True
+    return text[match.end():].lstrip()[:1] in ",;"
+
+
 def _sentences(text: str) -> list[str]:
+    text = _normalize_layout(text)
     parts: list[str] = []
     start = 0
     for match in _SENTENCE_BREAK.finditer(text):
-        if _ordinal_period(text, match):
+        if _keeps_together(text, match):
             continue
         chunk = text[start:match.start()].strip()
         if chunk:
@@ -1660,7 +1729,7 @@ _FLAG_WORD = {"high": "yüksek", "low": "düşük", "within": "normal"}
 def _end_sentence(text: str) -> str:
     """A displayed sentence ends with punctuation. This is formatting, not a check."""
     kept = text.strip()
-    if not kept or kept[-1] in ".!?":
+    if not kept or kept[-1] in ".!?:":
         return kept
     return kept + "."
 
@@ -1839,10 +1908,50 @@ def _align_flag(sentence: str, blob: str) -> str | None:
     return _rewrite_polarity(sentence, expected)
 
 
+def _present_line(line: str) -> str:
+    shown = line.strip()
+    if not shown or _blank_sentence(shown):
+        return ""
+    return _end_sentence(shown)
+
+
+def _tidy_blocks(blocks: list[str]) -> str:
+    """Keep paragraph breaks and bullet lines. Drop runs of empty lines."""
+    lines: list[str] = []
+    blank = False
+    for block in blocks:
+        if block == "":
+            if lines and not blank:
+                lines.append("")
+                blank = True
+            continue
+        lines.append(block)
+        blank = False
+    return "\n".join(lines).strip()
+
+
+def _render_prose(body: str) -> list[tuple[str, str | None]]:
+    """Layout lines and the citation marker that covered each one."""
+    rows: list[tuple[str, str | None]] = []
+    for claim, marker in _pairs(body):
+        laid = _normalize_layout(claim)
+        if not laid.strip():
+            continue
+        for line in laid.split("\n"):
+            if not line.strip():
+                rows.append(("", marker))
+                continue
+            shown = _present_line(line)
+            if shown:
+                rows.append((shown, marker))
+    return rows
+
+
 def format_model_text(raw: str, record: TextRecord) -> tuple[str, str, list[dict]]:
     """Strip the status line and move citation tags out of the prose.
 
-    This does not check numbers, dates, trends, causes, or flags.
+    Paragraph breaks and bullet lines stay. This does not check numbers,
+    dates, trends, causes, or flags.
     """
     cleaned = strip_model_wrappers(raw)
     parsed = _status_and_body(cleaned)
@@ -1852,22 +1961,66 @@ def format_model_text(raw: str, record: TextRecord) -> tuple[str, str, list[dict
         status, body = parsed
     citations: list[dict] = []
     seen: set[tuple] = set()
-    parts: list[str] = []
+    blocks: list[str] = []
     last_index: int | None = None
-    for claim, marker in _pairs(body):
-        index = _resolve_section(marker, claim, record) if marker else None
+    for shown, marker in _render_prose(body):
+        if not shown:
+            blocks.append("")
+            continue
+        index = _resolve_section(marker, shown, record) if marker else None
         if index is None:
             index = last_index
-        pieces = _sentences(claim) or ([claim.strip()] if claim.strip() else [])
-        for sentence in pieces:
-            if _blank_sentence(sentence):
-                continue
-            sentence = _end_sentence(sentence)
-            parts.append(sentence)
-            if index is not None:
-                last_index = index
-                _remember(citations, seen, record, index, sentence, marker)
-    return status, "\n".join(parts).strip(), citations
+        blocks.append(shown)
+        if index is not None:
+            last_index = index
+            _remember(citations, seen, record, index, shown, marker)
+    return status, _tidy_blocks(blocks), citations
+
+
+def _schedules(text: str) -> list[str]:
+    return _SCHEDULE.findall(text)
+
+
+def _schedule_in(token: str, blob: str) -> bool:
+    """A dose schedule matches with or without spaces around the mark."""
+
+    def squash(value: str) -> str:
+        return re.sub(r"\s+", "", value.casefold().replace("×", "x"))
+
+    needle = squash(token)
+    hay = squash(blob)
+    start = 0
+    while True:
+        found = hay.find(needle, start)
+        if found < 0:
+            return False
+        before = hay[found - 1] if found else ""
+        after = hay[found + len(needle):found + len(needle) + 1]
+        if not before.isdigit() and not after.isdigit():
+            return True
+        start = found + 1
+
+
+def _chart_tokens_ok(sentence: str, blob: str) -> bool:
+    """Every number, date, and dose schedule in the sentence is in the cited text."""
+    numbers = _numbers(sentence)
+    schedules = _schedules(sentence)
+    if not numbers and not schedules:
+        return False
+    if numbers and not _numbers_supported(sentence, blob):
+        return False
+    return all(_schedule_in(item, blob) for item in schedules)
+
+
+def _cited_blob(body: str, record: TextRecord) -> str:
+    chunks: list[str] = []
+    for claim, marker in _pairs(body):
+        if not marker:
+            continue
+        index = _resolve_section(marker, claim, record)
+        if index is not None:
+            chunks.append(record.sections[index].text)
+    return "\n".join(chunks) if chunks else record.text
 
 
 def _support_plan(body: str, record: TextRecord) -> list[tuple[int | None, bool]]:
@@ -1888,9 +2041,7 @@ def _support_plan(body: str, record: TextRecord) -> list[tuple[int | None, bool]
             if index is None:
                 index = _section_for_claim(sentence, record)
             blob = record.sections[index].text if index is not None else ""
-            supported = bool(
-                index is not None and _numbers(sentence) and _numbers_supported(sentence, blob)
-            )
+            supported = index is not None and _chart_tokens_ok(sentence, blob)
             plan.append((index, supported))
     return plan
 
@@ -1960,7 +2111,16 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
             if index is None:
                 index = _section_for_claim(sentence, record)
             blob = record.sections[index].text if index is not None else ""
-            needs_number = bool(_numbers(sentence) or _RELATIVE.search(sentence))
+            schedules = _schedules(sentence)
+            if schedules and not all(_schedule_in(item, blob) for item in schedules):
+                missing = next(item for item in schedules if not _schedule_in(item, blob))
+                _failure(
+                    errors, debug, "unsupported_number", sentence,
+                    _cite(marker, record, index), missing,
+                )
+                continue
+            anchored = _chart_tokens_ok(sentence, blob)
+            needs_number = bool(_numbers(sentence) or _RELATIVE.search(sentence) or schedules)
             trend = _assess_trend(sentence, blob)
             if needs_number and (index is None or not _numbers_supported(sentence, blob)):
                 if trend.action == "fail" and any(
@@ -2035,6 +2195,7 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                 continue
             if (
                 not inherits
+                and not anchored
                 and not needs_number
                 and not _states_absence(sentence)
                 and (index is None or not _overlaps_section(sentence, blob))
@@ -2078,6 +2239,17 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     if not kept:
         if saw_unsafe:
             return GroundingResult(False, "safety_refusal", "", [], "unsafe_advice")
+        # A grounded answer is shown. Soft overlap misses must not blank it.
+        if (
+            errors
+            and all(item in _SOFT_DROPS for item in errors)
+            and _chart_tokens_ok(body, _cited_blob(body, record))
+        ):
+            rendered_status, rendered, rendered_cites = format_model_text(raw, record)
+            if rendered.strip():
+                return GroundingResult(
+                    True, rendered_status, rendered, rendered_cites, "", debug,
+                )
         return GroundingResult(
             False, "validation_failed", "", [], errors[-1] if errors else "missing_citation", debug,
         )
@@ -2090,11 +2262,13 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
             }],
         )
     changed = len(kept) != sentence_count or hide_markers or moved or edited
-    answer = "\n".join(
-        _end_sentence(_capitalize_first(part) if changed else part) for part in kept
-    ).strip()
     if changed:
+        answer = "\n".join(
+            _end_sentence(_capitalize_first(part)) for part in kept
+        ).strip()
         answer = _capitalize_first(answer)
+    else:
+        answer = _tidy_blocks([line for line, _marker in _render_prose(body)])
     if status == "answered" and _absence_only(answer):
         status = "insufficient_evidence"
     return GroundingResult(True, status, answer, citations, "", debug if errors else [])

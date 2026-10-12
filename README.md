@@ -36,6 +36,7 @@ Mevcut sanal ortam ve embedding önbelleği hazırlanmıştır. Sonraki çalış
 
 - Arayüz: [http://127.0.0.1:8091](http://127.0.0.1:8091)
 - Swagger: [http://127.0.0.1:8091/docs](http://127.0.0.1:8091/docs)
+- Model geçidi (ayrı süreç, varsayılan `127.0.0.1:8095`): `docs/model-gateway.md`
 - Neo4j Browser: [http://127.0.0.1:7474](http://127.0.0.1:7474)
 
 Neo4j sonradan açılırsa `POST /api/v1/terminology/reload` çağırın. Yerel geliştirme parolası `.env.example` içindedir; bu ayarlarla uygulamayı internete açmayın. Servis sadece loopback'e bağlanır, kimlik doğrulamalı çok kullanıcılı bir ürün değildir.

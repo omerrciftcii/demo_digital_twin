@@ -1,0 +1,11 @@
+{
+  "models": [
+    {
+      "id": "example-local",
+      "name": "Example local weights",
+      "start": "scripts/models/start-model.sh",
+      "stop": "scripts/models/stop-vllm.sh",
+      "args": ["--served-model-name", "example-local"]
+    }
+  ]
+}

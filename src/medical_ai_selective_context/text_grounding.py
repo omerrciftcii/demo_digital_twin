@@ -24,7 +24,7 @@ _NEAR_DUPLICATE = 90
 _MARKER = re.compile(
     r"\[([^\[\]\n]{2,160})\]|【([^】\n]{2,160})】|［([^］\n]{2,160})］"
 )
-_SENTENCE = re.compile(r"\n+|(?<=[.!?])\s+")
+_SENTENCE_BREAK = re.compile(r"\n+|(?<=[.!?])\s+")
 _NUMBER = re.compile(
     r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?)?"
     r"|\d{1,2}\.\d{1,2}\.\d{4}(?:[ T]\d{1,2}:\d{2})?"
@@ -43,8 +43,64 @@ _RELATIVE = re.compile(
     r"\d+(?:[.,]\d+)?\s*(?:gün|gun|ay|yıl|yil|hafta)\s+önce",
     re.IGNORECASE,
 )
-_CAUSAL = (
-    "nedeniyle", "yüzünden", "sebep oldu", "neden oldu", "bağlı olarak", "sonucu olarak",
+# Causal connectives. Longer phrases win. These are grammar, not chart values.
+_CAUSE_MARKERS = (
+    "sonucu olarak",
+    "bagli olarak",
+    "dolayisiyla",
+    "bu nedenle",
+    "bu yuzden",
+    "o yuzden",
+    "sebebiyle",
+    "nedeniyle",
+    "yuzunden",
+    "sebep oldu",
+    "neden oldu",
+    "cunku",
+    "dolayi",
+    "zira",
+)
+_CAUSE_STOP = frozenset({
+    "olan", "olarak", "sonra", "once", "daha", "cok", "gibi", "diye", "yeni",
+    "icin", "ayrica", "fakat", "ama", "veya", "hem", "degil",
+})
+# Rounding slack for a sum or difference, not a clinical limit.
+_DERIVED_ABS = 0.51
+_DERIVED_REL = 0.01
+_BASELINE_WORDS = ("onceki", "olagan", "bazal", "baslangic", "eski")
+_CURRENT_WORDS = ("guncel", "simdiki", "bugunku", "mevcut", "suanki")
+_UP_DOWN = (
+    ("arttı", "azaldı"),
+    ("artmış", "azalmış"),
+    ("artıyor", "azalıyor"),
+    ("artış", "azalış"),
+    ("artarak", "azalarak"),
+    ("yükseldi", "düştü"),
+    ("yükselmiş", "düşmüş"),
+    ("yükseliyor", "düşüyor"),
+    ("yükselme", "düşme"),
+    ("yükselerek", "düşerek"),
+    ("çıktı", "indi"),
+    ("çıkmış", "inmiş"),
+    ("çıkıyor", "iniyor"),
+)
+_DATE_TOKEN = re.compile(r"\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2}")
+_TREND_FROM_TO = re.compile(
+    r"(?P<a>\d+(?:[.,]\d+)?)"
+    r"(?P<ua>(?:\s*[A-Za-zµμ°/%][\wµμ°/%^]*)?)"
+    r"\s*['’‘]?(?P<from>dan|den|tan|ten)\s+"
+    r"(?P<b>\d+(?:[.,]\d+)?)"
+    r"(?P<ub>(?:\s*[A-Za-zµμ°/%][\wµμ°/%^]*)?)"
+    r"\s*['’‘]?(?P<to>ya|ye|[ae])\s+"
+    r"(?P<verb>[A-Za-zÇĞİÖŞÜçğıöşü]+)",
+    re.IGNORECASE,
+)
+_TREND_ARROW = re.compile(
+    r"(?P<a>\d+(?:[.,]\d+)?)"
+    r"(?P<ua>(?:\s*[A-Za-zµμ°/%][\wµμ°/%^]*)?)"
+    r"\s*(?:→|->)\s*"
+    r"(?P<b>\d+(?:[.,]\d+)?)"
+    r"(?P<ub>(?:\s*[A-Za-zµμ°/%][\wµμ°/%^]*)?)",
 )
 _PAREN = re.compile(r"\([^)]*\)")
 # A diagnosis code is one token. Its inner digits are not a lab value.
@@ -306,6 +362,384 @@ def _unit_conflict(claim: str, blob: str) -> bool:
     return False
 
 
+def _parse_quantity(token: str) -> float | None:
+    """A measured amount. Dates, clock times, and day.month fragments are not amounts."""
+    if re.search(r"[:T]|^\d{4}-|^\d{1,2}\.\d{1,2}\.\d{4}", token):
+        return None
+    if re.fullmatch(r"\d{1,2}\.\d{1,2}|\d{1,2}\.\d{4}", token):
+        return None
+    if re.fullmatch(r"\d{1,3}(?:\.\d{3})+,\d+", token):
+        return float(token.replace(".", "").replace(",", "."))
+    if re.fullmatch(r"\d+,\d+", token):
+        return float(token.replace(",", "."))
+    if re.fullmatch(r"\d+", token):
+        return float(token)
+    return None
+
+
+def _near_value(left: float, right: float) -> bool:
+    scale = max(abs(left), abs(right), 1.0)
+    return abs(left - right) <= max(_DERIVED_ABS, scale * _DERIVED_REL)
+
+
+def _quantity_points(text: str) -> list[tuple[float, str | None]]:
+    points: list[tuple[float, str | None]] = []
+    for match in _numbers(text):
+        if _skipped_number(text, match):
+            continue
+        value = _parse_quantity(match.group(0))
+        if value is None:
+            continue
+        points.append((value, _unit_family(text, match)))
+    return points
+
+
+def _families_agree(answer: str | None, left: str | None, right: str | None) -> bool:
+    if left and right and left != right:
+        return False
+    shared = left or right
+    if answer is None:
+        return True
+    if left not in {None, answer} or right not in {None, answer}:
+        return False
+    if shared is None:
+        return False
+    return shared == answer
+
+
+def _derived_quantity(claim: str, match: re.Match[str], blob: str) -> bool:
+    """True when the amount is the sum or difference of two amounts in the cited text."""
+    value = _parse_quantity(match.group(0))
+    if value is None or not blob:
+        return False
+    family = _unit_family(claim, match)
+    points = _quantity_points(blob)
+    for index, (left, left_family) in enumerate(points):
+        for right, right_family in points[index + 1:]:
+            if not _families_agree(family, left_family, right_family):
+                continue
+            if _near_value(value, left + right):
+                return True
+            if _near_value(left, right):
+                continue
+            if _near_value(value, abs(left - right)):
+                return True
+    return False
+
+
+def _key_tokens(text: str) -> list[str]:
+    folded = normalize_text(text)
+    return [
+        token for token in re.findall(r"[a-z]{4,}", folded)
+        if token not in _CAUSE_STOP and token not in _GENERIC_WORDS
+    ]
+
+
+def _prefix_lengths(text: str) -> list[int]:
+    return [len(normalize_text(text[:index])) for index in range(len(text) + 1)]
+
+
+def _origin_at(lengths: list[int], folded_pos: int) -> int:
+    for index, length in enumerate(lengths):
+        if length >= folded_pos:
+            return index
+    return len(lengths) - 1
+
+
+def _cause_split(sentence: str) -> tuple[str, str, str] | None:
+    folded = normalize_text(sentence)
+    found: tuple[int, int] | None = None
+    for marker in _CAUSE_MARKERS:
+        start = folded.find(marker)
+        while start >= 0:
+            end = start + len(marker)
+            before = start == 0 or not folded[start - 1].isalnum()
+            after = end == len(folded) or not folded[end].isalnum()
+            if before and after and (found is None or start < found[0] or (
+                start == found[0] and end - start > found[1] - found[0]
+            )):
+                found = (start, end)
+            start = folded.find(marker, start + 1)
+    if found is None:
+        return None
+    lengths = _prefix_lengths(sentence)
+    left = sentence[:_origin_at(lengths, found[0])].strip()
+    right = sentence[_origin_at(lengths, found[1]):].strip()
+    return left, sentence[_origin_at(lengths, found[0]):_origin_at(lengths, found[1])], right
+
+
+def _side_supported(side: str, blob: str) -> bool:
+    if not side.strip() or not blob:
+        return False
+    folded = normalize_text(blob)
+    if any(token in folded for token in _key_tokens(side)):
+        return True
+    return any(
+        not _skipped_number(side, match) and _token_in_text(match.group(0), blob)
+        for match in _numbers(side)
+    )
+
+
+def _without_unsupported_cause(sentence: str, blob: str) -> str | None:
+    """Drop a cause clause whose words are not in the cited section."""
+    parts = _cause_split(sentence)
+    if parts is None:
+        return sentence
+    left, _marker, right = parts
+    left_ok = _side_supported(left, blob)
+    right_ok = _side_supported(right, blob)
+    if left_ok and right_ok:
+        return sentence
+    if left_ok:
+        kept = left
+    elif right_ok:
+        kept = right
+    else:
+        return None
+    kept = kept.strip(" ,;:-")
+    if not kept:
+        return None
+    if kept[-1] not in ".!?":
+        kept += "."
+    return kept
+
+
+def _parse_date(token: str) -> tuple[int, int, int] | None:
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", token):
+        year, month, day = (int(part) for part in token.split("-"))
+        return year, month, day
+    if re.fullmatch(r"\d{1,2}\.\d{1,2}\.\d{4}", token):
+        day, month, year = (int(part) for part in token.split("."))
+        return year, month, day
+    return None
+
+
+def _date_near(blob: str, start: int) -> tuple[int, int, int] | None:
+    window_start = max(0, start - 40)
+    window = blob[window_start:start + 60]
+    best: tuple[int, tuple[int, int, int]] | None = None
+    for match in _DATE_TOKEN.finditer(window):
+        parsed = _parse_date(match.group(0))
+        if parsed is None:
+            continue
+        distance = abs((window_start + match.start()) - start)
+        if best is None or distance < best[0]:
+            best = (distance, parsed)
+    return None if best is None else best[1]
+
+
+_CLAUSE_SPLIT = re.compile(r"[,;\n]+|(?<=[.!?])\s+")
+
+
+def _clause_bounds(blob: str, start: int) -> tuple[int, int]:
+    """A comma, semicolon, or sentence break separates one labeled amount from the next."""
+    left = 0
+    for match in _CLAUSE_SPLIT.finditer(blob):
+        if match.end() <= start:
+            left = match.end()
+            continue
+        if match.start() >= start:
+            return left, match.start()
+        left = match.end()
+    return left, len(blob)
+
+
+def _role_hits(folded: str) -> list[tuple[int, str]]:
+    hits: list[tuple[int, str]] = []
+    for role, words in (("baseline", _BASELINE_WORDS), ("current", _CURRENT_WORDS)):
+        for word in words:
+            cursor = 0
+            while True:
+                found = folded.find(word, cursor)
+                if found < 0:
+                    break
+                if found == 0 or not folded[found - 1].isalpha():
+                    hits.append((found, role))
+                cursor = found + len(word)
+    return hits
+
+
+def _nearest_role(blob: str, start: int) -> str | None:
+    """Usual versus current label of this amount, inside its own clause.
+
+    A label binds to the nearest amount in that clause. When two amounts are
+    equally close, the one after the label wins, which is how a modifier is written.
+    """
+    left, right = _clause_bounds(blob, start)
+    clause = blob[left:right]
+    folded = normalize_text(clause)
+    anchor = len(normalize_text(clause[: start - left]))
+    amounts = [
+        len(normalize_text(clause[: match.start()]))
+        for match in _numbers(clause)
+        if _parse_quantity(match.group(0)) is not None
+    ]
+    labels = _role_hits(folded)
+    if not labels or not amounts:
+        return None
+    this_amount = min(amounts, key=lambda pos: (abs(pos - anchor), pos))
+
+    def closest_amount(label_at: int) -> int:
+        def rank(amount_at: int) -> tuple[int, int, int]:
+            follows = 0 if amount_at >= label_at else 1
+            return abs(amount_at - label_at), follows, amount_at
+        return min(amounts, key=rank)
+
+    claimed = [item for item in labels if closest_amount(item[0]) == this_amount]
+    if not claimed:
+        return None
+
+    def rank_label(item: tuple[int, str]) -> tuple[int, int]:
+        precedes = 0 if item[0] <= anchor else 1
+        return abs(item[0] - anchor), precedes
+
+    return min(claimed, key=rank_label)[1]
+
+
+def _measurement_words(sentence: str) -> list[str]:
+    skip = _CAUSE_STOP | _GENERIC_WORDS
+    for up, down in _UP_DOWN:
+        skip = skip | {normalize_text(up), normalize_text(down)}
+    folded = normalize_text(sentence)
+    return [
+        token for token in re.findall(r"[a-z]{3,}", folded)
+        if token not in skip
+    ]
+
+
+def _words_near(blob: str, match: re.Match[str], words: list[str]) -> bool:
+    if not words:
+        return True
+    window = normalize_text(blob[max(0, match.start() - 80):match.end() + 80])
+    return any(word in window for word in words)
+
+
+def _value_hits(
+    blob: str, value: float, family: str | None, words: list[str],
+) -> list[dict]:
+    hits: list[dict] = []
+    near: list[dict] = []
+    for match in _numbers(blob):
+        parsed = _parse_quantity(match.group(0))
+        if parsed is None or not _near_value(parsed, value):
+            continue
+        other = _unit_family(blob, match)
+        if family and other and family != other:
+            continue
+        hit = {
+            "value": parsed,
+            "start": match.start(),
+            "role": _nearest_role(blob, match.start()),
+            "date": _date_near(blob, match.start()),
+        }
+        hits.append(hit)
+        if _words_near(blob, match, words):
+            near.append(hit)
+    if words and near:
+        return near
+    return hits
+
+
+def _ordered_endpoints(left: list[dict], right: list[dict]) -> tuple[float, float] | None:
+    dated: list[tuple[dict, dict]] = []
+    roled: list[tuple[dict, dict]] = []
+    for first in left:
+        for second in right:
+            if first["start"] == second["start"]:
+                continue
+            if first["date"] and second["date"] and first["date"] != second["date"]:
+                dated.append((first, second))
+            elif (
+                first["role"] and second["role"] and first["role"] != second["role"]
+                and {first["role"], second["role"]} == {"baseline", "current"}
+            ):
+                roled.append((first, second))
+    pair = dated[0] if dated else (roled[0] if roled else None)
+    if pair is None:
+        return None
+    first, second = pair
+    if first["date"] and second["date"]:
+        earlier, later = (first, second) if first["date"] < second["date"] else (second, first)
+        return earlier["value"], later["value"]
+    earlier = first if first["role"] == "baseline" else second
+    later = second if earlier is first else first
+    return earlier["value"], later["value"]
+
+
+def _verb_direction(verb: str) -> tuple[int, str] | None:
+    folded = normalize_text(verb)
+    for up, down in _UP_DOWN:
+        if folded == normalize_text(up):
+            return 1, down
+        if folded == normalize_text(down):
+            return -1, up
+    return None
+
+
+def _replace_spans(text: str, replacements: list[tuple[int, int, str]]) -> str:
+    updated = text
+    for start, end, new in sorted(replacements, key=lambda item: item[0], reverse=True):
+        updated = updated[:start] + new + updated[end:]
+    return updated
+
+
+def _trend_match(sentence: str) -> re.Match[str] | None:
+    match = _TREND_FROM_TO.search(sentence)
+    if match and (match.start() == 0 or sentence[match.start() - 1] not in "0123456789."):
+        return match
+    arrow = _TREND_ARROW.search(sentence)
+    if arrow and (arrow.start() == 0 or sentence[arrow.start() - 1] not in "0123456789."):
+        return arrow
+    return None
+
+
+def _align_trend(sentence: str, blob: str) -> str | None:
+    """Keep a from-to claim only when both amounts exist and the direction matches time."""
+    match = _trend_match(sentence)
+    if match is None or not blob:
+        return sentence
+    start_value = _parse_quantity(match.group("a"))
+    end_value = _parse_quantity(match.group("b"))
+    if start_value is None or end_value is None:
+        return sentence
+    words = _measurement_words(sentence)
+    start_span = match.span("a")
+    end_span = match.span("b")
+    start_family = _match_family(_unit_window(sentence, start_span[1]))
+    end_family = _match_family(_unit_window(sentence, end_span[1]))
+    shared = start_family or end_family
+    if start_family and end_family and start_family != end_family:
+        return None
+    left = _value_hits(blob, start_value, shared, words)
+    right = _value_hits(blob, end_value, shared, words)
+    if not left or not right:
+        return None
+    ordered = _ordered_endpoints(left, right)
+    if ordered is None:
+        return sentence
+    earlier, later = ordered
+    if _near_value(earlier, later):
+        return sentence
+    true_up = later > earlier
+    verb = match.groupdict().get("verb")
+    direction = _verb_direction(verb) if verb else None
+    forward = _near_value(start_value, earlier) and _near_value(end_value, later)
+    backward = _near_value(start_value, later) and _near_value(end_value, earlier)
+    if not forward and not backward:
+        return None
+    replacements: list[tuple[int, int, str]] = []
+    if backward:
+        replacements.append((start_span[0], start_span[1], match.group("b")))
+        replacements.append((end_span[0], end_span[1], match.group("a")))
+    stated = None if direction is None else direction[0]
+    true_dir = 1 if true_up else -1
+    if verb and stated is not None and stated != true_dir:
+        replacements.append((match.start("verb"), match.end("verb"), direction[1]))
+    if not replacements:
+        return sentence
+    return _replace_spans(sentence, replacements)
+
+
 def _near(blob: str, token: str, unit: str) -> bool:
     folded = blob.casefold()
     needle = token.casefold()
@@ -341,16 +775,18 @@ def _numbers_supported(claim: str, blob: str) -> bool:
         if _skipped_number(claim, match):
             continue
         token = match.group(0)
-        if not _token_in_text(token, blob):
-            return False
-        unit = _unit_after(claim, match.end())
-        if unit and not _near(blob, token, unit):
-            return False
-        prefixed = match.start() > 0 and claim[match.start() - 1] == "%"
-        if prefixed and f"%{token}" not in blob and f"% {token}" not in blob:
-            return False
-        suffixed = match.end() < len(claim) and claim[match.end()] == "%"
-        if suffixed and f"{token}%" not in blob and f"%{token}" not in blob:
+        if _token_in_text(token, blob):
+            unit = _unit_after(claim, match.end())
+            if unit and not _near(blob, token, unit):
+                return False
+            prefixed = match.start() > 0 and claim[match.start() - 1] == "%"
+            if prefixed and f"%{token}" not in blob and f"% {token}" not in blob:
+                return False
+            suffixed = match.end() < len(claim) and claim[match.end()] == "%"
+            if suffixed and f"{token}%" not in blob and f"%{token}" not in blob:
+                return False
+            continue
+        if not _derived_quantity(claim, match, blob):
             return False
     def squash(value: str) -> str:
         return re.sub(r"\s+", " ", value.casefold())
@@ -360,15 +796,6 @@ def _numbers_supported(claim: str, blob: str) -> bool:
         if squash(match.group(0)) not in squashed:
             return False
     return True
-
-
-def _causal_supported(body: str, blob: str) -> bool:
-    folded_body = normalize_text(body)
-    folded_blob = normalize_text(blob)
-    return all(
-        normalize_text(phrase) not in folded_body or normalize_text(phrase) in folded_blob
-        for phrase in _CAUSAL
-    )
 
 
 def _resolve_section(marker: str, claim: str, record: TextRecord) -> int | None:
@@ -475,8 +902,30 @@ def _pairs(body: str) -> list[tuple[str, str | None]]:
     return pairs
 
 
+def _ordinal_period(text: str, match: re.Match[str]) -> bool:
+    """A digit, a period, and a lowercase word is an ordinal, not a sentence end."""
+    if match.start() == 0 or text[match.start() - 1] != ".":
+        return False
+    if match.start() < 2 or not text[match.start() - 2].isdigit():
+        return False
+    after = text[match.end():]
+    return bool(after[:1].islower())
+
+
 def _sentences(text: str) -> list[str]:
-    return [part.strip() for part in _SENTENCE.split(text) if part.strip()]
+    parts: list[str] = []
+    start = 0
+    for match in _SENTENCE_BREAK.finditer(text):
+        if _ordinal_period(text, match):
+            continue
+        chunk = text[start:match.start()].strip()
+        if chunk:
+            parts.append(chunk)
+        start = match.end()
+    tail = text[start:].strip()
+    if tail:
+        parts.append(tail)
+    return parts
 
 
 def _section_for_claim(claim: str, record: TextRecord) -> int | None:
@@ -560,6 +1009,7 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     sentence_count = 0
     hide_markers = False
     moved = False
+    edited = False
     for claim, marker in _pairs(body):
         section_index: int | None = None
         if marker:
@@ -581,14 +1031,28 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
             blob = record.sections[index].text if index is not None else ""
             needs_number = bool(_numbers(sentence) or _RELATIVE.search(sentence))
             if needs_number and (index is None or not _numbers_supported(sentence, blob)):
-                relocated = _section_supporting_numbers(sentence, record)
-                if relocated is None:
-                    errors.append("unsupported_number")
-                    continue
-                if index != relocated:
-                    moved = True
-                index = relocated
-                blob = record.sections[index].text
+                softened = _without_unsupported_cause(sentence, blob) if blob else None
+                if (
+                    softened
+                    and softened != sentence
+                    and _numbers_supported(softened, blob)
+                ):
+                    sentence = softened
+                    edited = True
+                else:
+                    relocated = _section_supporting_numbers(sentence, record)
+                    if relocated is None and softened and softened != sentence:
+                        relocated = _section_supporting_numbers(softened, record)
+                        if relocated is not None:
+                            sentence = softened
+                            edited = True
+                    if relocated is None:
+                        errors.append("unsupported_number")
+                        continue
+                    if index != relocated:
+                        moved = True
+                    index = relocated
+                    blob = record.sections[index].text
             elif needs_number and content_words(sentence) and not _overlaps_section(sentence, blob):
                 relocated = _section_supporting_numbers(sentence, record)
                 if (
@@ -599,9 +1063,21 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                     moved = True
                     index = relocated
                     blob = record.sections[index].text
-            if not _causal_supported(sentence, blob):
+            revised = _without_unsupported_cause(sentence, blob)
+            if revised is None:
                 errors.append("unsupported_causal_link")
                 continue
+            if revised != sentence:
+                sentence = revised
+                edited = True
+                needs_number = bool(_numbers(sentence) or _RELATIVE.search(sentence))
+            aligned = _align_trend(sentence, blob)
+            if aligned is None:
+                errors.append("unsupported_trend")
+                continue
+            if aligned != sentence:
+                sentence = aligned
+                edited = True
             if _unit_conflict(sentence, record.text):
                 errors.append("incompatible_unit")
                 continue
@@ -635,7 +1111,10 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
         )
     if status == "answered" and not citations:
         return GroundingResult(False, "validation_failed", "", [], "missing_citation")
-    answer = body if len(kept) == sentence_count and not hide_markers and not moved else "\n".join(kept)
+    answer = (
+        body if len(kept) == sentence_count and not hide_markers and not moved and not edited
+        else "\n".join(kept)
+    )
     answer = answer.strip()
     if status == "answered" and _absence_only(answer):
         status = "insufficient_evidence"

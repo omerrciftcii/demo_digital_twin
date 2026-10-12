@@ -175,7 +175,10 @@ def test_numbers_dates_and_missing_status():
         "DURUM: YANIT\neGFR 41 mL/dk düştü nedeniyle ilaç. [Laboratuvar (hastane)]\n",
         record,
     )
-    assert causal.error == "unsupported_causal_link"
+    assert causal.ok
+    assert "41 mL/dk" in causal.answer
+    assert "nedeniyle" not in causal.answer
+    assert "ilaç" not in causal.answer
 
     assert ground_answer("Bakayım.", record).error == "missing_status"
     unsafe = ground_answer(
@@ -522,6 +525,34 @@ def test_import_answers_and_does_not_invent_a_number(text_client):
     assert dumped.json()["status"] == "safety_refusal"
     assert "NT-proBNP" not in dumped.json()["answer"]
     assert len(text_client.calls) == 1
+
+
+def test_text_answer_accepts_history_after_the_cached_record(text_client):
+    imported = text_client.post(
+        "/api/v1/text-records",
+        content=(PATIENTS / "patient-01.json").read_bytes(),
+        headers={"content-type": "application/json"},
+    )
+    record_id = imported.json()["recordId"]
+    followed = text_client.post("/api/v1/text/answer", json={
+        "recordId": record_id,
+        "question": "peki o değer neydi?",
+        "history": [
+            {"role": "user", "content": "Son eGFR değerim kaç?"},
+            {"role": "assistant", "content": "Kayıtta bir laboratuvar satırı var."},
+        ],
+    })
+    assert followed.status_code == 200, followed.text
+    thread = text_client.calls[-1]["messages"]
+    assert thread[1]["content"].startswith("HASTA KAYDI")
+    assert thread[3]["content"] == "Son eGFR değerim kaç?"
+    assert thread[-1]["content"].endswith("peki o değer neydi?")
+    overflow = text_client.post("/api/v1/text/answer", json={
+        "recordId": record_id,
+        "question": "peki",
+        "history": [{"role": "user", "content": "tur"} for _ in range(7)],
+    })
+    assert overflow.status_code == 422
 
 
 def test_real_text_record_reaches_only_a_local_model(tmp_path):

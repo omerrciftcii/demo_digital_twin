@@ -105,8 +105,37 @@ def record_message(record: TextRecord) -> str:
     )
 
 
-def question_message(record: TextRecord, question: str) -> str:
-    context = relevant_context(record, question)
+_HISTORY_TURNS = 6
+_HISTORY_CHARS = 2000
+_RETRIEVAL_CHARS = 4000
+
+
+def _bounded_history(history: list[dict[str, str]] | None) -> list[dict[str, str]]:
+    """Prior turns only. The current question stays in the last message."""
+    if not history:
+        return []
+    kept: list[dict[str, str]] = []
+    for item in history[-_HISTORY_TURNS:]:
+        role = str(item.get("role", ""))
+        if role not in {"user", "assistant"}:
+            continue
+        text = " ".join(str(item.get("content", "")).split())
+        if not text:
+            continue
+        kept.append({"role": role, "content": text[:_HISTORY_CHARS]})
+    return kept
+
+
+def _retrieval_text(question: str, history: list[dict[str, str]] | None) -> str:
+    parts = [item["content"] for item in _bounded_history(history)]
+    parts.append(question.strip())
+    return "\n".join(part for part in parts if part)[-_RETRIEVAL_CHARS:]
+
+
+def question_message(
+    record: TextRecord, question: str, history: list[dict[str, str]] | None = None,
+) -> str:
+    context = relevant_context(record, _retrieval_text(question, history))
     if context:
         excerpt = (
             "Aşağıdaki bölümler soruyla örtüşen kaydın tamamıdır. "
@@ -134,13 +163,18 @@ def question_message(record: TextRecord, question: str) -> str:
     )
 
 
-def build_messages(record: TextRecord, question: str) -> list[dict[str, str]]:
-    return [
+def build_messages(
+    record: TextRecord, question: str, history: list[dict[str, str]] | None = None,
+) -> list[dict[str, str]]:
+    """Record stays the cached prefix. Earlier turns follow it, then the question."""
+    messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": record_message(record)},
         {"role": "assistant", "content": ACK},
-        {"role": "user", "content": question_message(record, question)},
     ]
+    messages.extend(_bounded_history(history))
+    messages.append({"role": "user", "content": question_message(record, question, history)})
+    return messages
 
 
 def _ms(started: float) -> float:
@@ -183,7 +217,9 @@ class TextAnswerer:
     def __init__(self, model: TextModelClient) -> None:
         self.model = model
 
-    async def events(self, record: TextRecord, question: str) -> AsyncIterator[dict[str, Any]]:
+    async def events(
+        self, record: TextRecord, question: str, history: list[dict[str, str]] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
         started = perf_counter()
         decision = classify_question(question)
         if decision.action == "refuse":
@@ -208,7 +244,7 @@ class TextAnswerer:
             return
         end: dict[str, Any] | None = None
         try:
-            async for piece in self.model.complete(build_messages(record, question)):
+            async for piece in self.model.complete(build_messages(record, question, history)):
                 if piece["type"] == "token":
                     yield piece
                 else:
@@ -270,9 +306,11 @@ class TextAnswerer:
         )
         yield {"type": "done", **payload}
 
-    async def answer(self, record: TextRecord, question: str) -> dict[str, Any]:
+    async def answer(
+        self, record: TextRecord, question: str, history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         done: dict[str, Any] = {}
-        async for event in self.events(record, question):
+        async for event in self.events(record, question, history):
             if event["type"] == "done":
                 done = {key: value for key, value in event.items() if key != "type"}
         return done

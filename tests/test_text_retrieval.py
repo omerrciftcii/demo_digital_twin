@@ -8,8 +8,8 @@ from medical_ai_selective_context.index import normalize_text
 from medical_ai_selective_context.text_document import parse_cco_text
 from medical_ai_selective_context.text_drug_index import drug_index, drug_names
 from medical_ai_selective_context.text_embed import embedding_model_name, semantic_section_scores
-from medical_ai_selective_context.text_grounding import ground_answer
-from medical_ai_selective_context.text_qa import SYSTEM_PROMPT
+from medical_ai_selective_context.text_grounding import _sentences, ground_answer
+from medical_ai_selective_context.text_qa import ACK, SYSTEM_PROMPT, build_messages
 from medical_ai_selective_context.text_relevance import relevant_context, relevant_sections
 
 ROOT = Path(__file__).parents[1]
@@ -185,6 +185,113 @@ def test_incompatible_unit_drops_only_that_sentence():
     assert mixed.ok
     assert "70 kg" in mixed.answer
     assert "ms" not in mixed.answer
+
+
+def test_derived_sum_or_difference_is_grounded():
+    record = _tiny("Giriş.\n\n## Laboratuvar\n- LDL 168 mg/dL. Önceki 71 mg/dL.\n")
+    drop = ground_answer("DURUM: YANIT\nLDL 97 mg/dL düştü. [Laboratuvar]\n", record)
+    assert drop.ok and "97" in drop.answer
+    invented = ground_answer("DURUM: YANIT\nLDL 50 mg/dL düştü. [Laboratuvar]\n", record)
+    assert not invented.ok
+    other_unit = ground_answer("DURUM: YANIT\nLDL 97 kg düştü. [Laboratuvar]\n", record)
+    assert not other_unit.ok
+    total = _tiny("Giriş.\n\n## Ölçüm\n- Parça 20 mg. Diğer parça 22 mg.\n")
+    summed = ground_answer("DURUM: YANIT\nToplam 42 mg. [Ölçüm]\n", total)
+    assert summed.ok and "42" in summed.answer
+
+
+def test_ordinal_period_does_not_split_a_sentence():
+    assert _sentences("1. saat 80/dk sürdü. 2. doz 70 kg kaldı.") == [
+        "1. saat 80/dk sürdü.",
+        "2. doz 70 kg kaldı.",
+    ]
+    assert _sentences("Bitti. Yeni cümle başladı.") == ["Bitti.", "Yeni cümle başladı."]
+    record = _tiny("Giriş.\n\n## Ölçüm\n- 1. saat 80/dk.\n- 2. doz 70 kg.\n")
+    grounded = ground_answer(
+        "DURUM: YANIT\n1. saat 80/dk sürdü. Uydurma 999 mg eklendi. [Ölçüm]\n",
+        record,
+    )
+    assert grounded.ok
+    assert "1. saat 80/dk" in grounded.answer
+    assert "999" not in grounded.answer
+
+
+def test_unsupported_cause_clause_is_removed():
+    record = _tiny("Giriş.\n\n## Laboratuvar\n- LDL 168 mg/dL.\n")
+    stripped = ground_answer(
+        "DURUM: YANIT\nLDL 168 mg/dL çünkü yeni bir ilaç. [Laboratuvar]\n",
+        record,
+    )
+    assert stripped.ok
+    assert "168" in stripped.answer
+    assert "çünkü" not in stripped.answer.casefold()
+    assert "ilaç" not in stripped.answer.casefold()
+    supported = _tiny("Giriş.\n\n## Laboratuvar\n- LDL 168 mg/dL, ilaç kesildi.\n")
+    kept = ground_answer(
+        "DURUM: YANIT\nLDL 168 mg/dL çünkü ilaç kesildi. [Laboratuvar]\n",
+        supported,
+    )
+    assert kept.ok
+    assert "çünkü" in kept.answer.casefold()
+    assert "ilaç" in kept.answer.casefold()
+
+
+def test_trend_direction_follows_the_record_order():
+    wearable = _tiny("Giriş.\n\n## Giyilebilir\n- HRV olağanı 78 ms, güncel 41 ms.\n")
+    missing = ground_answer(
+        "DURUM: YANIT\nHRV 41 ms'den 79 ms'ye arttı. [Giyilebilir]\n",
+        wearable,
+    )
+    assert not missing.ok
+    swapped = ground_answer(
+        "DURUM: YANIT\nHRV 41 ms'den 78 ms'ye arttı. [Giyilebilir]\n",
+        wearable,
+    )
+    assert swapped.ok
+    assert "79" not in swapped.answer
+    folded = normalize_text(swapped.answer)
+    assert "azal" in folded or "dus" in folded
+    assert folded.find("78") < folded.find("41")
+    steady = ground_answer(
+        "DURUM: YANIT\nHRV 78 ms'den 41 ms'ye düştü. [Giyilebilir]\n",
+        wearable,
+    )
+    assert steady.ok and "düştü" in steady.answer
+    dated = _tiny(
+        "Giriş.\n\n## Laboratuvar\n"
+        "- LDL 80 mg/dL (01.01.2020).\n- LDL 100 mg/dL (01.01.2024).\n"
+    )
+    backward = ground_answer(
+        "DURUM: YANIT\nLDL 100 mg/dL'den 80 mg/dL'ye düştü. [Laboratuvar]\n",
+        dated,
+    )
+    assert backward.ok
+    assert normalize_text(backward.answer).find("80") < normalize_text(backward.answer).find("100")
+    assert "yükseldi" in backward.answer
+
+
+def test_history_follows_the_cached_record_and_feeds_retrieval():
+    record = _tiny(
+        "Giriş.\n\n## Alfa ölçüm\nalfa sonucu burada.\n\n## Beta notu\nbeta baska satir.\n"
+    )
+    alone = build_messages(record, "peki o nasıl")
+    assert [item["role"] for item in alone] == ["system", "user", "assistant", "user"]
+    assert alone[2]["content"] == ACK
+    assert "alfa sonucu" not in alone[-1]["content"]
+    messages = build_messages(record, "peki o nasıl", [
+        {"role": "user", "content": "alfa sonucu ne?"},
+        {"role": "assistant", "content": "Buna bakıyorum."},
+    ])
+    assert messages[1]["content"].startswith("HASTA KAYDI")
+    assert "peki o nasıl" not in messages[1]["content"]
+    assert messages[3] == {"role": "user", "content": "alfa sonucu ne?"}
+    assert messages[4]["role"] == "assistant"
+    assert messages[-1]["content"].endswith("peki o nasıl")
+    assert "alfa sonucu" in messages[-1]["content"]
+    long_history = [{"role": "user", "content": f"tur {index} alfa"} for index in range(9)]
+    capped = build_messages(record, "peki", long_history)
+    prior = [item for item in capped if item["content"].startswith("tur ")]
+    assert len(prior) == 6
 
 
 def test_startup_warmup_is_configurable(monkeypatch):

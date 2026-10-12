@@ -348,7 +348,20 @@
                 "properties": {
                   "recordId": {"type": "string"},
                   "question": {"type": "string"},
-                  "stream": {"type": "boolean", "default": false}
+                  "stream": {"type": "boolean", "default": false},
+                  "history": {
+                    "type": "array",
+                    "maxItems": 6,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["role", "content"],
+                      "properties": {
+                        "role": {"type": "string", "enum": ["user", "assistant"]},
+                        "content": {"type": "string", "maxLength": 2000}
+                      }
+                    }
+                  }
                 }
               }
             }

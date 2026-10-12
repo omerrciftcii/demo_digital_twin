@@ -28,7 +28,7 @@ DURUM: YANIT
 Son eGFR 41 mL/dk/1,73 m² (18.09.2026). [Laboratuvar (hastane) 18.09.2026]
 ```
 
-`DURUM: BİLGİ_YOK` kayıttaki "yok / bilinmiyor / planlandı" cümlesi içindir. Sayı, tarih ve birim, atıf yapılan bölümde birebir yoksa yanıt gösterilmez (`validation_failed`). Kısaltılmış `04.08`, kaynakta yalnız `04.08.2026` diye geçiyorsa kabul edilmez. Kayıtta olmayan "nedeniyle" veya "3 yıl önce" de düşer. Kayıttaki bir sayının birimi ile cevapta o sayıya takılan birim aynı ailede değilse (hız ile süre, sıcaklık ile başka bir birim) o cümle düşer. Aynı cümlenin yakın kopyası da düşer.
+`DURUM: BİLGİ_YOK` kayıttaki "yok / bilinmiyor / planlandı" cümlesi içindir. Sayı, tarih ve birim, atıf yapılan bölümde birebir yoksa yanıt gösterilmez (`validation_failed`). Kısaltılmış `04.08`, kaynakta yalnız `04.08.2026` diye geçiyorsa kabul edilmez. Kayıtta olmayan "3 yıl önce" düşer. İki kayıtlı miktarın toplamı veya farkı, birim ailesi aynıysa, cevapta kabul edilir. Neden bağlacının bir yanı kayıtta yoksa o yan düşer. "A'dan B'ye arttı" kalıbında iki uç kayıtta yoksa cümle düşer; sıra tarih ya da olağan/güncel sırasına uymuyorsa yön düzeltilir. "1. saat" gibi sıra bildiren nokta cümle sonu sayılmaz. Kayıttaki bir sayının birimi ile cevapta o sayıya takılan birim aynı ailede değilse o cümle düşer. Aynı cümlenin yakın kopyası da düşer.
 
 Hasta metni sen diye, sıcak ve doğal Türkçe ile anlatılır. Cevap soruyu bütünüyle karşılar: satırdaki ad, tarih, uzmanlık dalı ve hekimin yazdığı öneri; kayıttaki terimin sade Türkçesi; sonuç ile hedef ayrı. Kalıp giriş cümlesi kurulmaz ve cevap tek cümleye sıkıştırılmaz. Kayıt satırı, epikriz veya madde işareti olduğu gibi dökülmez. Yüksek, normal veya düşük yalnız kayıt böyle diyorsa söylenir. Tanı konmaz. Neden, doz ve tedavi uydurulmaz. Kırmızı bayrak belirtileri modele gitmez.
 
@@ -42,10 +42,12 @@ Gerçek (fixture hash'i tutmayan) kayıt varsayılan olarak modele gitmez. `ALLO
 
 - `POST /api/v1/text-records` — zarfın kendisi
 - `GET /api/v1/text-records` ve `GET /api/v1/text-records/{recordId}`
-- `POST /api/v1/text/answer` — `{ "recordId", "question", "stream": false }`
+- `POST /api/v1/text/answer` — `{ "recordId", "question", "stream": false, "history": [] }`
 - `stream: true` → `text/event-stream`: `event: token`, sonra `event: done`
 
 `done` gövdesi yetkilidir. Token olayları modelin ham akışıdır; sayı kontrolü bitince `done.answer` onları geçersiz kılabilir. `metrics.modelCalls`, `metrics.timeToFirstTokenMs` (sağlayıcıda ilk görünen token) ve `metrics.totalMs` döner.
+
+İstek `history` alabilir: en fazla altı `{role, content}` turu. Kayıt iletisi önbellek öneki olarak durur; önceki turlar ondan sonra, soru en sonda gelir. Erişim, son soru ile bu turların sözcüklerini birlikte kullanır. Sayı kontrolü yine kayda bakar.
 
 İstek gövdesinde `response_format` yoktur. `provider.zdr` ve `provider.data_collection=deny` yalnız `openrouter.ai` için gider. ZDR açıkken başka host reddedilir (`zdr_requires_openrouter`).
 

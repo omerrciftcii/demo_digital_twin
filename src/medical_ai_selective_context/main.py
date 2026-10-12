@@ -403,11 +403,12 @@ def create_app(
         record = svc.text_records.get(body.record_id.lower())
         if record is None:
             raise HTTPException(404, "Kayıt bulunamadı.")
+        history = [item.model_dump() for item in body.history]
         if not body.stream:
-            return await svc.text_answers.answer(record, body.question)
+            return await svc.text_answers.answer(record, body.question, history)
 
         async def events():
-            async for event in svc.text_answers.events(record, body.question):
+            async for event in svc.text_answers.events(record, body.question, history):
                 name = "token" if event["type"] == "token" else "done"
                 data = {key: value for key, value in event.items() if key != "type"}
                 yield _sse(name, data)

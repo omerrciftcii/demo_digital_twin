@@ -104,6 +104,7 @@ class TextAnswerRequest(ApiModel):
     record_id: str = Field(alias="recordId", min_length=1, max_length=80)
     question: str = Field(min_length=1, max_length=4000)
     stream: bool = False
+    history: list[HistoryMessage] = Field(default_factory=list, max_length=6)
 
     @field_validator("question", "record_id")
     @classmethod

@@ -397,7 +397,7 @@ def create_gateway(
             raise HTTPException(status_code=400, detail="invalid json") from exc
         if not isinstance(payload, dict):
             raise HTTPException(status_code=400, detail="invalid json")
-        base = str(payload.get("qaBaseUrl") or gateway.state.qa_base_url)
+        base = gateway.state.qa_base_url
         if not _http_base(base):
             raise HTTPException(status_code=400, detail="invalid qa base")
         forwarded = {key: payload[key] for key in _QA_FIELDS if key in payload}

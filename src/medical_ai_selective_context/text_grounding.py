@@ -28,8 +28,8 @@ _SENTENCE_BREAK = re.compile(r"\n+|(?<=[.!?])\s+")
 _NUMBER = re.compile(
     r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?)?"
     r"|\d{1,2}\.\d{1,2}\.\d{4}(?:[ T]\d{1,2}:\d{2})?"
-    r"|\d{1,2}\.\d{1,2}"
     r"|\d{1,2}\.\d{4}"
+    r"|\d{1,2}\.\d{1,2}"
     r"|\d{1,2}:\d{2}"
     r"|\d{1,3}(?:\.\d{3})+(?:,\d+)?"
     r"|\d+,\d+"
@@ -513,12 +513,30 @@ def _finite_word(token: str) -> bool:
     return False
 
 
+# An apostrophe plus ı/i/u/ü is an object waiting for a verb ("mg'ı", "ad'ı").
+_OBJECT_MARK = re.compile(r"['’‘ʼ´]\s*[ıiuü](?!\w)", re.IGNORECASE)
+
+
+def _accusative_object(text: str) -> bool:
+    return _OBJECT_MARK.search(text) is not None
+
+
 def _can_stand_alone(text: str) -> bool:
-    """A shortened clause needs a measurement or a finite verb, otherwise it is a fragment."""
-    if any(_parse_quantity(match.group(0)) is not None for match in _numbers(text)):
-        return True
+    """A shortened clause needs a finite verb or a bare measurement.
+
+    An object phrase that still names a dose is not a sentence once the verb is gone.
+    """
     folded = normalize_text(text)
-    return any(_finite_word(token) for token in re.findall(r"[a-z]{4,}", folded))
+    if any(_finite_word(token) for token in re.findall(r"[a-z]{4,}", folded)):
+        return True
+    if _accusative_object(text):
+        return False
+    for match in _numbers(text):
+        if _skipped_number(text, match) or _parse_quantity(match.group(0)) is None:
+            continue
+        if _unit_family(text, match):
+            return True
+    return False
 
 
 # These connectives put the cause after the marker. The others put it before.
@@ -651,11 +669,22 @@ def _without_unsupported_cause(sentence: str, blob: str) -> str | None:
 
 
 def _clause_supported(text: str, blob: str) -> bool:
-    """A leftover clause needs a supported amount or a word the record actually uses."""
-    if any(_parse_quantity(match.group(0)) is not None for match in _numbers(text)):
+    """A leftover clause needs a supported amount or a word the record actually uses.
+
+    A date or a record-keeping word is not that support. Sharing a prescription
+    month with the chart does not make a stop claim true.
+    """
+    measured = [
+        match for match in _numbers(text)
+        if not _skipped_number(text, match) and _parse_quantity(match.group(0)) is not None
+    ]
+    if measured:
         return _unsupported_token(text, blob) == ""
     blob_tokens = set(re.findall(r"[a-z]{4,}", normalize_text(blob)))
-    tokens = re.findall(r"[a-z]{4,}", normalize_text(text))
+    tokens = [
+        token for token in re.findall(r"[a-z]{4,}", normalize_text(text))
+        if token not in _EVENT_WORDS
+    ]
     return any(token in blob_tokens for token in tokens)
 
 
@@ -754,6 +783,90 @@ def _nearest_role(blob: str, start: int) -> str | None:
         return abs(item[0] - anchor), precedes
 
     return min(claimed, key=rank_label)[1]
+
+
+def _iter_clauses(blob: str, start: int, end: int):
+    cursor = start
+    for match in _CLAUSE_SPLIT.finditer(blob, start, end):
+        if match.start() > cursor:
+            yield cursor, match.start()
+        cursor = match.end()
+    if cursor < end:
+        yield cursor, end
+
+
+def _amount_at(blob: str, start: int) -> re.Match[str] | None:
+    for match in _numbers(blob):
+        if match.start() == start and _parse_quantity(match.group(0)) is not None:
+            return match
+    return None
+
+
+def _families_compatible(left: str | None, right: str | None) -> bool:
+    return not (left and right and left != right)
+
+
+def _reading_role(blob: str, start: int) -> str | None:
+    """Clause label, or the unit-bearing reading written before the usual value.
+
+    A comma-separated daily list is not that reading: its amounts carry no unit
+    of their own, and they do not sit before the usual value.
+    """
+    direct = _nearest_role(blob, start)
+    if direct:
+        return direct
+    sent_l, sent_r = _sentence_bounds(blob, start)
+    singles: list[dict] = []
+    for left, right in _iter_clauses(blob, sent_l, sent_r):
+        amounts = [
+            left + match.start()
+            for match in _numbers(blob[left:right])
+            if _parse_quantity(match.group(0)) is not None
+        ]
+        if len(amounts) != 1:
+            continue
+        found = _amount_at(blob, amounts[0])
+        explicit = None if found is None else _unit_family(blob, found)
+        inherited = None if found is None else _family_at(blob, found)
+        singles.append({
+            "start": amounts[0],
+            "role": _nearest_role(blob, amounts[0]),
+            "explicit": explicit,
+            "family": explicit or inherited,
+        })
+    baselines = [item for item in singles if item["role"] == "baseline"]
+    currents = [item for item in singles if item["role"] == "current"]
+    if len(baselines) != 1 or currents:
+        return None
+    base = baselines[0]
+    before = [
+        item for item in singles
+        if not item["role"]
+        and item["explicit"]
+        and item["start"] < base["start"]
+        and _families_compatible(item["explicit"], base["family"])
+    ]
+    if not before:
+        return None
+    nearest = min(before, key=lambda item: base["start"] - item["start"])
+    if nearest["start"] == start:
+        return "current"
+    return None
+
+
+def _sentence_has_endpoint_pair(blob: str, start: int) -> bool:
+    """True when this sentence already states both a usual and a current amount."""
+    sent_l, sent_r = _sentence_bounds(blob, start)
+    roles: set[str] = set()
+    for match in _numbers(blob):
+        if match.start() < sent_l or match.start() >= sent_r:
+            continue
+        if _parse_quantity(match.group(0)) is None:
+            continue
+        role = _reading_role(blob, match.start())
+        if role:
+            roles.add(role)
+    return "baseline" in roles and "current" in roles
 
 
 # "değer", "sonuç" and case crumbs are not the measurement's name.
@@ -869,7 +982,7 @@ def _snapped_hits(
             "value": parsed,
             "start": match.start(),
             "end": match.end(),
-            "role": _nearest_role(blob, match.start()),
+            "role": _reading_role(blob, match.start()),
             "date": _date_near(blob, match.start()),
             "gap": abs(parsed - value),
         })
@@ -886,6 +999,15 @@ def _snapped_hits(
             if _words_near_span(blob, hit["start"], hit["end"], words)
         ]
         chosen = near or pool
+    if not chosen:
+        return []
+    # A usual/current pair is the from-to. A same-sentence daily list is not an endpoint,
+    # even when one of its numbers is exact and the labeled amount is one off.
+    if any(_sentence_has_endpoint_pair(blob, hit["start"]) for hit in chosen):
+        chosen = [
+            hit for hit in chosen
+            if hit["role"] or not _sentence_has_endpoint_pair(blob, hit["start"])
+        ]
     if not chosen:
         return []
     closest = min(hit["gap"] for hit in chosen)

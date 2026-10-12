@@ -141,7 +141,7 @@ def test_qa_forwards_to_the_text_answer_api(tmp_path: Path):
         "question": QUESTION,
         "history": [{"role": "user", "content": "onceki"}],
         "stream": False,
-        "qaBaseUrl": "http://127.0.0.1:8092",
+        "qaBaseUrl": "http://169.254.169.254/latest",
         "temperature": 0.9,
     })
     assert reply.status_code == 200
@@ -154,8 +154,9 @@ def test_qa_forwards_to_the_text_answer_api(tmp_path: Path):
         "stream": False,
     }
     assert seen[-1].url.host == "127.0.0.1"
-    assert seen[-1].url.port == 8092
+    assert seen[-1].url.port == 8091
     assert seen[-1].url.path == "/api/v1/text/answer"
+    assert all(request.url.host != "169.254.169.254" for request in seen)
 
 
 def test_logs_timings_without_message_content(tmp_path: Path, caplog):

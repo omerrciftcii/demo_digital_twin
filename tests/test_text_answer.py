@@ -1258,3 +1258,77 @@ def test_owner_cases_route_and_stay_on_the_chart():
     )
     assert folded["factsOk"]
     assert folded["exactFactsFound"] == 1
+
+
+def _scripted_model(text: str) -> TextModelClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"},
+            content=_sse(text, body["model"]),
+        )
+
+    return TextModelClient(TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="local-model",
+        require_zdr=False,
+    ), httpx.MockTransport(handler))
+
+
+def test_real_chart_rejects_a_reversed_trend_a_date_cause_and_a_broken_fragment(tmp_path):
+    """The wearable paragraph and the prescription section are the shipped fixtures."""
+    store = TextRecordStore(tmp_path)
+    heart_patient, _created = store.import_payload(_load(PATIENTS / "patient-05.json"))
+    med_patient, _created = store.import_payload(_load(PATIENTS / "patient-03.json"))
+    assert heart_patient.data_class == "synthetic"
+    assert med_patient.data_class == "synthetic"
+    heart = next(section.text for section in heart_patient.sections if section.heading.startswith("Kalp"))
+    hrv_at = heart.find("HRV ")
+    series_at = heart.find("son 7 gün", hrv_at)
+    window = heart[hrv_at:heart.find(".", series_at)]
+    assert "kişinin olağanı" in window and "son 7 gün" in window
+    assert "34 ms" in window and "52 ms" in window
+    assert "29" in window and "44" in window
+
+    leaked = asyncio.run(TextAnswerer(_scripted_model(
+        "DURUM: YANIT\nHRV değeri 41 ms'den 79 ms'ye arttı. [Kalp (yüzük ve saat)]\n"
+    )).answer(heart_patient, "HRV satırı ne diyor?"))
+    assert leaked["status"] == "validation_failed"
+    assert "79" not in leaked["answer"]
+    assert "arttı" not in leaked["answer"]
+
+    reversed_pair = asyncio.run(TextAnswerer(_scripted_model(
+        "DURUM: YANIT\nHRV değeri 34 ms'den 52 ms'ye arttı. [Kalp (yüzük ve saat)]\n"
+    )).answer(heart_patient, "HRV satırı ne diyor?"))
+    assert "arttı" not in reversed_pair["answer"]
+    if reversed_pair["status"] == "answered":
+        assert reversed_pair["answer"].find("52") < reversed_pair["answer"].find("34")
+
+    series = asyncio.run(TextAnswerer(_scripted_model(
+        "DURUM: YANIT\nHRV değeri 29 ms'den 44 ms'ye arttı. [Kalp (yüzük ve saat)]\n"
+    )).answer(heart_patient, "HRV satırı ne diyor?"))
+    assert series["status"] == "validation_failed"
+    assert "arttı" not in series["answer"]
+
+    carved = asyncio.run(TextAnswerer(_scripted_model(
+        "DURUM: YANIT\n"
+        "Carvedilol 02.2025'te kesildi, çünkü 01.02.2025'te son reçete verildi. "
+        "[İlaçlar (reçete kaydı)]\n"
+    )).answer(med_patient, "Reçete kaydı ne diyor?", [
+        {"role": "user", "content": "İlaç listesine bakar mısın?"},
+        {"role": "assistant", "content": "Reçete tarihlerine bakıyorum."},
+    ]))
+    assert carved["status"] == "validation_failed"
+    assert "kesildi" not in carved["answer"].casefold()
+    assert "çünkü" not in carved["answer"].casefold()
+
+    fragment = asyncio.run(TextAnswerer(_scripted_model(
+        "DURUM: YANIT\n"
+        "Singulair 10 mg'ı kabus ve uyku sorunu nedeniyle bırakmıştık. "
+        "[İlaçlar (reçete kaydı)]\n"
+    )).answer(med_patient, "O satır ne diyor?", [
+        {"role": "user", "content": "Singulair'i neden kestik?"},
+        {"role": "assistant", "content": "Singulair'i kabus ve uyku sorunu nedeniyle bırakmıştık."},
+    ]))
+    assert fragment["status"] == "validation_failed"
+    assert "kabus" not in fragment["answer"].casefold()
+    assert "sorunu" not in fragment["answer"].casefold()

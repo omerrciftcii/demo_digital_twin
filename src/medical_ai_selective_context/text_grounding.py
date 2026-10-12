@@ -428,6 +428,7 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
         return GroundingResult(False, "validation_failed", "", [], "empty_answer")
     citations: list[dict] = []
     seen: set[tuple] = set()
+    seen_sentences: set[str] = set()
     kept: list[str] = []
     errors: list[str] = []
     saw_unsafe = False
@@ -489,6 +490,10 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
             if status == "answered" and index is None:
                 errors.append("missing_citation")
                 continue
+            signature = " ".join(normalize_text(_MARKER.sub(" ", sentence)).split())
+            if signature in seen_sentences:
+                continue
+            seen_sentences.add(signature)
             kept.append(sentence)
             if index is not None:
                 last_index = index

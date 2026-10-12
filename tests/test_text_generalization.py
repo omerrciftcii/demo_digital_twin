@@ -1,5 +1,6 @@
 """Generalization checks. Held-out questions are scored once and are not a tuning set."""
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -34,6 +35,8 @@ SRC = ROOT / "src"
 # Result words that show up as one-word facts and also as ordinary prose.
 # Drug and lab names are not in this set.
 _RESULT_LABELS = frozenset({"acil", "dusuk", "negatif", "normal", "pozitif", "yuksek"})
+# Record classes, not clinical names. A product can share one of these strings.
+_RECORD_CLASSES = frozenset({"synthetic", "real"})
 
 _AUDIT = (
     "proksimaline",
@@ -127,6 +130,79 @@ def _name_facts() -> set[str]:
                     continue
                 names.add(folded)
     return names
+
+
+def _dictionary_names() -> set[str]:
+    payload = json.loads((ROOT / "data" / "drug_classes.json").read_text(encoding="utf-8"))
+    names = set()
+    for entry in payload.get("entries", []):
+        for name in entry.get("names", []):
+            folded = normalize_text(str(name))
+            if len(folded) >= 6:
+                names.add(folded)
+    return names
+
+
+def _if_tests(tree: ast.AST):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            yield node.test
+
+
+def _string_literals(node: ast.AST) -> list[str]:
+    found = []
+    for child in ast.walk(node):
+        if isinstance(child, ast.Constant) and isinstance(child.value, str):
+            found.append(child.value)
+    return found
+
+
+def _is_question(node: ast.AST) -> bool:
+    if isinstance(node, ast.Name) and node.id in {"question", "query"}:
+        return True
+    return isinstance(node, ast.Attribute) and node.attr in {"question", "query"}
+
+
+def _question_compared_to_literal(test: ast.AST) -> bool:
+    for node in ast.walk(test):
+        if isinstance(node, ast.Compare):
+            sides = [node.left, *node.comparators]
+            has_question = any(_is_question(side) for side in sides)
+            has_literal = any(
+                isinstance(side, ast.Constant) and isinstance(side.value, str) for side in sides
+            )
+            if has_question and has_literal:
+                return True
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if _is_question(node.func.value) and any(
+            isinstance(arg, ast.Constant) and isinstance(arg.value, str) for arg in node.args
+        ):
+            return True
+        if node.func.attr in {"search", "match", "fullmatch"} and len(node.args) >= 2:
+            pattern, target = node.args[0], node.args[1]
+            if _is_question(target) and isinstance(pattern, ast.Constant):
+                return True
+    return False
+
+
+def test_source_does_not_branch_on_question_or_value_literals():
+    """Conditionals must not key off a question string, a drug name, or a chart value."""
+    drugs = _dictionary_names()
+    for path in SRC.rglob("*.py"):
+        if not path.is_file():
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for test in _if_tests(tree):
+            if _question_compared_to_literal(test):
+                raise AssertionError(f"question literal branch in {path}")
+            literals = _string_literals(test)
+            for literal in literals:
+                folded = normalize_text(literal)
+                if folded not in _RECORD_CLASSES:
+                    assert folded not in drugs, f"{literal} in {path}"
+                assert not re.fullmatch(r"[a-z]\d{2}(?:\.\d+)?", folded), f"{literal} in {path}"
+                assert not re.fullmatch(r"\d+,\d+", folded), f"{literal} in {path}"
 
 
 def test_source_has_no_literal_record_values():

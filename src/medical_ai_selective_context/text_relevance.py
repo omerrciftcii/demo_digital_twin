@@ -4,14 +4,13 @@ No chart value, diagnosis code, or question-type list lives here.
 A row is relevant when its words share a stem with the question.
 A generated drug dictionary (data/drug_classes.json, built by
 scripts/build_drug_dictionary.py) links the other names on the same ATC
-entry. It lives outside this package so the source scan does not see the
-full product list. Symptom-to-diagnosis mapping is left to the model.
+entry. Names are resolved through a startup trigram index, not a full scan.
+Section order is lexical overlap fused with a local embedding when one is
+on disk. Symptom-to-diagnosis mapping is left to the model.
 """
 
 from __future__ import annotations
 
-import json
-import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -20,6 +19,10 @@ from snowballstemmer import stemmer
 
 from .index import normalize_text
 from .text_document import TextRecord
+from .text_drug_index import drug_names, matched_entries
+from .text_embed import semantic_section_scores
+
+__all__ = ["drug_names", "matched_entries", "question_terms", "relevant_context", "relevant_sections"]
 
 _STEMMER = stemmer("turkish")
 _STOP_PATH = Path(__file__).resolve().parent / "data" / "stopwords-tr.txt"
@@ -70,13 +73,18 @@ _STOP = _load_stop()
 
 
 def _terms_in(text: str) -> list[str]:
+    return list(_cached_terms(text))
+
+
+@lru_cache(maxsize=256)
+def _cached_terms(text: str) -> tuple[str, ...]:
     found: list[str] = []
     for raw in _WORD.findall(fold(text)):
         token = stem(raw)
         if len(token) < 3 or token in _STOP or token in found:
             continue
         found.append(token)
-    return found
+    return tuple(found)
 
 
 def question_terms(question: str) -> list[str]:
@@ -135,57 +143,61 @@ def score_text(text: str, terms: list[str] | set[str]) -> int:
     return score
 
 
-def _dictionary_path() -> Path | None:
-    """Optional generated dictionary. Absent in the packaged tree."""
-    override = os.environ.get("DRUG_DICTIONARY_PATH", "").strip()
-    if override:
-        path = Path(override)
-        return path if path.is_file() else None
-    candidate = Path(__file__).resolve().parents[2] / "data" / "drug_classes.json"
-    return candidate if candidate.is_file() else None
+def _alias_stems(question: str) -> set[str]:
+    """Stems of dictionary names that share an entry with the question."""
+    stems = {stem(name) for name in drug_names(question)}
+    return {token for token in stems if len(token) >= 5}
 
 
-@lru_cache(maxsize=1)
-def _entries() -> tuple[dict, ...]:
-    path = _dictionary_path()
-    if path is None:
-        return ()
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    rows = []
-    for entry in payload.get("entries", []):
-        names = tuple(dict.fromkeys(fold(name) for name in entry.get("names", []) if name))
-        if names:
-            rows.append({"group": fold(entry.get("group", "")), "atc": entry.get("atc", ""), "names": names})
-    return tuple(rows)
+def _lexical_score(text: str, terms: list[str], aliases: set[str]) -> int:
+    score = score_text(text, terms)
+    if not aliases:
+        return score
+    if set(_terms_in(text)) & aliases:
+        score += 2
+    return score
 
 
-def matched_entries(question: str) -> list[dict]:
-    folded = fold(question)
-    tokens = _terms_in(question)
-    hits = []
-    for entry in _entries():
-        if any(_name_in(name, folded, tokens) for name in entry["names"]):
-            hits.append(entry)
-    return hits
+# Reciprocal-rank fusion constant. Not a clinical cutoff.
+_RRF_K = 60
+_SEMANTIC_MARGIN = 0.05
+_SEMANTIC_ONLY_CAP = 2
 
 
-def _name_in(name: str, folded: str, tokens: list[str]) -> bool:
-    if len(name) <= 3:
-        return re.search(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])", folded) is not None
-    if re.search(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z])", folded):
-        return True
-    return any(_same(name, token) for token in tokens)
+def _fuse_sections(lexical: dict[int, int], semantic: dict[int, float]) -> list[int]:
+    """Lexical hits, reordered with embeddings when they exist.
 
-
-def drug_names(question: str) -> set[str]:
-    """Names on the same dictionary entry as a name in the question.
-
-    Empty when no dictionary file is present.
+    A section with no lexical overlap is added only when its cosine stands
+    above the middle of the record and close to the best section.
     """
-    names: set[str] = set()
-    for entry in matched_entries(question):
-        names.update(entry["names"])
-    return {name for name in names if len(name) >= 3}
+    fused: dict[int, float] = {}
+    lexical_order = sorted(lexical, key=lambda index: (-lexical[index], index))
+    for rank, index in enumerate(lexical_order, start=1):
+        fused[index] = 1.0 / (_RRF_K + rank)
+    semantic_only: list[int] = []
+    if semantic:
+        semantic_order = sorted(semantic, key=lambda index: (-semantic[index], index))
+        for rank, index in enumerate(semantic_order, start=1):
+            if index in fused:
+                fused[index] += 1.0 / (_RRF_K + rank)
+        ordered = sorted(semantic.values())
+        median = ordered[len(ordered) // 2]
+        best = ordered[-1]
+        for index in semantic_order:
+            if lexical.get(index, 0) > 0:
+                continue
+            score = semantic[index]
+            if score < best - _SEMANTIC_MARGIN or score < median + _SEMANTIC_MARGIN:
+                continue
+            fused[index] = fused.get(index, 0.0) + 1.0 / (_RRF_K + 1)
+            semantic_only.append(index)
+            if len(semantic_only) == _SEMANTIC_ONLY_CAP:
+                break
+    return [
+        index
+        for index, _score in sorted(fused.items(), key=lambda item: (-item[1], item[0]))
+        if lexical.get(index, 0) > 0 or index in semantic_only
+    ]
 
 
 def section_kind(heading: str) -> str:
@@ -256,16 +268,14 @@ def focus_clause(text: str, terms: list[str] | set[str]) -> str:
 def select_rows(record: TextRecord, question: str, limit: int = 4) -> list[str]:
     """Rows whose words overlap the question. Empty when nothing overlaps."""
     terms = question_terms(question)
-    names = drug_names(question)
-    search_terms = list(dict.fromkeys([*terms, *names]))
+    aliases = _alias_stems(question)
+    search_terms = list(dict.fromkeys([*terms, *aliases]))
     ranked: list[tuple[int, tuple[int, int, int], str, str]] = []
     for line in record.lines:
         if line.text.startswith("##") or not line.text.strip():
             continue
         kind = section_kind(record.sections[line.section_index].heading)
-        row_score = score_text(line.text, search_terms)
-        if names and any(_name_in(name, fold(line.text), _terms_in(line.text)) for name in names):
-            row_score += 2
+        row_score = _lexical_score(line.text, terms, aliases)
         if row_score <= 0:
             continue
         focused = focus_clause(line.text, search_terms) or " ".join(line.text.strip().lstrip("-").split())
@@ -308,24 +318,21 @@ def lab_rows(record: TextRecord) -> list[str]:
 
 
 def relevant_sections(record: TextRecord, question: str) -> list:
-    """Sections that share the question's words, highest overlap first.
+    """Whole sections that overlap the question, highest fused score first.
 
-    Each section is returned whole. Nothing inside a hit section is clipped.
+    Lexical overlap always qualifies. A local embedding may add a section
+    that stands above the rest of the record, and may reorder lexical hits.
     """
     terms = question_terms(question)
-    names = drug_names(question)
-    search_terms = list(dict.fromkeys([*terms, *names]))
-    ranked: list[tuple[int, int]] = []
-    for index, section in enumerate(record.sections):
-        score = score_text(section.text, search_terms)
-        if names and any(
-            _name_in(name, fold(section.text), _terms_in(section.text)) for name in names
-        ):
-            score += 2
-        if score > 0:
-            ranked.append((score, index))
-    ranked.sort(key=lambda item: (-item[0], item[1]))
-    return [record.sections[index] for _score, index in ranked]
+    aliases = _alias_stems(question)
+    lexical = {
+        index: _lexical_score(section.text, terms, aliases)
+        for index, section in enumerate(record.sections)
+    }
+    lexical = {index: score for index, score in lexical.items() if score > 0}
+    semantic = semantic_section_scores(record, question)
+    order = _fuse_sections(lexical, semantic)
+    return [record.sections[index] for index in order]
 
 
 def relevant_context(record: TextRecord, question: str) -> str:

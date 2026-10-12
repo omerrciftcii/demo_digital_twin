@@ -17,7 +17,7 @@
 
 ## Bağlam
 
-20–30 KB, 32k bağlamına sığar. İlk kullanıcı iletisi kaydın tamamıdır ve aynı hasta için önbellekte kalır. Soru iletisi, soruyla örtüşen her bölümü bütünüyle tekrarlar; bölümün içi kesilmez. Örtüşme, Snowball Türkçe köküdür. Marka ile etken madde, `data/drug_classes.json` içindeki aynı ATC kodundan gelir. Bu dosyayı `scripts/build_drug_dictionary.py` açık ürün listesinden üretir; elle ad eklenmez ve dosya `src/` altında durmaz. Örtüşme yoksa model kaydın tamamına bakar. Atıf satır numarası modelden istenmez; sunucu `[Bölüm]` işaretini bölüme ve satıra çözer. Model adı kodda sabit değildir; `LLM_MODEL` yeter.
+20–30 KB, 32k bağlamına sığar. İlk kullanıcı iletisi kaydın tamamıdır ve aynı hasta için önbellekte kalır. Soru iletisi, soruyla örtüşen her bölümü bütünüyle tekrarlar; bölümün içi kesilmez. Örtüşme, Snowball Türkçe kökü ve karakter trigramıdır. Marka ile etken madde, süreç açılışında bir kez indekslenen `data/drug_classes.json` ATC grubundan gelir. Bu dosyayı `scripts/build_drug_dictionary.py` açık ürün listesinden üretir; elle ad eklenmez ve dosya `src/` altında durmaz. Yerel bir gömme modeli bölümleri yeniden sıralayabilir (`TEXT_EMBEDDING_MODEL`, varsayılan `intfloat/multilingual-e5-small`, `TEXT_EMBEDDING_DEVICE`, `TEXT_EMBEDDING_DISABLE`). Ağırlık yoksa yalnız sözcük örtüşmesi kalır; model indirilmez. Kaydın tamamı ilk kullanıcı iletisindedir. Örtüşme yoksa model kaydın tamamına bakar. Atıf satır numarası modelden istenmez; sunucu `[Bölüm]` işaretini bölüme ve satıra çözer. Model adı kodda sabit değildir; `LLM_MODEL` yeter.
 
 ## Yanıt biçimi
 

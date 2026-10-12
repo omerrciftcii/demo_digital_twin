@@ -7,6 +7,7 @@ import yaml
 from evidence_support import synthetic_cco
 from fastapi.testclient import TestClient
 
+from medical_ai_selective_context import main
 from medical_ai_selective_context.evidence import build_evidence
 from medical_ai_selective_context.llm import ModelClient, ModelSettings
 from medical_ai_selective_context.main import app, create_app
@@ -34,6 +35,17 @@ def client(tmp_path):
         load_sample=False, model_client=ModelClient(ModelSettings()),
     )) as instance:
         yield instance
+
+
+def test_startup_warms_text_indexes(tmp_path, monkeypatch):
+    seen: list[str] = []
+    monkeypatch.setattr(main, "warmup_text_indexes", lambda: seen.append("warm"))
+    with TestClient(create_app(
+        tmp_path / "cco", graph=OfflineGraph(), embedding_model="",
+        load_sample=False, model_client=ModelClient(ModelSettings()),
+    )) as instance:
+        assert instance.get("/health").status_code == 200
+    assert seen == ["warm"]
 
 
 def test_contract_file_is_valid_openapi():

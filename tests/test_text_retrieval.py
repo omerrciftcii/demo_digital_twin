@@ -137,3 +137,84 @@ def test_repeated_sentence_is_dropped():
     grounded = ground_answer(raw, record)
     assert grounded.ok
     assert normalize_text(grounded.answer).count(normalize_text("eGFR 41")) == 1
+
+
+def test_think_block_cannot_add_a_number():
+    record = _tiny("Giriş.\n\n## Ölçüm\n- Nabız 80/dk.\n")
+    raw = "<think>999 mg</think>\nDURUM: YANIT\nNabız 80/dk. [Ölçüm]\n<think>12 °C"
+    grounded = ground_answer(raw, record)
+    assert grounded.ok
+    assert "80/dk" in grounded.answer
+    assert "999" not in grounded.answer
+    assert "12" not in grounded.answer
+
+
+def test_near_duplicate_sentence_is_dropped():
+    record = _tiny("Giriş.\n\n## Ölçüm\n- Nabız 80/dk.\n- Kilo 70 kg.\n")
+    raw = (
+        "DURUM: YANIT\n"
+        "Nabız 80/dk olarak duruyor. [Ölçüm]\n"
+        "Nabız 80/dk olarak duruyor! [Ölçüm]\n"
+        "Kilo 70 kg. [Ölçüm]\n"
+    )
+    grounded = ground_answer(raw, record)
+    assert grounded.ok
+    assert grounded.answer.count("80/dk") == 1
+    assert "70 kg" in grounded.answer
+
+
+def test_incompatible_unit_drops_only_that_sentence():
+    record = _tiny(
+        "Giriş.\n\n## Ölçüm\n- Nabız 80/dk.\n- Kilo 70 kg.\n"
+        "- Klirens 44 mL/dk/1,73 m².\n"
+    )
+    rate = ground_answer("DURUM: YANIT\nNabız 80 bpm. [Ölçüm]\n", record)
+    assert rate.ok and "bpm" in rate.answer
+    beats = ground_answer("DURUM: YANIT\nNabız 80 atım/dk. [Ölçüm]\n", record)
+    assert beats.ok and "atım/dk" in beats.answer
+    duration = ground_answer("DURUM: YANIT\nNabız 80 dakika sürdü. [Ölçüm]\n", record)
+    assert not duration.ok
+    temperature = ground_answer("DURUM: YANIT\nNabız 80 °C. [Ölçüm]\n", record)
+    assert not temperature.ok
+    short = ground_answer("DURUM: YANIT\nKlirens 44 mL/dk. [Ölçüm]\n", record)
+    assert short.ok and "44 mL/dk" in short.answer
+    mixed = ground_answer(
+        "DURUM: YANIT\nNabız 80 ms. [Ölçüm]\nKilo 70 kg. [Ölçüm]\n",
+        record,
+    )
+    assert mixed.ok
+    assert "70 kg" in mixed.answer
+    assert "ms" not in mixed.answer
+
+
+def test_startup_warmup_is_configurable(monkeypatch):
+    import medical_ai_selective_context.text_drug_index as drugs
+    import medical_ai_selective_context.text_embed as embed
+
+    drugs.drug_index.cache_clear()
+    monkeypatch.delenv("TEXT_STARTUP_WARMUP", raising=False)
+    monkeypatch.setattr(embed, "warmup_encoder", lambda: False)
+    embed.warmup_text_indexes()
+    assert drugs.drug_index.cache_info().currsize == 1
+    drugs.drug_index.cache_clear()
+    monkeypatch.setenv("TEXT_STARTUP_WARMUP", "false")
+    embed.warmup_text_indexes()
+    assert drugs.drug_index.cache_info().currsize == 0
+    drugs.drug_index()
+
+
+def test_encoder_warmup_runs_one_batch_when_a_model_is_loaded(monkeypatch):
+    import medical_ai_selective_context.text_embed as embed
+
+    calls: list[list[str]] = []
+
+    class _Fake:
+        def encode(self, texts, **_kwargs):
+            calls.append(list(texts))
+            return texts
+
+    monkeypatch.setattr(embed, "_load_model", lambda: _Fake())
+    assert embed.warmup_encoder() is True
+    assert calls and calls[0][0].startswith("passage:")
+    monkeypatch.setattr(embed, "_load_model", lambda: None)
+    assert embed.warmup_encoder() is False

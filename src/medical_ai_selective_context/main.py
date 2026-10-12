@@ -32,6 +32,7 @@ from .selector import select_context
 from .store import CcoStore, content_hash, unwrap_and_validate_cco
 from .terminology import catalog_from_glossaries
 from .text_document import TextRecordError, TextRecordStore, loads_text_payload
+from .text_embed import warmup_text_indexes
 from .text_llm import TextModelClient
 from .text_qa import TextAnswerer
 
@@ -128,6 +129,7 @@ def create_app(
         try:
             await run_in_threadpool(services.reload)
             await run_in_threadpool(services.text_records.load)
+            await run_in_threadpool(warmup_text_indexes)
             try:
                 await services.graph.initialize(services.catalog)
             except TerminologyGraphUnavailable:

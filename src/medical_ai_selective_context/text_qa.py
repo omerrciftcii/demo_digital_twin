@@ -14,7 +14,7 @@ from typing import Any
 
 from .text_document import TextRecord
 from .text_grounding import GroundingResult, ground_answer
-from .text_llm import ModelError, TextModelClient
+from .text_llm import ModelError, TextModelClient, strip_think_blocks
 from .text_relevance import relevant_context
 from .text_safety import (
     DISCLAIMER,
@@ -88,7 +88,6 @@ _FAILURES = {
 _SECRET = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\b\d{11}\b"
 )
-_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 _REJECTED = "Yanıt, kayıttaki sayı, tarih veya atıf kontrolünden geçmedi; gösterilmedi."
 
@@ -150,7 +149,7 @@ def _ms(started: float) -> float:
 
 def redact_model_output(text: str, limit: int = 1500) -> str:
     """Short, identifier-stripped model text for a blocked eval row. Not a second answer."""
-    cleaned = _THINK.sub(" [düşünce çıkarıldı] ", text or "")
+    cleaned = strip_think_blocks(text, " [düşünce çıkarıldı] ")
     cleaned = _SECRET.sub("[gizlendi]", cleaned)
     cleaned = re.sub(r"[ \t]{2,}", " ", cleaned).strip()
     if len(cleaned) > limit:

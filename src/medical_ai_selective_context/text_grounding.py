@@ -11,12 +11,16 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from rapidfuzz import fuzz
+
 from .index import normalize_text
 from .text_document import TextRecord
+from .text_llm import strip_think_blocks
 from .text_safety import answer_has_unsafe_advice
 
 _FENCE = re.compile(r"^```[a-zA-Z0-9_-]*\n?|\n?```$")
-_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
+# rapidfuzz ratio is 0–100. About 0.9 catches a repeated sentence with light edits.
+_NEAR_DUPLICATE = 90
 _MARKER = re.compile(
     r"\[([^\[\]\n]{2,160})\]|【([^】\n]{2,160})】|［([^］\n]{2,160})］"
 )
@@ -62,8 +66,7 @@ class GroundingResult:
 
 
 def strip_model_wrappers(text: str) -> str:
-    cleaned = _THINK.sub("", text or "")
-    cleaned = cleaned.strip()
+    cleaned = strip_think_blocks(text).strip()
     if cleaned.startswith("```"):
         cleaned = _FENCE.sub("", cleaned).strip()
     return cleaned
@@ -180,6 +183,127 @@ def _token_in_text(token: str, blob: str) -> bool:
 def _unit_after(text: str, end: int) -> str | None:
     match = _UNIT.match(text[end:].lstrip(" \t"))
     return match.group(0) if match else None
+
+
+def _fold_unit(text: str) -> str:
+    folded = normalize_text(text).replace("µ", "u").replace("μ", "u")
+    return folded.replace("²", "2").replace("º", "°")
+
+
+# Same family means the same quantity. Aliases are spelling, not a conversion.
+# A body-surface suffix on a per-minute volume is stripped before lookup.
+_UNIT_FAMILIES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("per_min", ("atım/dakika", "nabız/dk", "vuru/dk", "atım/dk", "/dakika", "bpm", "/dk")),
+    ("l_per_min", ("l/min", "l/dk")),
+    ("ml_per_kg_min", ("ml/kg/min", "ml/kg/dk")),
+    ("ml_per_min", ("ml/min", "ml/dk")),
+    ("mg_per_dl", ("mg/dl",)),
+    ("g_per_dl", ("g/dl",)),
+    ("ng_per_ml", ("ng/ml",)),
+    ("pg_per_ml", ("pg/ml",)),
+    ("ng_per_dl", ("ng/dl",)),
+    ("ug_per_dl", ("µg/dl", "mcg/dl")),
+    ("mmol_per_l", ("mmol/l",)),
+    ("miu_per_l", ("miu/l",)),
+    ("uiu_per_ml", ("µiu/ml",)),
+    ("u_per_l", ("iu/l", "u/l")),
+    ("mmhg", ("mm hg", "mmhg")),
+    ("celsius", ("celsius", "°c")),
+    ("percent", ("%",)),
+    ("ms", ("milisaniye", "millisaniye", "msec", "ms")),
+    ("minute", ("dakika", "dk")),
+    ("second", ("saniye", "sn")),
+    ("hour", ("saat", "sa")),
+    ("day", ("gün",)),
+    ("week", ("hafta",)),
+    ("year", ("yıl",)),
+    ("kg", ("kilogram", "kg")),
+    ("ug", ("µg", "mcg")),
+    ("mg", ("mg",)),
+    ("ml", ("ml",)),
+    ("liter", ("l",)),
+    ("mm", ("mm",)),
+    ("cm", ("cm",)),
+    ("fl", ("fl",)),
+    ("gram", ("g",)),
+)
+
+
+def _unit_surfaces() -> tuple[tuple[str, str], ...]:
+    rows: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for family, surfaces in _UNIT_FAMILIES:
+        for surface in surfaces:
+            folded = re.sub(r"\s*/\s*", "/", _fold_unit(surface))
+            if not folded or folded in seen:
+                continue
+            seen.add(folded)
+            rows.append((folded, family))
+    rows.sort(key=lambda item: len(item[0]), reverse=True)
+    return tuple(rows)
+
+
+_UNIT_SURFACES = _unit_surfaces()
+_BSA_SUFFIX = re.compile(r"/1[.,]73\s*m2")
+_RATIO_TAIL = re.compile(r"^\s*/\s*\d+(?:[.,]\d+)?")
+_UNIT_CUT = re.compile(r"[\(\[;\n]|\.(?!\d)")
+_SYMBOLIC_UNIT = re.compile(r"^(?:10\^\d+/[a-z0-9]+)")
+
+
+def _unit_window(text: str, end: int) -> str:
+    rest = _RATIO_TAIL.sub("", text[end:end + 48], count=1).lstrip(" \t")
+    rest = _UNIT_CUT.split(rest, maxsplit=1)[0]
+    folded = _fold_unit(rest)
+    folded = _BSA_SUFFIX.sub("", folded, count=1)
+    return re.sub(r"\s*/\s*", "/", folded)
+
+
+def _boundary(text: str, size: int) -> bool:
+    return size >= len(text) or not text[size].isalnum()
+
+
+def _match_family(window: str) -> str | None:
+    compact = re.sub(r"°\s+", "°", window)
+    for surface, family in _UNIT_SURFACES:
+        if compact.startswith(surface) and _boundary(compact, len(surface)):
+            return family
+    symbolic = _SYMBOLIC_UNIT.match(compact)
+    if symbolic and _boundary(compact, symbolic.end()):
+        return symbolic.group(0)
+    return None
+
+
+def _unit_family(text: str, match: re.Match[str]) -> str | None:
+    if match.start() > 0 and text[match.start() - 1] == "%":
+        return "percent"
+    return _match_family(_unit_window(text, match.end()))
+
+
+def _families_for_token(blob: str, token: str) -> set[str]:
+    found: set[str] = set()
+    for match in _numbers(blob):
+        if match.group(0) != token:
+            continue
+        family = _unit_family(blob, match)
+        if family:
+            found.add(family)
+    return found
+
+
+def _unit_conflict(claim: str, blob: str) -> bool:
+    """Drop a sentence that hangs a different kind of unit on a record number."""
+    if not blob:
+        return False
+    for match in _numbers(claim):
+        if _skipped_number(claim, match):
+            continue
+        family = _unit_family(claim, match)
+        if family is None:
+            continue
+        recorded = _families_for_token(blob, match.group(0))
+        if recorded and family not in recorded:
+            return True
+    return False
 
 
 def _near(blob: str, token: str, unit: str) -> bool:
@@ -428,7 +552,7 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
         return GroundingResult(False, "validation_failed", "", [], "empty_answer")
     citations: list[dict] = []
     seen: set[tuple] = set()
-    seen_sentences: set[str] = set()
+    seen_sentences: list[str] = []
     kept: list[str] = []
     errors: list[str] = []
     saw_unsafe = False
@@ -478,6 +602,9 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
             if not _causal_supported(sentence, blob):
                 errors.append("unsupported_causal_link")
                 continue
+            if _unit_conflict(sentence, record.text):
+                errors.append("incompatible_unit")
+                continue
             if not needs_number and (index is None or not _overlaps_section(sentence, blob)):
                 relocated = _section_overlapping(sentence, record)
                 if relocated is None:
@@ -491,9 +618,11 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                 errors.append("missing_citation")
                 continue
             signature = " ".join(normalize_text(_MARKER.sub(" ", sentence)).split())
-            if signature in seen_sentences:
+            if signature and any(
+                fuzz.ratio(signature, prior) >= _NEAR_DUPLICATE for prior in seen_sentences
+            ):
                 continue
-            seen_sentences.add(signature)
+            seen_sentences.append(signature)
             kept.append(sentence)
             if index is not None:
                 last_index = index

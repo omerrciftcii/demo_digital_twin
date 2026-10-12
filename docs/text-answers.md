@@ -17,7 +17,7 @@
 
 ## Bağlam
 
-20–30 KB, 32k bağlamına sığar. İlk kullanıcı iletisi kaydın tamamıdır ve aynı hasta için önbellekte kalır. Soru iletisi, soruyla örtüşen her bölümü bütünüyle tekrarlar; bölümün içi kesilmez. Örtüşme, Snowball Türkçe kökü ve karakter trigramıdır. Marka ile etken madde, süreç açılışında bir kez indekslenen `data/drug_classes.json` ATC grubundan gelir. Bu dosyayı `scripts/build_drug_dictionary.py` açık ürün listesinden üretir; elle ad eklenmez ve dosya `src/` altında durmaz. Yerel bir gömme modeli bölümleri yeniden sıralayabilir (`TEXT_EMBEDDING_MODEL`, varsayılan `intfloat/multilingual-e5-small`, `TEXT_EMBEDDING_DEVICE`, `TEXT_EMBEDDING_DISABLE`). Ağırlık yoksa yalnız sözcük örtüşmesi kalır; model indirilmez. Kaydın tamamı ilk kullanıcı iletisindedir. Örtüşme yoksa model kaydın tamamına bakar. Atıf satır numarası modelden istenmez; sunucu `[Bölüm]` işaretini bölüme ve satıra çözer. Model adı kodda sabit değildir; `LLM_MODEL` yeter.
+20–30 KB, 32k bağlamına sığar. İlk kullanıcı iletisi kaydın tamamıdır ve aynı hasta için önbellekte kalır. Soru iletisi, soruyla örtüşen her bölümü bütünüyle tekrarlar; bölümün içi kesilmez. Örtüşme, Snowball Türkçe kökü ve karakter trigramıdır. Marka ile etken madde, süreç açılışında bir kez indekslenen `data/drug_classes.json` ATC grubundan gelir. Bu dosyayı `scripts/build_drug_dictionary.py` açık ürün listesinden üretir; elle ad eklenmez ve dosya `src/` altında durmaz. Yerel bir gömme modeli bölümleri yeniden sıralayabilir (`TEXT_EMBEDDING_MODEL`, varsayılan `intfloat/multilingual-e5-small`, `TEXT_EMBEDDING_DEVICE`, `TEXT_EMBEDDING_DISABLE`). Ağırlık yoksa yalnız sözcük örtüşmesi kalır; model indirilmez. `TEXT_STARTUP_WARMUP` varsayılanı açıktır: süreç açılışında ilaç indeksi ve yerel gömme modeli bir kez hazırlanır. `false` bu adımı atlar. Kaydın tamamı ilk kullanıcı iletisindedir. Örtüşme yoksa model kaydın tamamına bakar. Atıf satır numarası modelden istenmez; sunucu `[Bölüm]` işaretini bölüme ve satıra çözer. Model adı kodda sabit değildir; `LLM_MODEL` yeter.
 
 ## Yanıt biçimi
 
@@ -28,7 +28,7 @@ DURUM: YANIT
 Son eGFR 41 mL/dk/1,73 m² (18.09.2026). [Laboratuvar (hastane) 18.09.2026]
 ```
 
-`DURUM: BİLGİ_YOK` kayıttaki "yok / bilinmiyor / planlandı" cümlesi içindir. Sayı, tarih ve birim, atıf yapılan bölümde birebir yoksa yanıt gösterilmez (`validation_failed`). Kısaltılmış `04.08`, kaynakta yalnız `04.08.2026` diye geçiyorsa kabul edilmez. Kayıtta olmayan "nedeniyle" veya "3 yıl önce" de düşer.
+`DURUM: BİLGİ_YOK` kayıttaki "yok / bilinmiyor / planlandı" cümlesi içindir. Sayı, tarih ve birim, atıf yapılan bölümde birebir yoksa yanıt gösterilmez (`validation_failed`). Kısaltılmış `04.08`, kaynakta yalnız `04.08.2026` diye geçiyorsa kabul edilmez. Kayıtta olmayan "nedeniyle" veya "3 yıl önce" de düşer. Kayıttaki bir sayının birimi ile cevapta o sayıya takılan birim aynı ailede değilse (hız ile süre, sıcaklık ile başka bir birim) o cümle düşer. Aynı cümlenin yakın kopyası da düşer.
 
 Hasta metni sen diye, sıcak ve doğal Türkçe ile anlatılır. Cevap soruyu bütünüyle karşılar: satırdaki ad, tarih, uzmanlık dalı ve hekimin yazdığı öneri; kayıttaki terimin sade Türkçesi; sonuç ile hedef ayrı. Kalıp giriş cümlesi kurulmaz ve cevap tek cümleye sıkıştırılmaz. Kayıt satırı, epikriz veya madde işareti olduğu gibi dökülmez. Yüksek, normal veya düşük yalnız kayıt böyle diyorsa söylenir. Tanı konmaz. Neden, doz ve tedavi uydurulmaz. Kırmızı bayrak belirtileri modele gitmez.
 
@@ -51,7 +51,7 @@ Gerçek (fixture hash'i tutmayan) kayıt varsayılan olarak modele gitmez. `ALLO
 
 `OPENROUTER_ALLOW_FALLBACKS` varsayılanı `true`: yedek sağlayıcı ZDR ve veri toplamama şartının içinde kalır. `false` tek sağlayıcıya kilitler; o sağlayıcı 429 verirse tur boşa gider. `OPENROUTER_PROVIDER` doluysa `only` yine o sağlayıcıyı sabitler. 429, 502, 503 ve 529, ilk tokenden önce `LLM_RETRY_MAX` (varsayılan 2) kez, `LLM_RETRY_BACKOFF_SECONDS` (varsayılan 0.75, ikiye katlanır) bekleyerek yeniden denenir.
 
-`LLM_DISABLE_THINKING` varsayılanı `auto`: OpenRouter'da model adında `qwen3`, `qwq` veya `deepseek-r1` varsa `reasoning.enabled=false` gider. `true` OpenRouter'da her modele kapatır; OpenRouter olmayan sunucuda `chat_template_kwargs.enable_thinking=false` gönderir. `false` hiç göndermez. `LLM_REASONING` doluysa o kazanır ve düşünme alanı ayrıca eklenmez. Akıştaki `reasoning` / `reasoning_content` yanıta yazılmaz. Yalnız boşluk veya düşünce gelirse durum `reasoning_only` olur; harness o soruyu kaydedip devam eder.
+`LLM_DISABLE_THINKING` varsayılanı `true`: OpenRouter'a `reasoning.enabled=false` gider; OpenRouter olmayan sunucuya (vLLM dahil) `chat_template_kwargs.enable_thinking=false` gider. `auto` bu OpenRouter alanını yalnız model adında `qwen3`, `qwq` veya `deepseek-r1` varsa gönderir ve yerel sunucuya alan koymaz. `false` hiç göndermez. `LLM_REASONING` doluysa o kazanır ve düşünme alanı ayrıca eklenmez. Akıştaki `reasoning` / `reasoning_content` yanıta yazılmaz. `<think>` bloğu, kapanmamış olsa bile, yanıttan silinir. Yalnız boşluk veya düşünce gelirse durum `reasoning_only` olur; harness o soruyu kaydedip devam eder.
 
 ## Eval
 
@@ -65,9 +65,9 @@ export LLM_MODEL="qwen/qwen3.5-9b"
 export LLM_BASE_URL="https://openrouter.ai/api/v1"
 export OPENROUTER_REQUIRE_ZDR=true
 export ALLOW_EXTERNAL_REAL_DATA=false
-# Qwen3 için auto, reasoning.enabled=false gönderir. LLM_REASONING doluysa o kazanır.
+# Varsayılan true, Qwen3 düşünmesini kapatır. LLM_REASONING doluysa o kazanır.
 unset LLM_REASONING
-export LLM_DISABLE_THINKING=auto
+export LLM_DISABLE_THINKING=true
 export OPENROUTER_ALLOW_FALLBACKS=true
 export LLM_RETRY_MAX=2
 export TEXT_ANSWER_MAX_TOKENS=2000
@@ -106,7 +106,7 @@ python -m uvicorn medical_ai_selective_context.main:app --host 127.0.0.1 --port 
 python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 ```
 
-`LLM_MODEL` ne ise o gider. Düşünen modellerde `<think>` bloğu ve `reasoning_content` yanıtın dışında kalır. vLLM üzerinde Qwen3 düşünmesini kapatmak için `LLM_DISABLE_THINKING=true` kullanın; `auto` yerel sunucuya bu alanı göndermez.
+`LLM_MODEL` ne ise o gider. Düşünen modellerde `<think>` bloğu ve `reasoning_content` yanıtın dışında kalır. vLLM üzerinde Qwen3 düşünmesi varsayılan olarak kapalıdır (`chat_template_kwargs.enable_thinking=false`). Alanı göndermemek için `LLM_DISABLE_THINKING=false` kullanın.
 
 Mock sınamalar anahtarsızdır:
 

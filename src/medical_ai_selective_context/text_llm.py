@@ -31,6 +31,7 @@ _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
 _THINK_OPEN = "<think>"
 _THINK_CLOSE = "</think>"
+_THINK_BLOCK = re.compile(r"<think>.*?(?:</think>|$)", re.DOTALL)
 _RETRY_STATUS = {408, 429, 502, 503, 529}
 _THINKING_NAMES = ("qwen3", "qwq", "deepseek-r1")
 
@@ -100,8 +101,9 @@ class TextModelSettings:
     allow_fallbacks: bool = True
     retry_max: int = 2
     retry_backoff_seconds: float = 0.75
-    # auto | true | false. auto disables thinking only for known reasoning
-    # model names on openrouter.ai.
+    # auto | true | false. Unset env is true: OpenRouter gets reasoning off,
+    # and any other host gets chat_template_kwargs.enable_thinking false.
+    # auto limits the OpenRouter flag to known reasoning model names.
     disable_thinking: str = "auto"
 
     @classmethod
@@ -227,7 +229,7 @@ def _local_hosts_from_env() -> tuple[str, ...]:
 def _thinking_mode(name: str) -> str:
     raw = os.getenv(name)
     if raw is None or not raw.strip():
-        return "auto"
+        return "true"
     value = raw.strip().lower()
     if value in {"auto"}:
         return "auto"
@@ -271,8 +273,7 @@ def chat_body(settings: TextModelSettings, messages: list[dict[str, str]]) -> di
         settings.disable_thinking == "true"
         and not _is_openrouter(settings.base_url)
     ):
-        # vLLM/Qwen chat templates. Sent only when the operator asked; auto
-        # stays silent so a server that does not know the field is not 400'd.
+        # vLLM Qwen3 chat template. auto stays silent so an unknown field is not a 400.
         body["chat_template_kwargs"] = {"enable_thinking": False}
     if _is_openrouter(settings.base_url):
         provider: dict[str, Any] = {
@@ -284,6 +285,11 @@ def chat_body(settings: TextModelSettings, messages: list[dict[str, str]]) -> di
             provider["only"] = [settings.provider]
         body["provider"] = provider
     return body
+
+
+def strip_think_blocks(text: str, replacement: str = "") -> str:
+    """Remove every think block, including one that never closes."""
+    return _THINK_BLOCK.sub(replacement, text or "")
 
 
 def _tag_prefix_len(buffer: str, tag: str) -> int:
@@ -550,7 +556,7 @@ class TextModelClient:
             if ttft_ms is None:
                 ttft_ms = round((perf_counter() - started) * 1000, 2)
             yield {"type": "token", "text": tail}
-        full = "".join(parts).strip()
+        full = strip_think_blocks("".join(parts)).strip()
         if not full:
             raise ModelError("reasoning_only" if saw_reasoning else "invalid_model_json")
         # length means the cap was hit. Grounding still sees the text; a cut-off

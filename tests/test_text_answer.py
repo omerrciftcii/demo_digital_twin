@@ -29,6 +29,7 @@ from medical_ai_selective_context.text_llm import (
     ThinkFilter,
     chat_body,
     real_data_mode,
+    strip_think_blocks,
 )
 from medical_ai_selective_context.text_qa import (
     SYSTEM_PROMPT,
@@ -189,6 +190,32 @@ def test_think_block_is_not_part_of_the_answer():
     assert filt.feed("<think>999 gizli") == ""
     assert filt.feed("</think>DURUM") == "DURUM"
     assert filt.finish() == ""
+    hidden = strip_think_blocks("DURUM\n<think>999 gizli</think>\nkapanmayan <think>12")
+    assert "999" not in hidden
+    assert "12" not in hidden
+    assert "kapanmayan" in hidden
+
+
+def test_thinking_defaults_off_for_vllm_and_openrouter(monkeypatch):
+    monkeypatch.delenv("LLM_REASONING", raising=False)
+    monkeypatch.delenv("LLM_DISABLE_THINKING", raising=False)
+    monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:8000/v1")
+    monkeypatch.setenv("OPENROUTER_REQUIRE_ZDR", "false")
+    local = chat_body(TextModelSettings.from_env(), [])
+    assert TextModelSettings.from_env().disable_thinking == "true"
+    assert local["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "reasoning" not in local
+    monkeypatch.setenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("OPENROUTER_REQUIRE_ZDR", "true")
+    routed = chat_body(TextModelSettings.from_env(), [])
+    assert routed["reasoning"] == {"enabled": False}
+    assert "chat_template_kwargs" not in routed
+    monkeypatch.setenv("LLM_DISABLE_THINKING", "false")
+    monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:8000/v1")
+    monkeypatch.setenv("OPENROUTER_REQUIRE_ZDR", "false")
+    quiet = chat_body(TextModelSettings.from_env(), [])
+    assert "chat_template_kwargs" not in quiet
+    assert "reasoning" not in quiet
 
 
 def test_chat_body_stays_portable():

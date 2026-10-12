@@ -128,6 +128,35 @@ def query_vector(question: str) -> Any:
         return _remember(_QUERY_CACHE, key, vector)
 
 
+def warmup_encoder() -> bool:
+    """Load the local encoder and run one batch so the first request is not the load."""
+    model = _load_model()
+    if model is None:
+        return False
+    try:
+        _encode(model, ["passage: .", "query: ."])
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return True
+
+
+_WARMUP_OFF = {"0", "false", "no", "off"}
+
+
+def warmup_enabled() -> bool:
+    return os.getenv("TEXT_STARTUP_WARMUP", "true").strip().lower() not in _WARMUP_OFF
+
+
+def warmup_text_indexes() -> None:
+    """Build the drug index and the local encoder once, before the first request."""
+    if not warmup_enabled():
+        return
+    from .text_drug_index import drug_index
+
+    drug_index()
+    warmup_encoder()
+
+
 def semantic_section_scores(record: TextRecord, question: str) -> dict[int, float]:
     """Cosine of each section with the question. Empty when no local model."""
     matrix = section_matrix(record)

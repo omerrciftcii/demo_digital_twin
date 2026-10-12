@@ -71,6 +71,21 @@ _ID = re.compile(r"^E\d+$")
 _LEAKED_ID = re.compile(r"\bE\d+\b")
 _FULL_DATE = re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b|\b\d{4}-\d{2}-\d{2}\b")
 _MONTH_DATE = re.compile(r"\b\d{1,2}\.\d{4}\b")
+_DATE_REGION = re.compile(
+    r"\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b"
+    r"|\b\d{4}[./-]\d{1,2}[./-]\d{1,2}\b"
+    r"|\b\d{1,2}[./]\d{4}\b"
+    r"|\b(?:19|20)\d{2}\b"
+)
+_AMOUNT = re.compile(
+    r"\d{1,3}(?:\.\d{3})+,\d+"
+    r"|\d{1,3}(?:,\d{3})+\.\d+"
+    r"|\d+,\d+"
+    r"|\d+\.\d+"
+    r"|\d+"
+)
+_UNICODE_DECIMAL = re.compile(r"(?<=\d)[，‚٫٬](?=\d)")
+_RANGE_WORDS = ("aralik", "referans", "hedef")
 _NEAR = 90
 _GAP = (
     "Kayıtta bu soruyu doğrulayan bir cümle kurulamadı. "
@@ -97,12 +112,51 @@ Normal sonuçlar bir hastalığı veya eksikliği laboratuvarla desteklemez. Eks
 JSON örneğindeki noktalar hasta verisi değildir.
 """
 
+ANSWER_JSON_SCHEMA: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "conclusion": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["supported", "not_supported", "uncertain", "not_applicable"],
+                },
+                "text": {"type": "string"},
+                "evidence_ids": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["status", "text", "evidence_ids"],
+        },
+        "sentences": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "text": {"type": "string"},
+                    "claim_type": {"type": "string"},
+                    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["text", "claim_type", "evidence_ids"],
+            },
+        },
+        "missing_information": {"type": "array", "items": {"type": "string"}},
+        "requires_clinician_review": {"type": "boolean"},
+    },
+    "required": [
+        "conclusion", "sentences", "missing_information", "requires_clinician_review",
+    ],
+}
+
 
 @dataclass
 class Issue:
     code: str
     reason: str
     evidence_id: str = ""
+    hard: bool = True
 
 
 @dataclass
@@ -115,6 +169,9 @@ class Verdict:
     evidence_ids: list[str] = field(default_factory=list)
     conclusion_status: str = "uncertain"
     requires_review: bool = False
+    conclusion_rejected: bool = False
+    warnings: list[str] = field(default_factory=list)
+    warning_codes: list[str] = field(default_factory=list)
     debug: list[dict] = field(default_factory=list)
 
 
@@ -156,42 +213,117 @@ def _id_list(value: object) -> list[str]:
     return found
 
 
-def parse_model_payload(raw: str) -> dict | None:
-    """Pull the one JSON object. Anything else is a parse failure, not an answer."""
-    cleaned = strip_model_wrappers(raw or "").strip()
-    if not cleaned:
+def _balance_json(text: str) -> str:
+    """Close braces and brackets the model left open. Strings are left alone."""
+    opened: list[str] = []
+    out: list[str] = []
+    quote = False
+    escape = False
+    for char in text:
+        out.append(char)
+        if quote:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                quote = False
+            continue
+        if char == '"':
+            quote = True
+        elif char in "{[":
+            opened.append("}" if char == "{" else "]")
+        elif char in "}]" and opened and opened[-1] == char:
+            opened.pop()
+    while opened:
+        out.append(opened.pop())
+    return "".join(out)
+
+
+def _json_variants(text: str) -> list[str]:
+    """Small repairs: fences are already gone, trailing commas and Python literals remain."""
+    base = text.strip()
+    if not base:
+        return []
+    variants = [base]
+    trimmed = re.sub(r",(\s*[}\]])", r"\1", base)
+    variants.append(trimmed)
+    literals = re.sub(r"\bTrue\b", "true", trimmed)
+    literals = re.sub(r"\bFalse\b", "false", literals)
+    literals = re.sub(r"\bNone\b", "null", literals)
+    variants.append(literals)
+    variants.append(_balance_json(literals))
+    # A raw newline inside a string is illegal JSON. Collapse only outside... keep a flat copy.
+    flat = re.sub(r"(?<!\\)\n", " ", literals)
+    variants.append(flat)
+    variants.append(_balance_json(flat))
+    unique: list[str] = []
+    for item in variants:
+        if item and item not in unique:
+            unique.append(item)
+    return unique
+
+
+def _accept_payload(payload: object) -> dict | None:
+    if not isinstance(payload, dict):
         return None
-    candidates = [cleaned]
-    fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", cleaned, re.DOTALL)
-    if fenced:
-        candidates.insert(0, fenced.group(1))
-    start, end = cleaned.find("{"), cleaned.rfind("}")
-    if start >= 0 and end > start:
-        candidates.append(cleaned[start:end + 1])
-    for candidate in candidates:
-        try:
-            payload = json.loads(candidate)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(payload, dict):
-            continue
-        conclusion = payload.get("conclusion")
-        sentences = payload.get("sentences")
-        if isinstance(conclusion, dict) and isinstance(sentences, list):
-            return payload
+    conclusion = payload.get("conclusion")
+    sentences = payload.get("sentences")
+    if isinstance(sentences, list) and not isinstance(conclusion, dict):
+        payload = dict(payload)
+        payload["conclusion"] = {"status": "uncertain", "text": "", "evidence_ids": []}
+        conclusion = payload["conclusion"]
+    if isinstance(conclusion, dict) and isinstance(sentences, list):
+        return payload
     return None
 
 
-def _date_spans(text: str) -> list[tuple[int, int, str]]:
-    spans: list[tuple[int, int, str]] = []
-    for pattern in (_FULL_DATE, _MONTH_DATE):
-        for match in pattern.finditer(text):
-            spans.append((match.start(), match.end(), match.group(0)))
-    return spans
+def parse_model_payload(raw: str) -> dict | None:
+    """Pull one JSON object. Fences, trailing prose, and small syntax slips still count."""
+    cleaned = strip_model_wrappers(raw or "").strip()
+    if not cleaned:
+        return None
+    candidates: list[str] = []
+    for fenced in re.finditer(r"```(?:json)?\s*(.*?)```", cleaned, re.DOTALL | re.IGNORECASE):
+        candidates.append(fenced.group(1).strip())
+    start, end = cleaned.find("{"), cleaned.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(cleaned[start:end + 1])
+    if cleaned.startswith("{"):
+        candidates.append(cleaned)
+    seen: set[str] = set()
+    for candidate in candidates:
+        for variant in _json_variants(candidate):
+            if variant in seen:
+                continue
+            seen.add(variant)
+            try:
+                payload = json.loads(variant)
+            except json.JSONDecodeError:
+                continue
+            accepted = _accept_payload(payload)
+            if accepted is not None:
+                return accepted
+    return None
 
 
-def _covered(match: re.Match[str], spans: list[tuple[int, int, str]]) -> bool:
-    return any(start <= match.start() and match.end() <= end for start, end, _token in spans)
+def salvage_prose(raw: str) -> str:
+    """When JSON will not parse, keep quoted sentence text or the plain prose."""
+    cleaned = strip_model_wrappers(raw or "").strip()
+    if not cleaned:
+        return ""
+    texts = re.findall(r'"text"\s*:\s*"((?:\\.|[^"\\])*)"', cleaned)
+    if texts:
+        parts: list[str] = []
+        for item in texts:
+            try:
+                parts.append(str(json.loads(f'"{item}"')))
+            except json.JSONDecodeError:
+                parts.append(item)
+        return " ".join(part for part in parts if part.strip())
+    if cleaned.lstrip().startswith("{") or "evidence_ids" in cleaned:
+        return ""
+    return cleaned
 
 
 def _is_year_token(token: str) -> bool:
@@ -201,18 +333,68 @@ def _is_year_token(token: str) -> bool:
     return 1900 <= year <= 2100
 
 
+def _normalize_decimals(text: str) -> str:
+    """Unicode decimal commas become an ASCII comma so 11 and 7 stay one token."""
+    return _UNICODE_DECIMAL.sub(",", text or "")
+
+
+def _blank_regions(text: str, pattern: re.Pattern[str]) -> str:
+    chars = list(text)
+    for match in pattern.finditer(text):
+        for index in range(match.start(), match.end()):
+            chars[index] = " "
+    return "".join(chars)
+
+
+def _amount_of(token: str) -> float | None:
+    if re.fullmatch(r"\d{1,3}(?:\.\d{3})+,\d+", token):
+        return float(token.replace(".", "").replace(",", "."))
+    if re.fullmatch(r"\d{1,3}(?:,\d{3})+\.\d+", token):
+        return float(token.replace(",", ""))
+    if re.fullmatch(r"\d+,\d+", token) or re.fullmatch(r"\d+\.\d+", token):
+        return float(token.replace(",", "."))
+    if re.fullmatch(r"\d+", token):
+        return float(token)
+    return None
+
+
+def _unit_internal(text: str, match: re.Match[str]) -> bool:
+    """A number glued after / or ^ belongs to the unit, not the result."""
+    return bool(re.search(r"[/^\[]\s*$", text[:match.start()]))
+
+
+def _reference_quantity(text: str, match: re.Match[str]) -> bool:
+    """A bound of a labelled or parenthetical range is not the result."""
+    if _skipped_number(text, match):
+        return True
+    tail = text[match.end():match.end() + 16]
+    head = text[max(0, match.start() - 16):match.start()]
+    dash_after = re.match(r"\s*[-–—]\s*\d", tail)
+    dash_before = re.search(r"\d(?:[.,]\d+)?\s*[-–—]\s*$", head)
+    if not dash_after and not dash_before:
+        return False
+    around = _fold(text[max(0, match.start() - 48):match.end() + 48])
+    return any(word in around for word in _RANGE_WORDS)
+
+
 def _quantities(sentence: str) -> list[tuple[re.Match[str], float, str | None]]:
-    spans = _date_spans(sentence)
+    """Measured amounts. Decimals stay whole. Dates, units, and ranges do not count."""
+    normalized = _normalize_decimals(sentence)
+    masked = _blank_regions(normalized, _DATE_REGION)
     found: list[tuple[re.Match[str], float, str | None]] = []
-    for match in _numbers(sentence):
-        if _skipped_number(sentence, match) or _covered(match, spans):
+    for match in _AMOUNT.finditer(masked):
+        token = match.group(0)
+        if re.fullmatch(r"\d", token):
             continue
-        if _is_year_token(match.group(0)):
+        if _unit_internal(normalized, match) or _reference_quantity(normalized, match):
             continue
-        amount = _parse_quantity(match.group(0))
+        # A dotted day.month with no unit is a date fragment, not a decimal result.
+        if re.fullmatch(r"\d{1,2}\.\d{1,2}", token) and _unit_family(normalized, match) is None:
+            continue
+        amount = _amount_of(token)
         if amount is None:
             continue
-        found.append((match, amount, _unit_family(sentence, match)))
+        found.append((match, amount, _unit_family(normalized, match)))
     return found
 
 
@@ -329,36 +511,86 @@ def _concept_actual(package: list[Evidence], window: str) -> Evidence | None:
     return None
 
 
+def _family_ok(family: str | None, evidence: Evidence) -> bool:
+    evidence_family = _family_of(evidence)
+    return not (family and evidence_family and family != evidence_family)
+
+
+def _value_on(evidence: Evidence, amount: float, family: str | None) -> bool:
+    recorded = _evidence_amount(evidence)
+    if recorded is None or not _same_amount(recorded, amount):
+        return False
+    return _family_ok(family, evidence)
+
+
+def _other_owner(
+    package: list[Evidence], excluded: list[Evidence], amount: float, family: str | None,
+) -> Evidence | None:
+    skip = {item.id for item in excluded}
+    for evidence in package:
+        if evidence.id in skip or not evidence.value:
+            continue
+        if _value_on(evidence, amount, family):
+            return evidence
+    return None
+
+
+def _value_label(window: str, evidence: Evidence | None) -> str:
+    if evidence is not None and evidence.display_name:
+        return evidence.display_name
+    words = re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşü]{3,}", window)
+    return words[-1] if words else "bu ölçüm"
+
+
 def _check_quantities(
     sentence: str, cited: list[Evidence], package: list[Evidence],
 ) -> list[Issue]:
+    """Compare a number only with the cited atom of the same concept.
+
+    An unclear concept is a warning. A hard reject is a value that is not on
+    the named concept, including one that belongs to a different concept.
+    """
     issues: list[Issue] = []
-    stripped = _LEAKED_ID.sub(" ", sentence)
+    stripped = _normalize_decimals(_LEAKED_ID.sub(" ", sentence))
     for match, amount, family in _quantities(stripped):
         if _range_number(stripped, match, cited):
             continue
         window = _window(stripped, match)
-        same_concept = [item for item in cited if concepts_match(item, window)]
-        matched = []
-        for item in same_concept:
-            recorded = _evidence_amount(item)
-            if recorded is None or not _same_amount(recorded, amount):
-                continue
-            evidence_family = _family_of(item)
-            if family and evidence_family and family != evidence_family:
-                continue
-            matched.append(item)
-        if matched:
-            continue
-        label = window or "bu ölçüm"
+        same_concept = [
+            item for item in cited if item.value and concepts_match(item, window)
+        ]
         shown = match.group(0)
-        actual = _concept_actual(package, window)
-        reason = f"{label} için {shown} değeri kaynakta bulunamadı."
-        if actual and actual.value:
-            unit = f" {actual.unit}" if actual.unit else ""
-            reason = f"{reason} Kaynakta {label} değeri {actual.value}{unit}."
-        code = "value_not_in_evidence" if same_concept else "value_concept_mismatch"
-        issues.append(Issue(code, reason.strip(), cited[0].id if cited else ""))
+        if same_concept:
+            if any(_value_on(item, amount, family) for item in same_concept):
+                continue
+            label = _value_label(window, same_concept[0])
+            moved = _other_owner(package, same_concept, amount, family)
+            reason = f"{label} için {shown} değeri kaynakta bulunamadı."
+            if same_concept[0].value:
+                unit = f" {same_concept[0].unit}" if same_concept[0].unit else ""
+                reason = f"{reason} Kaynakta {label} değeri {same_concept[0].value}{unit}."
+            code = "value_concept_mismatch" if moved else "value_not_in_evidence"
+            issues.append(Issue(code, reason.strip(), same_concept[0].id))
+            continue
+        named = _concept_actual(package, window)
+        if named and _value_on(named, amount, family):
+            # The number belongs to the concept the sentence names.
+            continue
+        if named:
+            label = _value_label(window, named)
+            moved = _other_owner(package, [named], amount, family)
+            reason = f"{label} için {shown} değeri kaynakta bulunamadı."
+            unit = f" {named.unit}" if named.unit else ""
+            reason = f"{reason} Kaynakta {label} değeri {named.value}{unit}."
+            code = "value_concept_mismatch" if moved else "value_not_in_evidence"
+            issues.append(Issue(code, reason.strip(), named.id))
+            continue
+        issues.append(Issue(
+            "unclear_value",
+            "Sayının kavramı net değil; cümle belirsiz kabul edildi.",
+            cited[0].id if cited else "",
+            hard=False,
+        ))
     return issues
 
 
@@ -374,13 +606,20 @@ def _family_of(evidence: Evidence) -> str | None:
 
 def _check_dates(sentence: str, cited: list[Evidence]) -> list[Issue]:
     issues: list[Issue] = []
+    known_dates = [item for evidence in cited for item in _evidence_dates(evidence)]
     for iso in _dates_in(sentence):
-        if any(_date_ok(iso, item) for evidence in cited for item in _evidence_dates(evidence)):
+        if any(_date_ok(iso, item) for item in known_dates):
             continue
         shown = chat_date(iso)
-        known = ", ".join(
-            chat_date(item) for evidence in cited for item in _evidence_dates(evidence)
-        )
+        if not known_dates:
+            issues.append(Issue(
+                "date_unconfirmed",
+                f"Tarih {shown} için kanıtta tarih yok; cümle belirsiz kabul edildi.",
+                cited[0].id if cited else "",
+                hard=False,
+            ))
+            continue
+        known = ", ".join(chat_date(item) for item in known_dates)
         reason = f"Tarih {shown} bağlanan kanıtın tarihiyle uyuşmuyor."
         if known:
             reason = f"{reason} Kanıt tarihi {known}."
@@ -666,16 +905,21 @@ def verify_payload(payload: dict | None, package: list[Evidence]) -> Verdict:
     if status not in _STATUSES:
         status = "uncertain"
     issues: list[Issue] = []
+    warnings: list[Issue] = []
     texts: list[str] = []
     evidence_ids: list[str] = []
     conclusion_text = " ".join(str(conclusion.get("text") or "").split())
     conclusion_ids = _id_list(conclusion.get("evidence_ids"))
+    conclusion_rejected = False
     if conclusion_text:
         row_issues = _issues(
             conclusion_text, conclusion_ids, _conclusion_claim(status, conclusion_text), package,
         )
-        if row_issues:
-            issues.extend(row_issues)
+        hard = [item for item in row_issues if item.hard]
+        warnings.extend(item for item in row_issues if not item.hard)
+        if hard:
+            issues.extend(hard)
+            conclusion_rejected = True
         else:
             texts.append(conclusion_text)
             evidence_ids.extend(conclusion_ids)
@@ -689,26 +933,32 @@ def verify_payload(payload: dict | None, package: list[Evidence]) -> Verdict:
         claim = str(row.get("claim_type") or "fact")
         row_ids = _id_list(row.get("evidence_ids"))
         row_issues = _issues(text, row_ids, claim, package)
-        if row_issues:
-            issues.extend(row_issues)
+        hard = [item for item in row_issues if item.hard]
+        warnings.extend(item for item in row_issues if not item.hard)
+        if hard:
+            issues.extend(hard)
             continue
         texts.append(text)
         evidence_ids.extend(row_ids)
     missing, missing_issues = _kept_missing(payload.get("missing_information"), package)
-    issues.extend(missing_issues)
+    issues.extend(item for item in missing_issues if item.hard)
+    warnings.extend(item for item in missing_issues if not item.hard)
     if not issues:
         texts.extend(missing)
     codes = list(dict.fromkeys(issue.code for issue in issues))
     reasons = list(dict.fromkeys(issue.reason for issue in issues))
+    warning_codes = list(dict.fromkeys(issue.code for issue in warnings))
+    warning_reasons = list(dict.fromkeys(issue.reason for issue in warnings))
     debug = [
         {"code": issue.code, "evidenceId": issue.evidence_id, "reason": issue.reason}
-        for issue in issues
+        for issue in [*issues, *warnings]
     ]
     review = bool(payload.get("requires_clinician_review"))
     return Verdict(
         parsed=True, fully_ok=not issues, texts=texts, codes=codes, reasons=reasons,
         evidence_ids=list(dict.fromkeys(evidence_ids)), conclusion_status=status,
-        requires_review=review, debug=debug,
+        requires_review=review, conclusion_rejected=conclusion_rejected,
+        warnings=warning_reasons, warning_codes=warning_codes, debug=debug,
     )
 
 
@@ -741,7 +991,26 @@ def render_answer(texts: list[str], package: list[Evidence] | None = None) -> st
     return "\n".join(lines).strip()
 
 
+def _close_parens(text: str) -> str:
+    body = " ".join((text or "").split())
+    body = re.sub(r"\(\s+", "(", body)
+    opened, closed = body.count("("), body.count(")")
+    if opened > closed:
+        body += ")" * (opened - closed)
+    elif closed > opened:
+        extra = closed - opened
+        kept: list[str] = []
+        for char in body:
+            if char == ")" and extra:
+                extra -= 1
+                continue
+            kept.append(char)
+        body = "".join(kept)
+    return body.strip()
+
+
 def _relevant(package: list[Evidence], question: str) -> list[Evidence]:
+    """Atoms whose name or concept shares a question term. The source line is too wide."""
     terms = question_terms(question)
     if not terms:
         return []
@@ -750,7 +1019,7 @@ def _relevant(package: list[Evidence], question: str) -> list[Evidence]:
         blob = " ".join(filter(None, [
             evidence.display_name, evidence.concept.replace("_", " "), evidence.source_section,
         ]))
-        if overlaps(blob, terms) or overlaps(evidence.source_text, terms):
+        if overlaps(blob, terms):
             ranked.append(evidence)
     return ranked
 
@@ -758,47 +1027,43 @@ def _relevant(package: list[Evidence], question: str) -> list[Evidence]:
 def _render_atom(evidence: Evidence) -> str:
     if evidence.type == "medication" and evidence.active_use_confirmed is not True:
         when = chat_date(evidence.last_prescription_date or evidence.date)
+        name = evidence.display_name
         if when:
-            return (
-                f"Kayıtta {when} tarihli {evidence.display_name} reçete kaydı var; "
+            return _close_parens(
+                f"Kayıtta {when} tarihli {name} reçete kaydı var; "
                 "güncel kullanım doğrulanamıyor."
             )
-        return (
-            f"Kayıtta {evidence.display_name} için bir reçete kaydı var; "
-            "güncel kullanım doğrulanamıyor."
+        return _close_parens(
+            f"Kayıtta {name} için bir reçete kaydı var; güncel kullanım doğrulanamıyor."
         )
     if evidence.type == "diagnosis":
+        name = evidence.display_name
         if evidence.diagnosis_status == "preliminary":
-            return f"{evidence.display_name} ön tanı olarak kayıtlı."
+            return _close_parens(f"{name} ön tanı olarak kayıtlı.")
         if evidence.category == "chronic":
-            return f"{evidence.display_name} kronik tanı kaydı olarak duruyor."
+            return _close_parens(f"{name} kronik tanı kaydı olarak duruyor.")
         if evidence.category == "acute":
-            return f"{evidence.display_name} akut tanı kaydı olarak duruyor."
+            return _close_parens(f"{name} akut tanı kaydı olarak duruyor.")
         if evidence.category == "other":
-            return f"{evidence.display_name} diğer tanı kaydı olarak duruyor."
+            return _close_parens(f"{name} diğer tanı kaydı olarak duruyor.")
         if evidence.diagnosis_status == "past" or evidence.category == "past":
-            return f"{evidence.display_name} geçmiş tanı kaydı olarak duruyor."
-        return f"{evidence.display_name} tanı kaydı olarak duruyor."
+            return _close_parens(f"{name} geçmiş tanı kaydı olarak duruyor.")
+        return _close_parens(f"{name} tanı kaydı olarak duruyor.")
     if evidence.value:
         bits = [evidence.display_name, evidence.value]
         if evidence.unit:
             bits.append(evidence.unit)
-        sentence = " ".join(bits)
+        sentence = " ".join(bit for bit in bits if bit)
         when = chat_date(evidence.date)
         if when:
             sentence += f" ({when})"
-        return sentence + " kayıttaki değer."
-    return f"Kayıtta {evidence.display_name} ile ilgili bir satır var."
+        return _close_parens(sentence + " kayıttaki değer.")
+    return _close_parens(f"Kayıtta {evidence.display_name} ile ilgili bir satır var.")
 
 
 def fallback_answer(package: list[Evidence], question: str) -> str:
-    """A short answer built only from atoms. Never empty."""
-    chosen = _relevant(package, question)[:3]
-    if not chosen:
-        return _GAP
-    lines = [_render_atom(item) for item in chosen]
-    lines.append("Model cümlesi kanıtla doğrulanamadı; bu satırlar doğrudan kayıttan.")
-    return "\n".join(lines)
+    """Question-relevant atoms only. Never empty."""
+    return compose_answer([], package, question, supplement=True)
 
 
 def fallback_ids(package: list[Evidence], question: str) -> list[str]:
@@ -819,6 +1084,79 @@ def retry_instruction(reasons: list[str]) -> str:
         "retry_reason:\n"
         f"{listed}"
     )
+
+
+def meaningful_text(texts: list[str]) -> bool:
+    rendered = render_answer(texts)
+    letters = re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşü]", rendered)
+    return len(letters) >= 12
+
+
+def needs_retry(verdict: Verdict) -> bool:
+    """Retry only when the conclusion failed or nothing usable passed."""
+    if not verdict.parsed or verdict.conclusion_rejected:
+        return True
+    return not verdict.texts or not meaningful_text(verdict.texts)
+
+
+def _split_prose(text: str) -> list[str]:
+    parts = re.split(r"(?<!\d)[.!?](?!\d)\s+|\n+", text.strip())
+    return [part.strip() for part in parts if part.strip()]
+
+
+def filter_prose(text: str, package: list[Evidence]) -> tuple[str, list[Issue]]:
+    """Free-text fallback. Only a clear number error drops a sentence."""
+    kept: list[str] = []
+    issues: list[Issue] = []
+    for sentence in _split_prose(text):
+        row = [item for item in _check_quantities(sentence, [], package) if item.hard]
+        if row:
+            issues.extend(row)
+            continue
+        kept.append(sentence)
+    return render_answer(kept, package), issues
+
+
+def prose_usable(text: str, package: list[Evidence], question: str) -> bool:
+    if not meaningful_text([text]):
+        return False
+    folded = _fold(text)
+    if "evidence_ids" in folded or folded.lstrip().startswith("{"):
+        return False
+    if any(_mentioned(item, text) for item in package):
+        return True
+    return bool(overlaps(folded, question_terms(question)))
+
+
+def compose_answer(
+    texts: list[str], package: list[Evidence], question: str, *, supplement: bool,
+) -> str:
+    """Passing sentences first. Summaries are only the atoms the question names."""
+    prose = render_answer(texts, package)
+    lines = [prose] if prose else []
+    if supplement or not prose:
+        folded = _fold(prose)
+        for evidence in _relevant(package, question)[:3]:
+            name = _fold(evidence.display_name)
+            if name and name in folded:
+                continue
+            lines.append(_render_atom(evidence))
+            if len(lines) >= 4:
+                break
+    body = "\n".join(line for line in lines if line).strip()
+    return body or _GAP
+
+
+def preferred_attempt(attempts: list[Verdict]) -> Verdict | None:
+    """The attempt with more passing sentences. A later tie wins."""
+    parsed = [item for item in attempts if item.parsed and item.texts]
+    if not parsed:
+        return None
+    best = parsed[0]
+    for item in parsed[1:]:
+        if len(item.texts) >= len(best.texts):
+            best = item
+    return best
 
 
 def public_status(verdict: Verdict) -> str:

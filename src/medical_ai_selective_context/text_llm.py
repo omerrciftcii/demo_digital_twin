@@ -1,6 +1,8 @@
 """One streaming chat completion on any OpenAI-compatible server.
 
-No response_format. OpenRouter zero-data-retention is sent only to
+The default body has no response_format. The evidence path may add a JSON
+schema on a non-OpenRouter host; a 400 drops the schema and retries once.
+OpenRouter zero-data-retention is sent only to
 openrouter.ai, and a ZDR request aimed at another host fails closed.
 Fallbacks stay inside that ZDR set unless the operator pins a provider.
 
@@ -38,6 +40,10 @@ _THINKING_NAMES = ("qwen3", "qwq", "deepseek-r1")
 
 class _Retryable(Exception):
     """HTTP 429/5xx before any token. The caller retries; the message stays empty."""
+
+
+class _SchemaRejected(Exception):
+    """The host refused response_format. The same call can go out without it."""
 
 
 class ModelError(RuntimeError):
@@ -257,7 +263,10 @@ def _disable_thinking(settings: TextModelSettings) -> bool:
     return _known_thinking_model(settings.model)
 
 
-def chat_body(settings: TextModelSettings, messages: list[dict[str, str]]) -> dict[str, Any]:
+def chat_body(
+    settings: TextModelSettings, messages: list[dict[str, str]],
+    json_schema: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Portable chat-completions body. Patient text is already first in messages."""
     body: dict[str, Any] = {
         "model": settings.model,
@@ -266,6 +275,11 @@ def chat_body(settings: TextModelSettings, messages: list[dict[str, str]]) -> di
         "max_tokens": settings.answer_max_tokens,
         "stream": True,
     }
+    if json_schema and not _is_openrouter(settings.base_url):
+        body["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {"name": "chart_answer", "strict": True, "schema": json_schema},
+        }
     if settings.reasoning is not None:
         body["reasoning"] = {"enabled": settings.reasoning}
     elif _disable_thinking(settings):
@@ -453,16 +467,29 @@ class TextModelClient:
         token = self.settings.api_key or "local"
         return {"Authorization": f"Bearer {token}"}
 
-    async def complete(self, messages: list[dict[str, str]]) -> AsyncIterator[dict[str, Any]]:
+    async def complete(
+        self, messages: list[dict[str, str]], json_schema: dict[str, Any] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
         """Yield token events, then one end event. Raises ModelError on a bad stream.
 
         A 429 or overloaded provider is retried with backoff only before the
-        first token. A stream that already spoke is not replayed.
+        first token. A stream that already spoke is not replayed. A host that
+        rejects a JSON schema is asked once more without the schema.
         """
+        try:
+            async for event in self._complete(messages, json_schema):
+                yield event
+        except _SchemaRejected:
+            async for event in self._complete(messages, None):
+                yield event
+
+    async def _complete(
+        self, messages: list[dict[str, str]], json_schema: dict[str, Any] | None,
+    ) -> AsyncIterator[dict[str, Any]]:
         delay = self.settings.retry_backoff_seconds
         for attempt in range(self.settings.retry_max + 1):
             try:
-                async for event in self._attempt(messages):
+                async for event in self._attempt(messages, json_schema):
                     yield event
                 return
             except _Retryable:
@@ -473,8 +500,10 @@ class TextModelClient:
                 delay = min(delay * 2, 8.0)
         raise ModelError("model_request_failed")
 
-    async def _attempt(self, messages: list[dict[str, str]]) -> AsyncIterator[dict[str, Any]]:
-        body = chat_body(self.settings, messages)
+    async def _attempt(
+        self, messages: list[dict[str, str]], json_schema: dict[str, Any] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        body = chat_body(self.settings, messages, json_schema)
         started = perf_counter()
         ttft_ms: float | None = None
         visible = ThinkFilter()
@@ -495,6 +524,8 @@ class TextModelClient:
                     raise _Retryable()
                 if response.status_code >= 400:
                     await response.aread()
+                    if json_schema and response.status_code == 400:
+                        raise _SchemaRejected()
                     raise ModelError("model_request_failed")
                 content_type = response.headers.get("content-type", "")
                 if "application/json" in content_type:
@@ -545,7 +576,7 @@ class TextModelClient:
                         if ttft_ms is None:
                             ttft_ms = round((perf_counter() - started) * 1000, 2)
                         yield {"type": "token", "text": shown}
-        except (ModelError, _Retryable):
+        except (ModelError, _Retryable, _SchemaRejected):
             raise
         except httpx.TimeoutException as exc:
             raise ModelError("model_timeout") from exc

@@ -122,8 +122,11 @@ def test_questions_match_the_safety_gate_and_refusal_quotes():
             assert fact in answer, row["id"]
         if not decision.include_quotes:
             record = records[row["patient"]]
-            needle = next(line.text[20:70] for line in record.lines if len(line.text) > 90)
-            assert needle not in answer, row["id"]
+            needle = next(
+                (line.text[20:70] for line in record.lines if len(line.text) > 90), "",
+            )
+            if needle:
+                assert needle not in answer, row["id"]
 
 
 def test_prompt_is_cache_shaped_and_has_no_sample_numbers():

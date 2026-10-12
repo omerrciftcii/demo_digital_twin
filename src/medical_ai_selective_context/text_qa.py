@@ -18,7 +18,14 @@ from typing import Any
 from .text_document import TextRecord
 from .text_evidence import build_evidence, render_catalog
 from .text_grounding import GroundingResult, format_model_text, ground_answer
-from .text_llm import ModelError, TextModelClient, env_bool, env_number, strip_think_blocks
+from .text_llm import (
+    ModelError,
+    TextModelClient,
+    _is_openrouter,
+    env_bool,
+    env_number,
+    strip_think_blocks,
+)
 from .text_relevance import prompt_plan
 from .text_safety import (
     DISCLAIMER,
@@ -27,14 +34,22 @@ from .text_safety import (
     with_disclaimer,
 )
 from .text_verify import (
+    ANSWER_JSON_SCHEMA,
     VERIFIED_SYSTEM,
+    Verdict,
     citations_for,
-    fallback_answer,
+    compose_answer,
     fallback_ids,
+    filter_prose,
+    meaningful_text,
+    needs_retry,
     parse_model_payload,
+    preferred_attempt,
+    prose_usable,
     public_status,
     render_answer,
     retry_instruction,
+    salvage_prose,
     verify_payload,
 )
 
@@ -149,6 +164,8 @@ def deterministic_verification_enabled() -> bool:
 # before the default context window. Not a measured tokenizer.
 _CHARS_PER_TOKEN = 2
 _CONTEXT_TOKENS = 16384
+# Room so prompt tokens plus max output cannot sit on the context ceiling.
+_CONTEXT_SAFETY_MARGIN = 128
 
 
 def estimate_tokens(text: str) -> int:
@@ -270,6 +287,7 @@ def _least_relevant(kept: list[int], rank: dict[int, float], pieces: dict[int, l
 
 def build_messages(
     record: TextRecord, question: str, history: list[dict[str, str]] | None = None,
+    budget: int | None = None,
 ) -> list[dict[str, str]]:
     """Record stays the cached prefix, once. Earlier turns follow it, then the question.
 
@@ -282,7 +300,7 @@ def build_messages(
     rank, order = prompt_plan(record, question, prior=prior)
     pieces = {index: list(section.lines) for index, section in enumerate(record.sections)}
     kept = list(range(len(record.sections)))
-    budget = context_token_budget()
+    budget = context_token_budget() if budget is None else budget
 
     def compose(active: list[int]) -> list[dict[str, str]]:
         seen: set[str] = set()
@@ -503,58 +521,59 @@ class TextAnswerer:
     async def _verified_events(
         self, record: TextRecord, question: str, history: list[dict[str, str]] | None, started: float,
     ) -> AsyncIterator[dict[str, Any]]:
-        """One JSON completion, one retry, then an evidence fallback. No second model."""
+        """One JSON completion. Retry only for a bad conclusion or an empty pass."""
         correlation = uuid.uuid4().hex
+        output_tokens = self.model.settings.answer_max_tokens
+        schema = None if _is_openrouter(self.model.settings.base_url) else ANSWER_JSON_SCHEMA
         try:
-            messages = build_messages(record, question, history)
+            messages = build_messages(record, question, history, budget=_prompt_budget(output_tokens))
         except ModelError as exc:
             yield {"type": "done", **_failure(exc, record, self.model, started, calls=0)}
             return
         chart = _chart_from_record_message(messages[1]["content"])
         package = build_evidence(record, chart)
-        messages, package = _fit_evidence(messages, package)
-        first = await _collect(self.model, messages)
+        messages, package = _fit_evidence(messages, package, output_tokens)
+        first = await _collect(self.model, messages, schema)
         if isinstance(first, ModelError):
             yield {"type": "done", **_failure(first, record, self.model, started, calls=1)}
             return
         verdict = verify_payload(parse_model_payload(first["text"]), package)
+        attempts = [verdict]
+        raws = [first["text"]]
         retried = False
         calls = 1
         usage = dict(first.get("usage") or {})
         ttft = first.get("ttftMs")
-        if not verdict.fully_ok:
+        if needs_retry(verdict):
             retried = True
             retry_messages = [
                 *messages,
                 {"role": "assistant", "content": first["text"][:8000]},
                 {"role": "user", "content": retry_instruction(verdict.reasons)},
             ]
-            second = await _collect(self.model, retry_messages)
+            second = await _collect(self.model, retry_messages, schema)
             calls = 2
             if not isinstance(second, ModelError):
                 usage = _merge_usage(usage, second.get("usage") or {})
                 verdict = verify_payload(parse_model_payload(second["text"]), package)
-        fallback = False
-        if verdict.fully_ok and verdict.texts:
-            answer = render_answer(verdict.texts, package)
-            status = public_status(verdict)
-            evidence_ids = verdict.evidence_ids
-            passed = True
-        else:
+                attempts.append(verdict)
+                raws.append(second["text"])
+        answer, passed, fallback, chosen = _choose_answer(attempts, raws, package, question)
+        if not answer.strip():
+            answer = compose_answer([], [], question, supplement=True)
+            status = "insufficient_evidence"
             fallback = True
-            answer = fallback_answer(package, question)
-            status = (
+            passed = False
+            evidence_ids: list[str] = []
+        else:
+            status = public_status(chosen) if passed else (
                 "insufficient_evidence"
                 if "doğrulayan bir cümle kurulamadı" in answer
                 else "answered"
             )
-            evidence_ids = fallback_ids(package, question)
-            passed = False
-        if not answer.strip():
-            answer = fallback_answer([], question)
-            status = "insufficient_evidence"
-            fallback = True
-            passed = False
+            evidence_ids = chosen.evidence_ids if passed else fallback_ids(package, question)
+            if not passed and chosen.texts:
+                evidence_ids = list(dict.fromkeys([*chosen.evidence_ids, *evidence_ids]))
         citations = citations_for(record, evidence_ids, package)
         metrics = {
             "timeToFirstTokenMs": ttft,
@@ -570,24 +589,28 @@ class TextAnswerer:
             "deterministicEvidence": True,
             "passed": passed,
             "evidenceIds": evidence_ids,
-            "errorCodes": [] if passed else verdict.codes,
+            "errorCodes": [] if passed else chosen.codes,
+            "droppedCodes": chosen.codes if passed else [],
+            "warningCodes": chosen.warning_codes,
             "retried": retried,
             "fallback": fallback,
             "citationsValid": True,
             "numbersVerified": True,
             "clinicalMeaningVerified": False,
-            "requiresClinicianReview": verdict.requires_review,
+            "requiresClinicianReview": chosen.requires_review,
             "correlationId": correlation,
         }
-        if verdict.debug and not passed:
-            validation["debug"] = verdict.debug
+        if chosen.debug and (not passed or chosen.codes or chosen.warning_codes):
+            validation["debug"] = chosen.debug
         log.info(
             "deterministic_evidence correlation=%s evidence_ids=%s passed=%s codes=%s "
-            "retried=%s fallback=%s ttft_ms=%s total_ms=%s prompt_tokens=%s completion_tokens=%s",
+            "warnings=%s retried=%s fallback=%s ttft_ms=%s total_ms=%s "
+            "prompt_tokens=%s completion_tokens=%s",
             correlation,
             ",".join(evidence_ids),
             passed,
             ",".join(validation["errorCodes"]),
+            ",".join(chosen.warning_codes),
             retried,
             fallback,
             ttft,
@@ -612,9 +635,17 @@ def _chart_from_record_message(content: str) -> str:
     return content[at + len(marker):].strip()
 
 
-def _fit_evidence(messages: list[dict[str, str]], package: list) -> tuple[list[dict[str, str]], list]:
-    """Swap in the JSON prompt and keep the catalog inside the token budget."""
-    budget = context_token_budget()
+def _prompt_budget(max_output: int) -> int:
+    """Input budget. Output tokens and a margin stay inside the context window."""
+    reserve = max(0, max_output) + _CONTEXT_SAFETY_MARGIN
+    return max(256, context_token_budget() - reserve)
+
+
+def _fit_evidence(
+    messages: list[dict[str, str]], package: list, max_output: int,
+) -> tuple[list[dict[str, str]], list]:
+    """Swap in the JSON prompt and keep input plus output inside the window."""
+    budget = _prompt_budget(max_output)
     kept = list(package)
     base = messages[-1]["content"]
     while True:
@@ -635,10 +666,35 @@ def _merge_usage(left: dict, right: dict) -> dict:
     return merged
 
 
-async def _collect(model: TextModelClient, messages: list[dict[str, str]]) -> dict | ModelError:
+def _choose_answer(
+    attempts: list[Verdict], raws: list[str], package: list, question: str,
+) -> tuple[str, bool, bool, Verdict]:
+    """Verified sentences win. A partial pass is the answer. Templates fill a gap."""
+    clean = [
+        item for item in attempts
+        if item.parsed and item.texts and not item.conclusion_rejected and meaningful_text(item.texts)
+    ]
+    if clean:
+        chosen = clean[-1]
+        return render_answer(chosen.texts, package), True, False, chosen
+    chosen = preferred_attempt(attempts)
+    if chosen is not None and meaningful_text(chosen.texts):
+        return compose_answer(chosen.texts, package, question, supplement=True), False, True, chosen
+    for raw in reversed(raws):
+        prose, _issues = filter_prose(salvage_prose(raw), package)
+        if prose_usable(prose, package, question):
+            base = attempts[-1]
+            return prose, False, True, base
+    base = attempts[-1]
+    return compose_answer([], package, question, supplement=True), False, True, base
+
+
+async def _collect(
+    model: TextModelClient, messages: list[dict[str, str]], json_schema: dict | None = None,
+) -> dict | ModelError:
     end: dict[str, Any] | None = None
     try:
-        async for piece in model.complete(messages):
+        async for piece in model.complete(messages, json_schema):
             if piece["type"] != "token":
                 end = piece
     except ModelError as exc:

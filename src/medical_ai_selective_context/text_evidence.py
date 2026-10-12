@@ -64,7 +64,9 @@ _RANGE = re.compile(
 )
 _VALUE = re.compile(
     r"(?P<percent>%)?\s*(?P<value>(?<![A-Za-z0-9])\d+(?:[.,]\d+)?)"
-    r"(?:\s*(?P<unit>%|(?:[A-Za-zµμ°][\wµμ°]*)(?:/[\wµμ°.]+)+|[A-Za-zµμ°]{1,12}))?"
+    r"(?:\s*(?P<unit>%"
+    r"|(?:[A-Za-zµμ°][\wµμ°]*)(?:/(?:\d+(?:[.,]\d+)?|[\wµμ°.]+))+(?:\s*[A-Za-zµμ°]?[²³2])?"
+    r"|[A-Za-zµμ°]{1,12}))?"
     r"(?:\s*\((?P<date>\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{4})\))?",
 )
 _RX = re.compile(
@@ -319,6 +321,24 @@ def _blank_line(raw: str) -> str:
     return raw.strip().lstrip("-•*").strip()
 
 
+def _tidy_display(name: str) -> str:
+    """Drop a parenthesis left open when a code was cut out of the name."""
+    text = " ".join((name or "").split()).strip(" -—,;:")
+    text = re.sub(r"(?:\s*\()+\s*$", "", text).strip()
+    opened, closed = text.count("("), text.count(")")
+    if opened > closed:
+        text += ")" * (opened - closed)
+    return text
+
+
+def _bare_year(match: re.Match[str]) -> bool:
+    token = match.group("value")
+    if match.group("unit") or match.group("percent") or not re.fullmatch(r"\d{4}", token):
+        return False
+    year = int(token)
+    return 1900 <= year <= 2100
+
+
 def _category_of(raw: str) -> str | None:
     folded = _fold(_blank_line(raw)).strip(":* ")
     if not folded or len(folded) > 24:
@@ -347,6 +367,8 @@ def _value_match(text: str) -> re.Match[str] | None:
     """The result, not a digit glued to a name such as B12."""
     for match in _VALUE.finditer(text):
         if _FULL_DATE.match(text[match.start("value"):]) or _MONTH_DATE.match(text[match.start("value"):]):
+            continue
+        if _bare_year(match):
             continue
         if match.group("unit") or match.group("percent") or match.group("date"):
             return match
@@ -389,6 +411,7 @@ def _finish(
     folded = folded or _fold(source)
     confirmed = bool(active)
     when = date or last or first
+    display = _tidy_display(display)
     return Evidence(
         id="", type=kind, concept=resolve_concept(display), display_name=display,
         value=value, unit=unit, date=date, status=status, reference_range=reference,

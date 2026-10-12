@@ -9,9 +9,21 @@ import pytest
 from medical_ai_selective_context.text_document import parse_cco_text
 from medical_ai_selective_context.text_evidence import build_evidence, parse_chart
 from medical_ai_selective_context.text_grounding import format_model_text
-from medical_ai_selective_context.text_llm import TextModelClient, TextModelSettings
-from medical_ai_selective_context.text_qa import TextAnswerer, deterministic_verification_enabled
-from medical_ai_selective_context.text_verify import parse_model_payload, verify_payload
+from medical_ai_selective_context.text_llm import TextModelClient, TextModelSettings, chat_body
+from medical_ai_selective_context.text_qa import (
+    TextAnswerer,
+    _fit_evidence,
+    _prompt_budget,
+    deterministic_verification_enabled,
+    estimate_tokens,
+)
+from medical_ai_selective_context.text_verify import (
+    ANSWER_JSON_SCHEMA,
+    _quantities,
+    fallback_answer,
+    parse_model_payload,
+    verify_payload,
+)
 
 AS_OF = "2026-10-01T00:00:00+00:00"
 _IDS = ("00000000-0000-4000-8000-0000000000c1", "00000000-0000-4000-8000-0000000000c2")
@@ -404,3 +416,210 @@ def test_stray_lead_in_is_removed_from_grounded_lines(lead):
     for line in grounded.answer.splitlines():
         assert not line.startswith(". ")
         assert not line.startswith(", ")
+
+
+def _amounts(text: str) -> list[float]:
+    return [amount for _match, amount, _family in _quantities(text)]
+
+
+def test_comma_and_dot_decimals_stay_one_number():
+    assert _amounts("Ornekolcum 11,7 mg/dL.") == [11.7]
+    assert _amounts("Ornekolcum 11.7 mg/dL.") == [11.7]
+    assert 11.0 not in _amounts("Ornekolcum 11,7 mg/dL.")
+    assert 7.0 not in _amounts("Ornekolcum 11,7 mg/dL.")
+    package = parse_chart(
+        "Giriş.\n\n## Laboratuvar\n- Ornekolcum 11,7 mg/dL (02.02.2024).\n",
+        AS_OF,
+    )
+    item = package[0]
+    assert item.value == "11,7"
+    for wording in ("Ornekolcum 11,7 mg/dL.", "Ornekolcum 11.7 mg/dL."):
+        verdict = verify_payload(parse_model_payload(_body(
+            {"status": "supported", "text": wording, "evidence_ids": [item.id]},
+            [_fact(wording, [item.id])],
+        )), package)
+        assert verdict.fully_ok, verdict.reasons
+
+
+def _rate_chart() -> str:
+    return (
+        "Giriş.\n\n## Laboratuvar\n"
+        "- Ornekolcum 11,7 mg/dL (02.02.2024), normal (aralık 10-12).\n"
+        "- Ornekyikim 90 mL/dk/1,73 m² (02.02.2024), normal (aralık 60-120).\n\n"
+        "## Giyilebilir\n"
+        "- Uyku skoru 86 (2014).\n"
+    )
+
+
+def test_dates_units_and_ranges_are_not_measured_values():
+    sentence = "Ornekyikim 90 mL/dk/1,73 m² (02.02.2024, aralık 60-120)."
+    assert _amounts(sentence) == [90.0]
+    package = parse_chart(_rate_chart(), AS_OF)
+    renal = next(item for item in package if item.concept == "ornekyikim")
+    assert renal.unit and "1,73" in renal.unit
+    verdict = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": sentence, "evidence_ids": [renal.id]},
+        [_fact(sentence, [renal.id])],
+    )), package)
+    assert verdict.fully_ok, verdict.reasons
+    year = "2022 yılında uyku skoru 86."
+    sleep = next(item for item in package if "uyku" in item.concept)
+    dated = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": year, "evidence_ids": [sleep.id]},
+        [_fact(year, [sleep.id])],
+    )), package)
+    assert dated.fully_ok, dated.reasons
+    assert "date_mismatch" not in dated.codes
+
+
+def test_number_is_compared_only_with_the_matching_concept():
+    package = parse_chart(_rate_chart(), AS_OF)
+    sleep = next(item for item in package if "uyku" in item.concept)
+    renal = next(item for item in package if item.concept == "ornekyikim")
+    cited_wrong = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Uyku skoru 86.", "evidence_ids": [renal.id]},
+        [_fact("Uyku skoru 86.", [renal.id])],
+    )), package)
+    assert cited_wrong.fully_ok, cited_wrong.reasons
+    vague = verify_payload(parse_model_payload(_body(
+        {"status": "uncertain", "text": "Bir skor 86 görünüyor.", "evidence_ids": [renal.id]},
+        [_fact("Bir skor 86 görünüyor.", [renal.id], "uncertainty")],
+    )), package)
+    assert "value_concept_mismatch" not in vague.codes
+    assert "value_not_in_evidence" not in vague.codes
+    moved = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Uyku skoru 90.", "evidence_ids": [sleep.id]},
+        [_fact("Uyku skoru 90.", [sleep.id])],
+    )), package)
+    assert not moved.fully_ok
+    assert "value_not_in_evidence" in moved.codes or "value_concept_mismatch" in moved.codes
+
+
+def test_correct_sentences_are_not_rejected_in_bulk():
+    package = parse_chart(_rate_chart(), AS_OF)
+    by_concept = {item.concept: item for item in package}
+    rows = [
+        ("Ornekolcum 11,7 mg/dL.", by_concept["ornekolcum"].id),
+        ("Ornekolcum 11.7 mg/dL (02.02.2024).", by_concept["ornekolcum"].id),
+        ("Ornekyikim 90 mL/dk/1,73 m².", by_concept["ornekyikim"].id),
+        ("Uyku skoru 86.", next(item.id for item in package if "uyku" in item.concept)),
+        ("Ornekolcum 11,7 mg/dL (aralık 10-12).", by_concept["ornekolcum"].id),
+    ]
+    failed = []
+    for text, evidence_id in rows:
+        verdict = verify_payload(parse_model_payload(_body(
+            {"status": "supported", "text": text, "evidence_ids": [evidence_id]},
+            [_fact(text, [evidence_id])],
+        )), package)
+        if not verdict.fully_ok:
+            failed.append((text, verdict.codes, verdict.reasons))
+    assert not failed, failed
+    assert len(failed) / len(rows) == 0
+
+
+def test_json_fence_trailing_comma_and_prose_are_recovered():
+    package = parse_chart(_labs(), AS_OF)
+    trig = next(item for item in package if item.concept == "triglyceride")
+    payload = _body(
+        {"status": "supported", "text": "Trigliserit 80 mg/dL.", "evidence_ids": [trig.id]},
+        [_fact("Trigliserit 80 mg/dL.", [trig.id])],
+    )
+    fenced = "Açıklama.\n```json\n" + payload + "\n```\nson not"
+    assert parse_model_payload(fenced)["conclusion"]["text"].startswith("Trigliserit")
+    comma = payload[:payload.rfind("}")] + ",}"
+    parsed = parse_model_payload(comma)
+    assert parsed is not None
+    assert verify_payload(parsed, package).fully_ok
+
+
+def test_catalog_reserves_output_tokens(monkeypatch):
+    monkeypatch.setenv("QA_CONTEXT_TOKENS", "4000")
+    messages = [
+        {"role": "system", "content": "s" * 80},
+        {"role": "user", "content": "u" * 80},
+    ]
+    package = parse_chart(_labs() * 80, AS_OF)
+    max_output = 1200
+    fitted, kept = _fit_evidence(messages, package, max_output)
+    assert kept
+    assert len(kept) < len(package)
+    assert estimate_tokens("".join(item["content"] for item in fitted)) + max_output + 128 <= 4000
+    assert _prompt_budget(max_output) == 4000 - 1200 - 128
+
+
+def test_fallback_keeps_passing_sentences_and_closes_parentheses():
+    package = parse_chart(_dx_preliminary(), AS_OF)
+    item = package[0]
+    assert "(" not in item.display_name or item.display_name.count("(") == item.display_name.count(")")
+    assert not item.display_name.endswith("(")
+    text = fallback_answer(package, "Ornekdurum kaydı ne?")
+    assert text.count("(") == text.count(")")
+    assert "ön tanı" in text
+    assert "Ornekdurum" in text
+
+
+def test_partial_pass_does_not_retry(monkeypatch):
+    monkeypatch.setenv("DETERMINISTIC_EVIDENCE_VERIFICATION_ENABLED", "true")
+    package = parse_chart(_labs(), AS_OF)
+    trig = next(item for item in package if item.concept == "triglyceride")
+    sugar = next(item for item in package if item.concept == "glucose")
+    payload = _body(
+        {"status": "supported", "text": "Trigliserit 80 mg/dL.", "evidence_ids": [trig.id]},
+        [
+            _fact("Trigliserit 80 mg/dL.", [trig.id]),
+            _fact("Trigliserit 95,2 mg/dL.", [trig.id]),
+            _fact("Açlık şekeri 95,2 mg/dL.", [sugar.id]),
+        ],
+    )
+    answerer, cursor = _answerer([payload, payload])
+    result = asyncio.run(answerer.answer(_record(_labs()), "Trigliserit ve şeker?"))
+    assert cursor["n"] == 1
+    assert result["validation"]["retried"] is False
+    assert result["validation"]["fallback"] is False
+    assert "80" in result["answer"]
+    assert "95,2" in result["answer"]
+    assert "Trigliserit 95" not in result["answer"]
+
+
+def test_local_schema_is_optional_and_a_400_drops_it():
+    local = TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="local-model",
+        require_zdr=False,
+    )
+    plain = chat_body(local, [{"role": "user", "content": "kayıt"}])
+    assert "response_format" not in plain
+    guided = chat_body(local, [{"role": "user", "content": "kayıt"}], ANSWER_JSON_SCHEMA)
+    assert guided["response_format"]["type"] == "json_schema"
+    routed = chat_body(
+        TextModelSettings(
+            api_key="k", base_url="https://openrouter.ai/api/v1", require_zdr=True,
+        ),
+        [],
+        ANSWER_JSON_SCHEMA,
+    )
+    assert "response_format" not in routed
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if "response_format" in body:
+            return httpx.Response(400, json={"error": {"message": "unsupported"}})
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"},
+            content=_sse("tamam"),
+        )
+
+    client = TextModelClient(TextModelSettings(
+        api_key="k", base_url="http://127.0.0.1:8000/v1", model="local-model",
+        require_zdr=False, local_inference=True,
+    ), httpx.MockTransport(handler))
+
+    async def _run():
+        end = None
+        async for event in client.complete([{"role": "user", "content": "kayıt"}], ANSWER_JSON_SCHEMA):
+            if event["type"] == "end":
+                end = event
+        return end
+
+    ended = asyncio.run(_run())
+    assert ended is not None
+    assert ended["text"] == "tamam"

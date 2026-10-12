@@ -112,7 +112,7 @@ python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 
 `LLM_MODEL` ne ise o gider. Düşünen modellerde `<think>` bloğu ve `reasoning_content` yanıtın dışında kalır. vLLM üzerinde Qwen3 düşünmesi varsayılan olarak kapalıdır (`chat_template_kwargs.enable_thinking=false`). Düşünmeyi açmak için `LLM_DISABLE_THINKING=false` kullanın; bu, OpenRouter olmayan sunucuya `enable_thinking=true` gönderir.
 
-`DETERMINISTIC_EVIDENCE_VERIFICATION_ENABLED` varsayılanı kapalıdır. Açıkken model iç JSON üretir, her olgusal cümle kanıt kimliğine bağlanır ve sayı, tarih, tanı durumu, ilaç aktivitesi, nedensellik ve güncellik kodla denetlenir. Kapalıyken bu katman çalışmaz; mevcut doğrulama aynen durur. İkinci bir model yok. Bir üretim hatalıysa aynı modele bir kez yeniden yazdırılır; o da geçmezse boş cevap yerine kayıttaki atomlardan kısa bir cevap döner.
+`DETERMINISTIC_EVIDENCE_VERIFICATION_ENABLED` varsayılanı kapalıdır. Açıkken model iç JSON üretir, her olgusal cümle kanıt kimliğine bağlanır ve sayı, tarih, tanı durumu, ilaç aktivitesi, nedensellik ve güncellik kodla denetlenir. vLLM'e `response_format` JSON şeması gider; sunucu 400 dönerse şemasız bir kez daha istenir. Katalog, çıktı token tavanı ve bir pay bırakılarak kısılır. Hatalı cümle düşer; sonuç reddedilmediyse ve kalan metin anlamlıysa yeniden üretim olmaz. Yeniden üretim yalnız sonuç reddedilirse ya da geçen cümle kalmazsa bir kez yapılır. O da yetmezse geçen cümleler ve soruya değen kısa kanıt özeti döner. JSON okunamazsa serbest metin yoluna düşülür ve yalnız sayı kontrolü çalışır. Kapalıyken bu katman çalışmaz; mevcut doğrulama aynen durur.
 
 Mock sınamalar anahtarsızdır:
 

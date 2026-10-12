@@ -13,8 +13,9 @@ from medical_ai_selective_context.text_grounding import (
     format_model_text,
     ground_answer,
 )
-from medical_ai_selective_context.text_qa import ACK, SYSTEM_PROMPT, build_messages
+from medical_ai_selective_context.text_qa import ACK, SYSTEM_PROMPT, build_messages, estimate_tokens
 from medical_ai_selective_context.text_relevance import relevant_context, relevant_sections
+from medical_ai_selective_context.text_safety import _EMERGENCY_DESCRIPTIONS, classify_question
 
 ROOT = Path(__file__).parents[1]
 PATIENTS = ROOT / "tests" / "fixtures" / "text" / "patients"
@@ -708,6 +709,7 @@ def test_history_follows_the_cached_record_and_feeds_retrieval():
     assert [item["role"] for item in alone] == ["system", "user", "assistant", "user"]
     assert alone[2]["content"] == ACK
     assert "alfa sonucu" not in alone[-1]["content"]
+    assert "Alfa ölçüm" not in alone[-1]["content"]
     messages = build_messages(record, "peki o nasıl", [
         {"role": "user", "content": "alfa sonucu ne?"},
         {"role": "assistant", "content": "Buna bakıyorum."},
@@ -717,7 +719,9 @@ def test_history_follows_the_cached_record_and_feeds_retrieval():
     assert messages[3] == {"role": "user", "content": "alfa sonucu ne?"}
     assert messages[4]["role"] == "assistant"
     assert messages[-1]["content"].endswith("peki o nasıl")
-    assert "alfa sonucu" in messages[-1]["content"]
+    assert "alfa sonucu burada" not in messages[-1]["content"]
+    assert "Alfa ölçüm" in messages[-1]["content"]
+    assert "Beta notu" not in messages[-1]["content"]
     long_history = [{"role": "user", "content": f"tur {index} alfa"} for index in range(9)]
     capped = build_messages(record, "peki", long_history)
     prior = [item for item in capped if item["content"].startswith("tur ")]
@@ -755,3 +759,157 @@ def test_encoder_warmup_runs_one_batch_when_a_model_is_loaded(monkeypatch):
     assert calls and calls[0][0].startswith("passage:")
     monkeypatch.setattr(embed, "_load_model", lambda: None)
     assert embed.warmup_encoder() is False
+
+
+def test_record_is_sent_once_and_headings_are_hints():
+    record = _tiny(
+        "Giriş.\n\n## Alfa ölçüm\nalfa sonucu burada.\n\n## Beta notu\nbeta baska satir.\n"
+    )
+    messages = build_messages(record, "alfa sonucu")
+    blob = "\n".join(item["content"] for item in messages)
+    assert blob.count("alfa sonucu burada") == 1
+    assert "alfa sonucu burada" in messages[1]["content"]
+    assert "alfa sonucu burada" not in messages[-1]["content"]
+    assert "Alfa ölçüm" in messages[-1]["content"]
+    assert "ipucudur" in messages[-1]["content"]
+    assert "dışındaki bölümleri" in messages[-1]["content"]
+    assert "Aşağıdaki bölümler soruyla örtüşen kaydın tamamıdır" not in messages[-1]["content"]
+
+
+def test_token_budget_drops_the_least_relevant_section(monkeypatch):
+    short = _tiny("Giriş.\n\n## Alfa ölçüm\nalfa sonucu burada.\n")
+    probe = build_messages(short, "alfa sonucu")
+    room = estimate_tokens("\n".join(item["content"] for item in probe)) + 40
+    monkeypatch.setenv("QA_CONTEXT_TOKENS", str(room))
+    filler = " ".join(["dolgu"] * 4000)
+    record = _tiny(
+        "Giriş.\n\n## Alfa ölçüm\nalfa sonucu burada.\n\n## Beta notu\n" + filler + "\n"
+    )
+    messages = build_messages(record, "alfa sonucu")
+    spent = estimate_tokens("\n".join(item["content"] for item in messages))
+    assert spent <= room
+    assert "alfa sonucu burada" in messages[1]["content"]
+    assert "dolgu" not in messages[1]["content"]
+    assert "alfa sonucu burada" not in messages[-1]["content"]
+    assert "Alfa ölçüm" in messages[-1]["content"]
+
+
+def test_latest_question_outranks_history():
+    record = _tiny(
+        "Giriş.\n\n## Alfa ölçüm\nalfa sonucu burada.\n\n## Beta notu\nbeta baska satir.\n"
+    )
+    sections = relevant_sections(record, "alfa sonucu", prior="beta baska " * 30)
+    headings = [section.heading for section in sections]
+    assert headings[0] == "Alfa ölçüm"
+    assert "Beta notu" in headings
+
+
+def test_line_similarity_above_the_floor_adds_a_section(monkeypatch):
+    monkeypatch.setenv("TEXT_SECTION_SIMILARITY", "0.80")
+    monkeypatch.setenv("TEXT_SECTION_TOP_K", "1")
+    record = _tiny(
+        "Giriş.\n\n## Alfa ölçüm\nalfa sonucu burada.\n\n"
+        "## Beta notu\nbeta baska satir.\n\n## Gama notu\ngama ayri konu.\n"
+    )
+    monkeypatch.setattr(
+        "medical_ai_selective_context.text_relevance.semantic_section_scores",
+        lambda _record, _question: {},
+    )
+    monkeypatch.setattr(
+        "medical_ai_selective_context.text_relevance.semantic_line_scores",
+        lambda _record, _question: {1: 0.10, 2: 0.70, 3: 0.95},
+    )
+    headings = [section.heading for section in relevant_sections(record, "alfa sonucu")]
+    assert "Alfa ölçüm" in headings
+    assert "Gama notu" in headings
+    assert "Beta notu" not in headings
+
+
+def test_section_score_follows_the_best_line(monkeypatch):
+    import numpy as np
+
+    import medical_ai_selective_context.text_embed as embed
+
+    record = _tiny(
+        "Giriş.\n\n## Alfa ölçüm\nuzak konu burada durur.\nyakin konu burada durur.\n"
+    )
+    embed._LINE_CACHE.clear()
+    embed._QUERY_CACHE.clear()
+    monkeypatch.setattr(embed, "_load_model", lambda: object())
+    monkeypatch.setattr(embed, "embedding_model_name", lambda: "fake-encoder")
+    monkeypatch.setattr(embed, "query_vector", lambda _question: np.array([1.0, 0.0]))
+
+    def encode(_model, texts):
+        rows = []
+        for text in texts:
+            rows.append([1.0, 0.0] if "yakin" in text else [0.0, 1.0])
+        return np.array(rows)
+
+    monkeypatch.setattr(embed, "_encode", encode)
+    scores = embed.semantic_line_scores(record, "yakin konu")
+    assert scores[1] > 0.9
+    embed._LINE_CACHE.clear()
+
+
+def test_prompt_asks_for_earlier_values_and_safe_symptom_advice():
+    assert "daha önceki değerleri" in SYSTEM_PROMPT
+    assert "ilgili satırı atlama" in SYSTEM_PROMPT
+    assert "ilaç adı" in SYSTEM_PROMPT
+    assert "genel, güvenli, uygulanabilir" in SYSTEM_PROMPT
+    assert not __import__("re").search(r"\d", SYSTEM_PROMPT)
+    reminder = build_messages(
+        _tiny("Giriş.\n\n## Not\nbir satir.\n"), "bu nedir",
+    )[-1]["content"]
+    assert "daha önceki değerleri" in reminder
+    assert "ilaç adı" in reminder
+
+
+def test_record_gap_keeps_dose_free_advice():
+    record = _tiny("Giriş.\n\n## Not\nbaska bir satir.\n")
+    advice = ground_answer(
+        "DURUM: BİLGİ_YOK\n"
+        "Bu yakınma kayıtta durmuyor.\n"
+        "Şunlar iyi gelebilir:\n"
+        "- kısa bir mola\n"
+        "- su içmek\n"
+        "Dikkat: belirti ağırlaşırsa yardım iste.\n",
+        record,
+    )
+    assert advice.ok, advice.debug
+    assert "mola" in advice.answer
+    assert "Dikkat:" in advice.answer
+    dosed = ground_answer("DURUM: BİLGİ_YOK\n- iki tablet al.\n", record)
+    assert dosed.ok is False
+    assert dosed.answer == ""
+
+
+def test_emergency_similarity_uses_a_threshold(monkeypatch):
+    assert len(_EMERGENCY_DESCRIPTIONS) >= 5
+    assert not __import__("re").search(r"\d", "\n".join(_EMERGENCY_DESCRIPTIONS))
+    seen: list[tuple[str, ...]] = []
+
+    def high(question, passages):
+        seen.append(passages)
+        return 0.91
+
+    monkeypatch.setattr("medical_ai_selective_context.text_safety.max_similarity", high)
+    hit = classify_question("Birden fenalık bastı, ter içinde kaldım.")
+    assert hit.action == "refuse" and hit.reason == "emergency"
+    assert "112" in hit.message
+    assert seen and seen[0] == _EMERGENCY_DESCRIPTIONS
+    monkeypatch.setattr(
+        "medical_ai_selective_context.text_safety.max_similarity",
+        lambda _question, _passages: 0.2,
+    )
+    assert classify_question("Birden fenalık bastı, ter içinde kaldım.").action == "allow"
+    monkeypatch.setenv("TEXT_EMERGENCY_SIMILARITY", "0.50")
+    monkeypatch.setattr(
+        "medical_ai_selective_context.text_safety.max_similarity",
+        lambda _question, _passages: 0.55,
+    )
+    assert classify_question("Birden fenalık bastı, ter içinde kaldım.").reason == "emergency"
+    monkeypatch.setattr(
+        "medical_ai_selective_context.text_safety.max_similarity",
+        lambda _question, _passages: None,
+    )
+    assert classify_question("Nefesim daralıyor, ne yapmalıyım?").action == "allow"

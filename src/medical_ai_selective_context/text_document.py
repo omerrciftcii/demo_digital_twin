@@ -1,8 +1,8 @@
 """cco-text/1 records: one Turkish markdown summary, not a CCO 0.7 fact graph.
 
-The whole text stays in the answer prompt. At 20–30 KB it fits a small context,
-and a retrieval hop would spend a second call to miss a sentence. Sections exist
-so a citation can name a heading and a line; they are not a chunk index.
+The chart is one user message. A prompt that would pass the context window
+drops the least relevant sections first. Sections exist so a citation can name
+a heading and a line; they are not a second copy of the chart.
 """
 
 from __future__ import annotations

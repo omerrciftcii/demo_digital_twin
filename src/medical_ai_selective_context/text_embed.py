@@ -21,6 +21,8 @@ _MODEL: Any = None
 _MODEL_NAME = ""
 _ATTEMPTED = False
 _SECTION_CACHE: OrderedDict[tuple[str, str], Any] = OrderedDict()
+_LINE_CACHE: OrderedDict[tuple[str, str], Any] = OrderedDict()
+_PASSAGE_CACHE: OrderedDict[tuple[Any, ...], Any] = OrderedDict()
 _QUERY_CACHE: OrderedDict[tuple[str, str], Any] = OrderedDict()
 
 
@@ -55,6 +57,8 @@ def _load_model() -> Any:
         _MODEL_NAME = name
         _MODEL = None
         _SECTION_CACHE.clear()
+        _LINE_CACHE.clear()
+        _PASSAGE_CACHE.clear()
         _QUERY_CACHE.clear()
         if not name:
             return None
@@ -165,3 +169,75 @@ def semantic_section_scores(record: TextRecord, question: str) -> dict[int, floa
         return {}
     scores = matrix @ vector
     return {index: float(score) for index, score in enumerate(scores)}
+
+
+def line_matrix(record: TextRecord) -> Any:
+    """Normalized vectors for non-empty lines, plus the section index of each."""
+    model = _load_model()
+    name = embedding_model_name()
+    if model is None or not record.lines:
+        return None
+    key = (record.content_hash, name)
+    with _LOCK:
+        cached = _LINE_CACHE.get(key)
+        if cached is not None:
+            _LINE_CACHE.move_to_end(key)
+            return cached
+    indexes: list[int] = []
+    texts: list[str] = []
+    for line in record.lines:
+        if not line.text.strip() or line.text.startswith("#"):
+            continue
+        indexes.append(line.section_index)
+        texts.append(f"passage: {line.text.strip()[:1000]}")
+    if not texts:
+        return None
+    packed = (indexes, _encode(model, texts))
+    with _LOCK:
+        return _remember(_LINE_CACHE, key, packed)
+
+
+def semantic_line_scores(record: TextRecord, question: str) -> dict[int, float]:
+    """Best line cosine in each section. Empty when no local model."""
+    packed = line_matrix(record)
+    vector = query_vector(question)
+    if packed is None or vector is None:
+        return {}
+    indexes, matrix = packed
+    scores = matrix @ vector
+    best: dict[int, float] = {}
+    for section_index, score in zip(indexes, scores, strict=True):
+        value = float(score)
+        if value > best.get(section_index, -1.0):
+            best[section_index] = value
+    return best
+
+
+def passage_matrix(passages: tuple[str, ...]) -> Any:
+    """Cached vectors for a fixed description list. Empty when no local model."""
+    model = _load_model()
+    name = embedding_model_name()
+    if model is None or not passages:
+        return None
+    key = (name, passages)
+    with _LOCK:
+        cached = _PASSAGE_CACHE.get(key)
+        if cached is not None:
+            _PASSAGE_CACHE.move_to_end(key)
+            return cached
+    texts = [f"passage: {text.strip()[:1000]}" for text in passages]
+    matrix = _encode(model, texts)
+    with _LOCK:
+        return _remember(_PASSAGE_CACHE, key, matrix)
+
+
+def max_similarity(text: str, passages: tuple[str, ...]) -> float | None:
+    """Highest cosine between one text and a description list. None without a model."""
+    matrix = passage_matrix(passages)
+    vector = query_vector(text)
+    if matrix is None or vector is None:
+        return None
+    scores = matrix @ vector
+    if len(scores) == 0:
+        return None
+    return float(max(float(score) for score in scores))

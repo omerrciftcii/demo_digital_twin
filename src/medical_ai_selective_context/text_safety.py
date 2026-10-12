@@ -19,6 +19,8 @@ from typing import Literal
 
 from .index import normalize_text
 from .text_document import TextRecord
+from .text_embed import max_similarity
+from .text_llm import env_number
 from .text_relevance import drug_names, section_kind
 from .text_relevance import fold as fold_row
 
@@ -133,6 +135,21 @@ _TREATMENT = (
     r"dozu dogrudan",
     r"guvenli oldugunu yaz",
 )
+# Descriptions for the embedding check. Similarity decides, not a string match.
+# No chart value and no dose. A missing local encoder leaves this path idle.
+_EMERGENCY_DESCRIPTIONS = (
+    "Göğüste ezici baskı veya sıkışma, ağrının kola çeneye veya sırta yayılması",
+    "Ani ve ağır nefes darlığı, konuşurken cümleyi tamamlayamama, dudak renginin morarması",
+    "Astım krizinde nefesin kesilmesi ve sözcüklerin çıkmaması",
+    "Gebelikte şiddetli baş ağrısı, görme bozukluğu ve üst karın ağrısının birlikte olması",
+    "Yüzün bir yanında düşme, tek tarafta ani güç kaybı, konuşmanın bozulması",
+    "Durmayan ağır kanama",
+    "O anda gelişen bayılma veya bilincin kapanması",
+    "Yüzde dudakta veya boğazda ani şişlik ile birlikte nefes alamama",
+    "Kan şekerinin hızla düşmesi, titreme ve bilincin bulanması",
+)
+_EMERGENCY_SIMILARITY = 0.82
+
 _UNSAFE_ANSWER = (
     r"dozunuzu (artir|azalt|kes|degistir|birak|yukselt)",
     r"dozu (artirin|azaltin|kesin|birakin)",
@@ -170,12 +187,27 @@ def _matches(text: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, text) for pattern in patterns)
 
 
+def emergency_threshold() -> float:
+    """Cosine at or above this uses the emergency wording. Configurable."""
+    return env_number(
+        "TEXT_EMERGENCY_SIMILARITY", _EMERGENCY_SIMILARITY, 0.0, 1.0, integer=False,
+    )
+
+
+def _similar_emergency(question: str) -> bool:
+    """True when the question is close to an emergency description."""
+    score = max_similarity(question, _EMERGENCY_DESCRIPTIONS)
+    if score is None:
+        return False
+    return score >= emergency_threshold()
+
+
 def classify_question(question: str) -> SafetyDecision:
     text = normalize_text(question or "")
     if _matches(text, _SELF_HARM_RE):
         reason = "self_harm"
         quotes = False
-    elif _matches(text, _EMERGENCY_RE):
+    elif _matches(text, _EMERGENCY_RE) or _similar_emergency(question):
         reason = "emergency"
         quotes = False
     elif _matches(text, _EXFIL_RE):

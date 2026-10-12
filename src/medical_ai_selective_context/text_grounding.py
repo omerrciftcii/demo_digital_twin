@@ -16,6 +16,7 @@ from rapidfuzz import fuzz
 from .index import normalize_text
 from .text_document import TextRecord
 from .text_llm import strip_think_blocks
+from .text_relevance import drug_names
 from .text_safety import answer_has_unsafe_advice
 
 _FENCE = re.compile(r"^```[a-zA-Z0-9_-]*\n?|\n?```$")
@@ -47,6 +48,11 @@ _RELATIVE = re.compile(
 _SCHEDULE = re.compile(r"\d+(?:\s*[x×]\s*\d+)+", re.IGNORECASE)
 _BULLET = re.compile(r"^(?:[-*•])\s+\S")
 _SOFT_DROPS = frozenset({"unsupported_claim", "missing_citation"})
+# A practical line may name a dose form. That is not general guidance.
+_DOSE_FORM = re.compile(
+    r"\b(?:tablet|kapsul|miligram|mililitre|damla|unite|inhaler|puf|mg|ml)\b",
+)
+_ATTENTION_MARK = "dikkat"
 # Causal connectives. Longer phrases win. These are grammar, not chart values.
 _CAUSE_MARKERS = (
     "sonucu olarak",
@@ -2193,8 +2199,10 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                     errors, debug, "incompatible_unit", sentence, _cite(marker, record, index),
                 )
                 continue
+            guided = _general_guidance(sentence, status)
             if (
-                not inherits
+                not guided
+                and not inherits
                 and not anchored
                 and not needs_number
                 and not _states_absence(sentence)
@@ -2212,7 +2220,12 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                     moved = True
                 index = relocated
                 blob = record.sections[index].text
-            if status == "answered" and index is None and not _states_absence(sentence):
+            if (
+                status == "answered"
+                and index is None
+                and not guided
+                and not _states_absence(sentence)
+            ):
                 _failure(
                     errors, debug, "missing_citation", sentence, _cite(marker, record, index),
                 )
@@ -2253,7 +2266,9 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
         return GroundingResult(
             False, "validation_failed", "", [], errors[-1] if errors else "missing_citation", debug,
         )
-    if status == "answered" and not citations:
+    if status == "answered" and not citations and any(
+        not _general_guidance(sentence, status) for sentence in kept
+    ):
         return GroundingResult(
             False, "validation_failed", "", [], "missing_citation",
             debug or [{
@@ -2281,6 +2296,36 @@ _ABSENCE_PHRASES = (
     "kayitta yok", "kayitta bulunmuyor",
 )
 _ABSENCE_TOKENS = frozenset({"yok", "yoktur"})
+
+
+def _is_attention(sentence: str) -> bool:
+    return normalize_text(sentence).lstrip().startswith(_ATTENTION_MARK)
+
+
+def _has_dose_form(text: str) -> bool:
+    return _DOSE_FORM.search(normalize_text(text)) is not None
+
+
+def _general_guidance(sentence: str, status: str) -> bool:
+    """Practical advice with no chart fact: a bullet, a Dikkat line, or a gap answer.
+
+    A gap answer is the information-missing status. It may suggest safe steps.
+    A number, date, dose, or drug name is still a chart claim and is checked.
+    """
+    if (
+        _numbers(sentence)
+        or _schedules(sentence)
+        or _DATE_TOKEN.search(sentence)
+        or _ICD.search(sentence)
+        or _RELATIVE.search(sentence)
+        or _has_dose_form(sentence)
+        or drug_names(sentence)
+        or answer_has_unsafe_advice(sentence)
+    ):
+        return False
+    if _is_bullet(sentence) or _is_attention(sentence):
+        return True
+    return status == "insufficient_evidence"
 
 
 def _states_absence(text: str) -> bool:

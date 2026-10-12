@@ -6,7 +6,9 @@ A generated drug dictionary (data/drug_classes.json, built by
 scripts/build_drug_dictionary.py) links the other names on the same ATC
 entry. Names are resolved through a startup trigram index, not a full scan.
 Section order is lexical overlap fused with a local embedding when one is
-on disk. Symptom-to-diagnosis mapping is left to the model.
+on disk. Line vectors add a section when the best line clears a similarity
+floor, and the latest question outweighs earlier turns. Symptom-to-diagnosis
+mapping is left to the model.
 """
 
 from __future__ import annotations
@@ -20,9 +22,17 @@ from snowballstemmer import stemmer
 from .index import normalize_text
 from .text_document import TextRecord
 from .text_drug_index import drug_names, matched_entries
-from .text_embed import semantic_section_scores
+from .text_embed import semantic_line_scores, semantic_section_scores
+from .text_llm import env_number
 
-__all__ = ["drug_names", "matched_entries", "question_terms", "relevant_context", "relevant_sections"]
+__all__ = [
+    "drug_names",
+    "matched_entries",
+    "prompt_plan",
+    "question_terms",
+    "relevant_context",
+    "relevant_sections",
+]
 
 _STEMMER = stemmer("turkish")
 _STOP_PATH = Path(__file__).resolve().parent / "data" / "stopwords-tr.txt"
@@ -178,6 +188,11 @@ def _lexical_score(text: str, terms: list[str], aliases: set[str]) -> int:
 _RRF_K = 60
 _SEMANTIC_MARGIN = 0.05
 _SEMANTIC_ONLY_CAP = 2
+# The latest question outweighs earlier turns. These are rank weights.
+_QUESTION_WEIGHT = 3
+_HISTORY_WEIGHT = 1
+_EMBED_TOP_K = 4
+_EMBED_FLOOR = 0.82
 
 
 def _fuse_sections(lexical: dict[int, int], semantic: dict[int, float]) -> list[int]:
@@ -333,21 +348,90 @@ def lab_rows(record: TextRecord) -> list[str]:
     return rows
 
 
-def relevant_sections(record: TextRecord, question: str) -> list:
+def embed_top_k() -> int:
+    """How many embedding-only sections may join the lexical hits."""
+    return int(env_number("TEXT_SECTION_TOP_K", _EMBED_TOP_K, 1, 32, integer=True))
+
+
+def embed_floor() -> float:
+    """Minimum cosine for an embedding-only section. Below this, lexical wins."""
+    return env_number("TEXT_SECTION_SIMILARITY", _EMBED_FLOOR, 0.0, 1.0, integer=False)
+
+
+def _topk_above_floor(scores: dict[int, float]) -> list[int]:
+    floor = embed_floor()
+    ordered = sorted(
+        (index for index, score in scores.items() if score >= floor),
+        key=lambda index: (-scores[index], index),
+    )
+    return ordered[:embed_top_k()]
+
+
+def _lexical_map(record: TextRecord, question: str, prior: str) -> dict[int, int]:
+    """Question terms count more than terms that appear only in earlier turns."""
+    q_terms = question_terms(question)
+    q_alias = _alias_stems(question)
+    p_terms = [token for token in question_terms(prior) if token not in q_terms] if prior.strip() else []
+    p_alias = (_alias_stems(prior) - q_alias) if prior.strip() else set()
+    scores: dict[int, int] = {}
+    for index, section in enumerate(record.sections):
+        score = _lexical_score(section.text, q_terms, q_alias) * _QUESTION_WEIGHT
+        if p_terms or p_alias:
+            score += _lexical_score(section.text, p_terms, p_alias) * _HISTORY_WEIGHT
+        if score:
+            scores[index] = score
+    return scores
+
+
+def _selection(
+    record: TextRecord, question: str, prior: str = "",
+) -> tuple[dict[int, float], list[int]]:
+    """Rank of every section, and the relevant indexes, best first.
+
+    Lexical overlap always qualifies. Section and line embeddings add a
+    section only when it is in the top scores and at or above the floor.
+    Embeddings use the latest question. Earlier turns add lexical weight.
+    """
+    lexical = _lexical_map(record, question, prior)
+    semantic = semantic_section_scores(record, question)
+    line_scores = semantic_line_scores(record, question)
+    if prior.strip():
+        history_semantic = semantic_section_scores(record, prior)
+        scale = _HISTORY_WEIGHT / _QUESTION_WEIGHT
+        for index, score in history_semantic.items():
+            discounted = score * scale
+            current = max(semantic.get(index, 0.0), line_scores.get(index, 0.0))
+            if discounted > current:
+                semantic = {**semantic, index: discounted}
+    order = _fuse_sections(lexical, semantic)
+    for index in _topk_above_floor(semantic):
+        if index not in order:
+            order.append(index)
+    for index in _topk_above_floor(line_scores):
+        if index not in order:
+            order.append(index)
+    rank: dict[int, float] = {}
+    for index in range(len(record.sections)):
+        cosine = max(semantic.get(index, 0.0), line_scores.get(index, 0.0))
+        rank[index] = float(lexical.get(index, 0)) + cosine * _QUESTION_WEIGHT
+    return rank, order
+
+
+def prompt_plan(
+    record: TextRecord, question: str, *, prior: str = "",
+) -> tuple[dict[int, float], list[int]]:
+    """Section scores (high is more relevant) and the relevant indexes."""
+    return _selection(record, question, prior)
+
+
+def relevant_sections(record: TextRecord, question: str, *, prior: str = "") -> list:
     """Whole sections that overlap the question, highest fused score first.
 
     Lexical overlap always qualifies. A local embedding may add a section
-    that stands above the rest of the record, and may reorder lexical hits.
+    that stands above the rest of the record, or whose best line clears the
+    similarity floor. The latest question outweighs earlier turns.
     """
-    terms = question_terms(question)
-    aliases = _alias_stems(question)
-    lexical = {
-        index: _lexical_score(section.text, terms, aliases)
-        for index, section in enumerate(record.sections)
-    }
-    lexical = {index: score for index, score in lexical.items() if score > 0}
-    semantic = semantic_section_scores(record, question)
-    order = _fuse_sections(lexical, semantic)
+    _rank, order = _selection(record, question, prior)
     return [record.sections[index] for index in order]
 
 

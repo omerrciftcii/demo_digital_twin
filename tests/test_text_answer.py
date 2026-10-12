@@ -882,7 +882,7 @@ def test_blocked_answer_stores_redacted_model_text(tmp_path):
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
-        seen["question"] = body["messages"][-1]["content"]
+        seen["messages"] = body["messages"]
         text = (
             "DURUM: YANIT\nUydurdum 999 mg. [Laboratuvar (hastane)]\n"
             "No 12345678901\n"
@@ -897,7 +897,8 @@ def test_blocked_answer_stores_redacted_model_text(tmp_path):
         require_zdr=False,
     ), httpx.MockTransport(handler))
     result = asyncio.run(TextAnswerer(client).answer(record, "Son eGFR değerim kaç?"))
-    assert "41 mL/dk/1,73 m²" in seen["question"]
+    assert "41 mL/dk/1,73 m²" in seen["messages"][1]["content"]
+    assert "41 mL/dk/1,73 m²" not in seen["messages"][-1]["content"]
     assert result["status"] == "validation_failed"
     assert "999" not in result["answer"]
     assert "12345678901" not in result["answer"]
@@ -1032,7 +1033,7 @@ def test_eval_records_a_timeout_and_still_writes_the_other_cases(tmp_path):
 
 
 def test_overlapping_sections_go_to_the_model_in_full():
-    """The question message carries each hit section whole. The full chart stays cached above it."""
+    """The chart is sent once. The question message names headings, not a second copy."""
     record = _record("patient-01")
     question = "Hâlâ Coumadin kullanıyor muyum?"
     sections = relevant_sections(record, question)
@@ -1043,9 +1044,12 @@ def test_overlapping_sections_go_to_the_model_in_full():
         assert section.text.strip() in context
     messages = build_messages(record, question)
     assert record.text in messages[1]["content"]
-    assert context in messages[-1]["content"]
+    assert context not in messages[-1]["content"]
+    for section in sections:
+        assert section.heading in messages[-1]["content"]
     assert messages[-1]["content"].endswith(question)
     assert "Kalıp giriş" in messages[-1]["content"]
+    assert "ipucudur" in messages[-1]["content"]
 
     femara = relevant_context(_record("patient-03"), "Femara'yı kullanmaya devam ediyor muyum?")
     assert "FEMARA" in femara
@@ -1195,8 +1199,9 @@ def test_new_patients_and_natural_questions_stay_grounded():
         assert message.endswith(row["question"])
         assert "Kayıtta şunu görüyorum" not in message
         if context:
-            assert context in message
+            assert context not in message
             for section in relevant_sections(record, row["question"]):
+                assert section.heading in message
                 assert section.text.strip() in context
 
 

@@ -319,6 +319,8 @@ def score_case(case: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]
     validation = response.get("validation")
     if isinstance(validation, dict) and validation.get("error"):
         row["validationError"] = validation["error"]
+        if validation.get("debug"):
+            row["validationDebug"] = validation["debug"]
     return row
 
 

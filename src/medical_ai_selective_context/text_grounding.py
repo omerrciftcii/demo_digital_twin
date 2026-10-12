@@ -9,7 +9,7 @@ phrase that the cited section does not contain drops the answer.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from rapidfuzz import fuzz
 
@@ -67,6 +67,31 @@ _CAUSE_STOP = frozenset({
 # Rounding slack for a sum or difference, not a clinical limit.
 _DERIVED_ABS = 0.51
 _DERIVED_REL = 0.01
+# Nearest recorded amount for a from-to claim. Off by one still counts as that amount.
+_SNAP_ABS = 1.0
+_SNAP_REL = 0.01
+# A dated chart event is not a cause. These are record-keeping words, not clinical facts.
+_EVENT_WORDS = frozenset({
+    "belge", "duzenlendi", "duzenlenmis", "epikriz", "kaydedildi", "kaydedilmis",
+    "kaydi", "kayit", "kayitta", "rapor", "raporu", "recete", "recetesi", "receteye",
+    "tarih", "tarihi", "tarihinde", "tarihte", "verildi", "verilmis", "verilmistir",
+    "yazildi", "yazilmis",
+})
+# Finite endings, longest first. A past ending counts only after a consonant,
+# so a noun plus an accusative vowel is not a verb.
+_FINITE_SUFFIXES = (
+    "diniz", "dunuz", "tiniz", "tunuz",
+    "yordu", "yormus", "mekte", "makta",
+    "mistir", "mustur", "ecektir", "acaktir",
+    "ecek", "acak", "yor", "mis", "mus",
+    "dim", "din", "dik", "dum", "dun", "duk",
+    "tim", "tin", "tik", "tum", "tun", "tuk",
+    "di", "du", "ti", "tu",
+)
+_PAST_SUFFIXES = frozenset({
+    "di", "du", "ti", "tu", "dim", "din", "dik", "dum", "dun", "duk",
+    "tim", "tin", "tik", "tum", "tun", "tuk", "diniz", "dunuz", "tiniz", "tunuz",
+})
 _BASELINE_WORDS = ("onceki", "olagan", "bazal", "baslangic", "eski")
 _CURRENT_WORDS = ("guncel", "simdiki", "bugunku", "mevcut", "suanki")
 _UP_DOWN = (
@@ -119,6 +144,7 @@ class GroundingResult:
     answer: str
     citations: list[dict]
     error: str = ""
+    debug: list[dict] = field(default_factory=list)
 
 
 def strip_model_wrappers(text: str) -> str:
@@ -468,20 +494,58 @@ def _cause_split(sentence: str) -> tuple[str, str, str] | None:
     return left, sentence[_origin_at(lengths, found[0]):_origin_at(lengths, found[1])], right
 
 
+def _finite_word(token: str) -> bool:
+    for suffix in _FINITE_SUFFIXES:
+        if not token.endswith(suffix):
+            continue
+        stem_len = len(token) - len(suffix)
+        if stem_len < 2:
+            continue
+        if suffix in _PAST_SUFFIXES and token[stem_len - 1] in "aeiou":
+            continue
+        return True
+    return False
+
+
+def _can_stand_alone(text: str) -> bool:
+    """A shortened clause needs a measurement or a finite verb, otherwise it is a fragment."""
+    if any(_parse_quantity(match.group(0)) is not None for match in _numbers(text)):
+        return True
+    folded = normalize_text(text)
+    return any(_finite_word(token) for token in re.findall(r"[a-z]{4,}", folded))
+
+
+def _cause_content(text: str) -> list[str]:
+    return [token for token in _key_tokens(text) if token not in _EVENT_WORDS]
+
+
+def _measured_amount(side: str, blob: str) -> bool:
+    """A unit-bearing amount can support a factual side. A bare date cannot support a cause."""
+    for match in _numbers(side):
+        if _skipped_number(side, match) or _parse_quantity(match.group(0)) is None:
+            continue
+        if _unit_family(side, match) is None:
+            continue
+        if _token_in_text(match.group(0), blob) or _derived_quantity(side, match, blob):
+            return True
+    return False
+
+
 def _side_supported(side: str, blob: str) -> bool:
     if not side.strip() or not blob:
         return False
     folded = normalize_text(blob)
-    if any(token in folded for token in _key_tokens(side)):
+    if any(token in folded for token in _cause_content(side)):
         return True
-    return any(
-        not _skipped_number(side, match) and _token_in_text(match.group(0), blob)
-        for match in _numbers(side)
-    )
+    return _measured_amount(side, blob)
 
 
 def _without_unsupported_cause(sentence: str, blob: str) -> str | None:
-    """Drop a cause clause whose words are not in the cited section."""
+    """Drop a cause clause whose words are not in the cited section.
+
+    A date or a record-keeping event does not support the cause. If the remaining
+    words are not a measurement or a finite clause, the whole sentence drops.
+    """
     parts = _cause_split(sentence)
     if parts is None:
         return sentence
@@ -497,7 +561,7 @@ def _without_unsupported_cause(sentence: str, blob: str) -> str | None:
     else:
         return None
     kept = kept.strip(" ,;:-")
-    if not kept:
+    if not kept or not _can_stand_alone(kept):
         return None
     if kept[-1] not in ".!?":
         kept += "."
@@ -607,37 +671,47 @@ def _measurement_words(sentence: str) -> list[str]:
     ]
 
 
-def _words_near(blob: str, match: re.Match[str], words: list[str]) -> bool:
+def _words_near_span(blob: str, start: int, end: int, words: list[str]) -> bool:
     if not words:
         return True
-    window = normalize_text(blob[max(0, match.start() - 80):match.end() + 80])
+    window = normalize_text(blob[max(0, start - 80):end + 80])
     return any(word in window for word in words)
 
 
-def _value_hits(
+def _within(left: float, right: float, abs_limit: float, rel_limit: float) -> bool:
+    scale = max(abs(left), abs(right), 1.0)
+    return abs(left - right) <= max(abs_limit, scale * rel_limit)
+
+
+def _snapped_hits(
     blob: str, value: float, family: str | None, words: list[str],
 ) -> list[dict]:
-    hits: list[dict] = []
-    near: list[dict] = []
+    """Recorded amounts within a small tolerance, keeping only the nearest ones."""
+    pool: list[dict] = []
     for match in _numbers(blob):
         parsed = _parse_quantity(match.group(0))
-        if parsed is None or not _near_value(parsed, value):
+        if parsed is None or not _within(parsed, value, _SNAP_ABS, _SNAP_REL):
             continue
         other = _unit_family(blob, match)
         if family and other and family != other:
             continue
-        hit = {
+        pool.append({
             "value": parsed,
             "start": match.start(),
+            "end": match.end(),
             "role": _nearest_role(blob, match.start()),
             "date": _date_near(blob, match.start()),
-        }
-        hits.append(hit)
-        if _words_near(blob, match, words):
-            near.append(hit)
-    if words and near:
-        return near
-    return hits
+            "gap": abs(parsed - value),
+        })
+    if not pool:
+        return []
+    near = [
+        hit for hit in pool
+        if _words_near_span(blob, hit["start"], hit["end"], words)
+    ]
+    chosen = near or pool
+    closest = min(hit["gap"] for hit in chosen)
+    return [hit for hit in chosen if hit["gap"] == closest]
 
 
 def _ordered_endpoints(left: list[dict], right: list[dict]) -> tuple[float, float] | None:
@@ -693,15 +767,44 @@ def _trend_match(sentence: str) -> re.Match[str] | None:
     return None
 
 
-def _align_trend(sentence: str, blob: str) -> str | None:
-    """Keep a from-to claim only when both amounts exist and the direction matches time."""
+@dataclass
+class _TrendResult:
+    action: str
+    text: str = ""
+    issues: list[dict] = field(default_factory=list)
+
+
+def _plain_number(value: float) -> str:
+    rounded = round(value)
+    if abs(value - rounded) <= 1e-9:
+        return str(int(rounded))
+    return f"{value:.4f}".rstrip("0").rstrip(".")
+
+
+def _issue(check: str, sentence: str, number: str, nearest: str = "", detail: str = "") -> dict:
+    return {
+        "check": check,
+        "number": number,
+        "nearest": nearest,
+        "detail": detail,
+        "sentence": " ".join(sentence.split()),
+    }
+
+
+def _assess_trend(sentence: str, blob: str) -> _TrendResult:
+    """Match a from-to claim to dated or usual-versus-current order.
+
+    An off-by-a-little amount maps to the nearest recorded value and is a wrong
+    value, not a corrected answer. Exact endpoints with a reversed direction are
+    reordered.
+    """
     match = _trend_match(sentence)
     if match is None or not blob:
-        return sentence
+        return _TrendResult("skip", sentence)
     start_value = _parse_quantity(match.group("a"))
     end_value = _parse_quantity(match.group("b"))
     if start_value is None or end_value is None:
-        return sentence
+        return _TrendResult("skip", sentence)
     words = _measurement_words(sentence)
     start_span = match.span("a")
     end_span = match.span("b")
@@ -709,35 +812,62 @@ def _align_trend(sentence: str, blob: str) -> str | None:
     end_family = _match_family(_unit_window(sentence, end_span[1]))
     shared = start_family or end_family
     if start_family and end_family and start_family != end_family:
-        return None
-    left = _value_hits(blob, start_value, shared, words)
-    right = _value_hits(blob, end_value, shared, words)
+        return _TrendResult("fail", issues=[_issue(
+            "unsupported_trend", sentence, match.group("a"), detail="unit_family",
+        )])
+    left = _snapped_hits(blob, start_value, shared, words)
+    right = _snapped_hits(blob, end_value, shared, words)
     if not left or not right:
-        return None
+        missing = match.group("a") if not left else match.group("b")
+        return _TrendResult("fail", issues=[_issue(
+            "unsupported_trend", sentence, missing, detail="missing_endpoint",
+        )])
+    start_recorded = left[0]["value"]
+    end_recorded = right[0]["value"]
     ordered = _ordered_endpoints(left, right)
-    if ordered is None:
-        return sentence
-    earlier, later = ordered
-    if _near_value(earlier, later):
-        return sentence
-    true_up = later > earlier
-    verb = match.groupdict().get("verb")
-    direction = _verb_direction(verb) if verb else None
-    forward = _near_value(start_value, earlier) and _near_value(end_value, later)
-    backward = _near_value(start_value, later) and _near_value(end_value, earlier)
-    if not forward and not backward:
-        return None
-    replacements: list[tuple[int, int, str]] = []
-    if backward:
-        replacements.append((start_span[0], start_span[1], match.group("b")))
-        replacements.append((end_span[0], end_span[1], match.group("a")))
-    stated = None if direction is None else direction[0]
-    true_dir = 1 if true_up else -1
-    if verb and stated is not None and stated != true_dir:
-        replacements.append((match.start("verb"), match.end("verb"), direction[1]))
-    if not replacements:
-        return sentence
-    return _replace_spans(sentence, replacements)
+    reversed_detail = ""
+    exact = _near_value(start_value, start_recorded) and _near_value(end_value, end_recorded)
+    if ordered is not None:
+        earlier, later = ordered
+        separated = not _near_value(earlier, later)
+        true_up = later > earlier and separated
+        forward = _within(start_value, earlier, _SNAP_ABS, _SNAP_REL) and _within(
+            end_value, later, _SNAP_ABS, _SNAP_REL,
+        )
+        backward = _within(start_value, later, _SNAP_ABS, _SNAP_REL) and _within(
+            end_value, earlier, _SNAP_ABS, _SNAP_REL,
+        )
+        verb = match.groupdict().get("verb")
+        direction = _verb_direction(verb) if verb else None
+        stated = None if direction is None else direction[0]
+        true_dir = 1 if true_up else -1
+        verb_wrong = stated is not None and stated != true_dir and separated and (forward or backward)
+        if separated and (backward or verb_wrong):
+            reversed_detail = "reversed_direction"
+        if exact and separated and (forward or backward):
+            replacements: list[tuple[int, int, str]] = []
+            if backward:
+                replacements.append((start_span[0], start_span[1], match.group("b")))
+                replacements.append((end_span[0], end_span[1], match.group("a")))
+            if verb and direction is not None and stated is not None and stated != true_dir:
+                replacements.append((match.start("verb"), match.end("verb"), direction[1]))
+            if replacements:
+                return _TrendResult("rewrite", _replace_spans(sentence, replacements))
+        if exact and separated and not forward and not backward:
+            return _TrendResult("fail", issues=[_issue(
+                "unsupported_trend", sentence, match.group("a"), detail="unordered",
+            )])
+    inexact: list[tuple[str, float]] = []
+    if not _near_value(start_value, start_recorded):
+        inexact.append((match.group("a"), start_recorded))
+    if not _near_value(end_value, end_recorded):
+        inexact.append((match.group("b"), end_recorded))
+    if inexact:
+        return _TrendResult("fail", issues=[
+            _issue("wrong_value", sentence, token, _plain_number(recorded), reversed_detail)
+            for token, recorded in inexact
+        ])
+    return _TrendResult("keep", sentence)
 
 
 def _near(blob: str, token: str, unit: str) -> bool:
@@ -768,34 +898,77 @@ def _codes_supported(claim: str, blob: str) -> bool:
     return all(code.group(0).casefold() in folded for code in _ICD.finditer(claim))
 
 
-def _numbers_supported(claim: str, blob: str) -> bool:
+def _line_span(blob: str, start: int) -> tuple[int, int]:
+    left = blob.rfind("\n", 0, start) + 1
+    right = blob.find("\n", start)
+    if right < 0:
+        right = len(blob)
+    return left, right
+
+
+def _family_at(blob: str, match: re.Match[str]) -> str | None:
+    """The unit on this amount, or the last explicit unit earlier on the same line."""
+    explicit = _unit_family(blob, match)
+    if explicit:
+        return explicit
+    left, right = _line_span(blob, match.start())
+    line = blob[left:right]
+    local = match.start() - left
+    family = None
+    for other in _numbers(line):
+        if other.start() >= local:
+            break
+        found = _unit_family(line, other)
+        if found:
+            family = found
+    return family
+
+
+def _unit_attached(claim: str, match: re.Match[str], blob: str) -> bool:
+    family = _unit_family(claim, match)
+    if family is None:
+        return True
+    for other in _numbers(blob):
+        if other.group(0) != match.group(0):
+            continue
+        if _family_at(blob, other) == family:
+            return True
+    return False
+
+
+def _unsupported_token(claim: str, blob: str) -> str:
+    """The first number or date the cited text does not support. Empty when all of them do."""
     if not _codes_supported(claim, blob):
-        return False
+        code = next(_ICD.finditer(claim), None)
+        return "" if code is None else code.group(0)
     for match in _numbers(claim):
         if _skipped_number(claim, match):
             continue
         token = match.group(0)
-        if _token_in_text(token, blob):
-            unit = _unit_after(claim, match.end())
-            if unit and not _near(blob, token, unit):
-                return False
+        if _token_in_text(token, blob) and _unit_attached(claim, match, blob):
             prefixed = match.start() > 0 and claim[match.start() - 1] == "%"
             if prefixed and f"%{token}" not in blob and f"% {token}" not in blob:
-                return False
+                return token
             suffixed = match.end() < len(claim) and claim[match.end()] == "%"
             if suffixed and f"{token}%" not in blob and f"%{token}" not in blob:
-                return False
+                return token
             continue
-        if not _derived_quantity(claim, match, blob):
-            return False
+        if _derived_quantity(claim, match, blob):
+            continue
+        return token
+
     def squash(value: str) -> str:
         return re.sub(r"\s+", " ", value.casefold())
 
     squashed = squash(blob)
     for match in _RELATIVE.finditer(claim):
         if squash(match.group(0)) not in squashed:
-            return False
-    return True
+            return match.group(0)
+    return ""
+
+
+def _numbers_supported(claim: str, blob: str) -> bool:
+    return _unsupported_token(claim, blob) == ""
 
 
 def _resolve_section(marker: str, claim: str, record: TextRecord) -> int | None:
@@ -992,6 +1165,39 @@ def _remember(
     })
 
 
+def _cite(marker: str | None, record: TextRecord, index: int | None) -> str:
+    if marker:
+        return marker
+    if index is not None:
+        return record.sections[index].heading
+    return ""
+
+
+def _failure(
+    errors: list[str], debug: list[dict], check: str, sentence: str,
+    citation: str, number: str = "", nearest: str = "", detail: str = "",
+) -> None:
+    errors.append(check)
+    debug.append({
+        "check": check,
+        "number": number,
+        "nearest": nearest,
+        "citation": citation,
+        "sentence": " ".join(sentence.split()),
+        "detail": detail,
+    })
+
+
+def _take_issues(
+    errors: list[str], debug: list[dict], issues: list[dict], citation: str,
+) -> None:
+    for item in issues:
+        _failure(
+            errors, debug, item["check"], item["sentence"], citation,
+            item.get("number", ""), item.get("nearest", ""), item.get("detail", ""),
+        )
+
+
 def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     parsed = _status_and_body(strip_model_wrappers(raw))
     if parsed is None:
@@ -1004,6 +1210,7 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     seen_sentences: list[str] = []
     kept: list[str] = []
     errors: list[str] = []
+    debug: list[dict] = []
     saw_unsafe = False
     last_index: int | None = None
     sentence_count = 0
@@ -1030,7 +1237,13 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                 index = _section_for_claim(sentence, record)
             blob = record.sections[index].text if index is not None else ""
             needs_number = bool(_numbers(sentence) or _RELATIVE.search(sentence))
+            trend = _assess_trend(sentence, blob)
             if needs_number and (index is None or not _numbers_supported(sentence, blob)):
+                if trend.action == "fail" and any(
+                    item["check"] == "wrong_value" for item in trend.issues
+                ):
+                    _take_issues(errors, debug, trend.issues, _cite(marker, record, index))
+                    continue
                 softened = _without_unsupported_cause(sentence, blob) if blob else None
                 if (
                     softened
@@ -1039,6 +1252,7 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                 ):
                     sentence = softened
                     edited = True
+                    trend = _assess_trend(sentence, blob)
                 else:
                     relocated = _section_supporting_numbers(sentence, record)
                     if relocated is None and softened and softened != sentence:
@@ -1047,12 +1261,20 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                             sentence = softened
                             edited = True
                     if relocated is None:
-                        errors.append("unsupported_number")
+                        if trend.action == "fail":
+                            _take_issues(errors, debug, trend.issues, _cite(marker, record, index))
+                        else:
+                            _failure(
+                                errors, debug, "unsupported_number", sentence,
+                                _cite(marker, record, index),
+                                _unsupported_token(sentence, blob),
+                            )
                         continue
                     if index != relocated:
                         moved = True
                     index = relocated
                     blob = record.sections[index].text
+                    trend = _assess_trend(sentence, blob)
             elif needs_number and content_words(sentence) and not _overlaps_section(sentence, blob):
                 relocated = _section_supporting_numbers(sentence, record)
                 if (
@@ -1063,35 +1285,47 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                     moved = True
                     index = relocated
                     blob = record.sections[index].text
+                    trend = _assess_trend(sentence, blob)
             revised = _without_unsupported_cause(sentence, blob)
             if revised is None:
-                errors.append("unsupported_causal_link")
+                _failure(
+                    errors, debug, "unsupported_causal_link", sentence,
+                    _cite(marker, record, index),
+                )
                 continue
             if revised != sentence:
                 sentence = revised
                 edited = True
                 needs_number = bool(_numbers(sentence) or _RELATIVE.search(sentence))
-            aligned = _align_trend(sentence, blob)
-            if aligned is None:
-                errors.append("unsupported_trend")
+                trend = _assess_trend(sentence, blob)
+            if trend.action == "fail":
+                _take_issues(errors, debug, trend.issues, _cite(marker, record, index))
                 continue
-            if aligned != sentence:
-                sentence = aligned
+            if trend.action == "rewrite":
+                sentence = trend.text
                 edited = True
             if _unit_conflict(sentence, record.text):
-                errors.append("incompatible_unit")
+                _failure(
+                    errors, debug, "incompatible_unit", sentence, _cite(marker, record, index),
+                )
                 continue
             if not needs_number and (index is None or not _overlaps_section(sentence, blob)):
                 relocated = _section_overlapping(sentence, record)
                 if relocated is None:
-                    errors.append("unsupported_claim" if index is not None else "missing_citation")
+                    _failure(
+                        errors, debug,
+                        "unsupported_claim" if index is not None else "missing_citation",
+                        sentence, _cite(marker, record, index),
+                    )
                     continue
                 if index != relocated:
                     moved = True
                 index = relocated
                 blob = record.sections[index].text
             if status == "answered" and index is None:
-                errors.append("missing_citation")
+                _failure(
+                    errors, debug, "missing_citation", sentence, _cite(marker, record, index),
+                )
                 continue
             signature = " ".join(normalize_text(_MARKER.sub(" ", sentence)).split())
             if signature and any(
@@ -1107,10 +1341,16 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
         if saw_unsafe:
             return GroundingResult(False, "safety_refusal", "", [], "unsafe_advice")
         return GroundingResult(
-            False, "validation_failed", "", [], errors[-1] if errors else "missing_citation",
+            False, "validation_failed", "", [], errors[-1] if errors else "missing_citation", debug,
         )
     if status == "answered" and not citations:
-        return GroundingResult(False, "validation_failed", "", [], "missing_citation")
+        return GroundingResult(
+            False, "validation_failed", "", [], "missing_citation",
+            debug or [{
+                "check": "missing_citation", "number": "", "nearest": "",
+                "citation": "", "sentence": "", "detail": "",
+            }],
+        )
     answer = (
         body if len(kept) == sentence_count and not hide_markers and not moved and not edited
         else "\n".join(kept)

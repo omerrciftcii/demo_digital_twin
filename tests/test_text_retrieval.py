@@ -243,6 +243,19 @@ def test_trend_direction_follows_the_record_order():
         wearable,
     )
     assert not missing.ok
+    assert missing.error == "wrong_value"
+    assert missing.answer == ""
+    flagged = next(item for item in missing.debug if item["number"] == "79")
+    assert flagged["nearest"] == "78"
+    assert flagged["check"] == "wrong_value"
+    assert flagged["detail"] == "reversed_direction"
+    assert flagged["citation"] == "Giyilebilir"
+    off_by_one = ground_answer(
+        "DURUM: YANIT\nHRV 78 ms'den 40 ms'ye düştü. [Giyilebilir]\n",
+        wearable,
+    )
+    assert not off_by_one.ok
+    assert any(item["number"] == "40" and item["nearest"] == "41" for item in off_by_one.debug)
     swapped = ground_answer(
         "DURUM: YANIT\nHRV 41 ms'den 78 ms'ye arttı. [Giyilebilir]\n",
         wearable,
@@ -268,6 +281,56 @@ def test_trend_direction_follows_the_record_order():
     assert backward.ok
     assert normalize_text(backward.answer).find("80") < normalize_text(backward.answer).find("100")
     assert "yükseldi" in backward.answer
+
+
+def test_line_unit_covers_a_later_bare_amount_and_its_difference():
+    record = _tiny(
+        "Giriş.\n\n## Laboratuvar\n"
+        "- LDL 168 mg/dL (01.06.2024); önceki 71 (12.03.2026).\n"
+    )
+    drop = ground_answer(
+        "DURUM: YANIT\nLDL 168 mg/dL'den 71 mg/dL'ye düşerek 97 mg/dL azaldı. [Laboratuvar]\n",
+        record,
+    )
+    assert drop.ok, drop.debug
+    assert "97" in drop.answer
+    assert "168" in drop.answer
+    stated = _tiny(
+        "Giriş.\n\n## Laboratuvar\n"
+        "- LDL 168 mg/dL (01.06.2024); önceki 71 (12.03.2026); bir öncekine göre −97.\n"
+    )
+    repeated = ground_answer(
+        "DURUM: YANIT\nDüşüş 97 mg/dL. [Laboratuvar]\n",
+        stated,
+    )
+    assert repeated.ok, repeated.debug
+    assert "97" in repeated.answer
+    other = ground_answer("DURUM: YANIT\nDüşüş 97 kg. [Laboratuvar]\n", stated)
+    assert not other.ok
+    assert any(item["check"] == "unsupported_number" and item["number"] == "97" for item in other.debug)
+
+
+def test_cause_fragment_and_record_event_are_not_kept():
+    symptoms = _tiny("Giriş.\n\n## Not\n- Alfa kabus ve uyku sorunu yazıyor. Alfa 10 mg.\n")
+    broken = ground_answer(
+        "DURUM: YANIT\nAlfa 10 mg. Alfa'yı kabus ve uyku sorunu nedeniyle kestin. [Not]\n",
+        symptoms,
+    )
+    assert broken.ok
+    assert "10 mg" in broken.answer
+    assert "kabus" not in broken.answer.casefold()
+    assert "nedeniyle" not in broken.answer.casefold()
+    dated = _tiny(
+        "Giriş.\n\n## İlaçlar\n- Alfa 02.2025'te kesildi. Son reçete 01.02.2025.\n"
+    )
+    cause = ground_answer(
+        "DURUM: YANIT\n02.2025'te kesildi, çünkü 01.02.2025'te son reçete verildi. [İlaçlar]\n",
+        dated,
+    )
+    assert cause.ok, cause.debug
+    assert "çünkü" not in cause.answer.casefold()
+    assert "kesildi" in cause.answer.casefold()
+    assert "reçete" not in cause.answer.casefold()
 
 
 def test_history_follows_the_cached_record_and_feeds_retrieval():

@@ -883,6 +883,12 @@ def test_blocked_answer_stores_redacted_model_text(tmp_path):
     assert "999" not in result["answer"]
     assert "12345678901" not in result["answer"]
     assert "12345678901" not in result["rawOutput"]
+    assert result["validation"]["debug"]
+    assert any(
+        item["check"] == "unsupported_number" and item["number"] == "999"
+        for item in result["validation"]["debug"]
+    )
+    assert "unsupported_number" not in result["answer"]
 
 
 def test_overloaded_provider_is_retried_and_reasoning_is_not_the_answer():

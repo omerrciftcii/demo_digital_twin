@@ -165,19 +165,38 @@ _STATUS_PREFIXES = (
     ("durum: bilgi yok", "insufficient_evidence"),
     ("durum: yanit", "answered"),
 )
+# Any other DURUM label is still a status line. The body is what gets checked.
+_ANY_STATUS = re.compile(r"^durum:\s*\S+")
+
+
+def _status_token(folded: str) -> str | None:
+    """The DURUM prefix, including a label this server does not name."""
+    for token, _status in _STATUS_PREFIXES:
+        if folded == token or folded.startswith((token + " ", token + ".", token + ":")):
+            return token
+    match = _ANY_STATUS.match(folded)
+    if match is None:
+        return None
+    return match.group(0)
 
 
 def _status_of_line(line: str) -> str | None:
     folded = normalize_text(line).strip(" *_`#>")
-    for token, status in _STATUS_PREFIXES:
-        if folded == token or folded.startswith((token + " ", token + ".", token + ":")):
+    token = _status_token(folded)
+    if token is None:
+        return None
+    for known, status in _STATUS_PREFIXES:
+        if token == known:
             return status
-    return None
+    return "answered"
 
 
 def _line_is_only_status(line: str) -> bool:
-    folded = normalize_text(line).strip(" *_`#>:-")
-    return folded in {token for token, _status in _STATUS_PREFIXES}
+    folded = normalize_text(line).strip(" *_`#>")
+    token = _status_token(folded)
+    if token is None:
+        return False
+    return not folded[len(token):].strip(" :.-")
 
 
 def _infer_status(text: str) -> str | None:
@@ -218,18 +237,17 @@ def _tail_after_status(line: str) -> str:
     """Keep the answer when a small model puts it on the DURUM line."""
     cleaned = line.strip().strip("*_`")
     folded = normalize_text(cleaned)
-    for token, _status in _STATUS_PREFIXES:
-        if folded.startswith(token):
-            # The folded prefix can be shorter than the original (İ → i).
-            # Drop leading words until the folded remainder matches.
-            words = cleaned.split()
-            for count in range(1, len(words) + 1):
-                rest = " ".join(words[count:])
-                if normalize_text(rest) == folded[len(token):].strip(" :.-") or (
-                    not folded[len(token):].strip(" :.-") and not rest
-                ):
-                    return rest.strip(" :.-")
-            return ""
+    token = _status_token(folded)
+    if token is None:
+        return ""
+    # The folded prefix can be shorter than the original (İ → i).
+    # Drop leading words until the folded remainder matches.
+    words = cleaned.split()
+    remainder = folded[len(token):].strip(" :.-")
+    for count in range(1, len(words) + 1):
+        rest = " ".join(words[count:])
+        if normalize_text(rest) == remainder or (not remainder and not rest):
+            return rest.strip(" :.-")
     return ""
 
 
@@ -1806,33 +1824,17 @@ def _rewrite_polarity(text: str, pole: str) -> str:
     return cleaned.strip()
 
 
-def _without_flag_words(text: str) -> str:
-    def repl(match: re.Match[str]) -> str:
-        if _keep_superlative(text, match):
-            return match.group(0)
-        return ""
-
-    cleaned = _FLAG_SURFACE.sub(repl, text)
-    cleaned = re.sub(r"\s{2,}", " ", cleaned)
-    cleaned = re.sub(r"\s+([,.!?])", r"\1", cleaned)
-    return cleaned.strip(" ,;")
-
-
 def _align_flag(sentence: str, blob: str) -> str | None:
-    """Keep a high/low/normal claim only when the record's flag or range agrees.
+    """Keep a high/low/normal claim when the record's flag or range agrees.
 
-    A claim with no such word is left alone. A word the record does not support
-    is removed. The opposite of the record's flag or range is replaced by it.
+    A claim with no such word is left alone. The opposite of the record's flag
+    or range is replaced by that direction. When the record does not say, the
+    sentence stays: deleting the word leaves a broken sentence.
     """
     if not _polarities(sentence) or not _sentence_amounts(sentence):
         return sentence
     expected = _expected_polarity(sentence, _flag_line(sentence, blob))
-    if expected is None:
-        kept = _without_flag_words(sentence)
-        if _blank_sentence(kept):
-            return None
-        return kept
-    if _polarities(sentence) == {expected}:
+    if expected is None or _polarities(sentence) == {expected}:
         return sentence
     return _rewrite_polarity(sentence, expected)
 
@@ -1868,6 +1870,51 @@ def format_model_text(raw: str, record: TextRecord) -> tuple[str, str, list[dict
     return status, "\n".join(parts).strip(), citations
 
 
+def _support_plan(body: str, record: TextRecord) -> list[tuple[int | None, bool]]:
+    """Each sentence's cited section, and whether that section holds its amounts."""
+    plan: list[tuple[int | None, bool]] = []
+    last_index: int | None = None
+    for claim, marker in _pairs(body):
+        section_index: int | None = None
+        if marker and _marker_supported(marker, record):
+            section_index = _resolve_section(marker, claim, record)
+            if section_index is not None:
+                last_index = section_index
+        pieces = _sentences(claim) or ([claim.strip()] if claim.strip() else [])
+        for sentence in pieces:
+            if _blank_sentence(sentence):
+                continue
+            index = section_index if section_index is not None else last_index
+            if index is None:
+                index = _section_for_claim(sentence, record)
+            blob = record.sections[index].text if index is not None else ""
+            supported = bool(
+                index is not None and _numbers(sentence) and _numbers_supported(sentence, blob)
+            )
+            plan.append((index, supported))
+    return plan
+
+
+def _inherits_section_support(plan: list[tuple[int | None, bool]], ordinal: int) -> bool:
+    """A numberless sentence may lean on a supported one in the same section run.
+
+    The run is the sentences that cite that section with no other section between
+    them. A paraphrase of a finding stays. A sentence about another section does not.
+    """
+    if ordinal < 0 or ordinal >= len(plan):
+        return False
+    index, supported = plan[ordinal]
+    if index is None or supported:
+        return False
+    for step in (-1, 1):
+        cursor = ordinal + step
+        while 0 <= cursor < len(plan) and plan[cursor][0] == index:
+            if plan[cursor][1]:
+                return True
+            cursor += step
+    return False
+
+
 def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     parsed = _status_and_body(strip_model_wrappers(raw))
     if parsed is None:
@@ -1887,6 +1934,8 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     hide_markers = False
     moved = False
     edited = False
+    plan = _support_plan(body, record)
+    ordinal = 0
     for claim, marker in _pairs(body):
         section_index: int | None = None
         if marker:
@@ -1901,6 +1950,8 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
             if _blank_sentence(sentence):
                 edited = True
                 continue
+            inherits = _inherits_section_support(plan, ordinal)
+            ordinal += 1
             sentence_count += 1
             if answer_has_unsafe_advice(sentence):
                 saw_unsafe = True
@@ -1983,7 +2034,8 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                 )
                 continue
             if (
-                not needs_number
+                not inherits
+                and not needs_number
                 and not _states_absence(sentence)
                 and (index is None or not _overlaps_section(sentence, blob))
             ):

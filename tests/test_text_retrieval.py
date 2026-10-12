@@ -8,7 +8,11 @@ from medical_ai_selective_context.index import normalize_text
 from medical_ai_selective_context.text_document import parse_cco_text
 from medical_ai_selective_context.text_drug_index import drug_index, drug_names
 from medical_ai_selective_context.text_embed import embedding_model_name, semantic_section_scores
-from medical_ai_selective_context.text_grounding import _sentences, ground_answer
+from medical_ai_selective_context.text_grounding import (
+    _sentences,
+    format_model_text,
+    ground_answer,
+)
 from medical_ai_selective_context.text_qa import ACK, SYSTEM_PROMPT, build_messages
 from medical_ai_selective_context.text_relevance import relevant_context, relevant_sections
 
@@ -128,6 +132,12 @@ def test_prompt_states_general_answer_shape_without_digits():
     assert "hekiminle konuşabilirsin" in SYSTEM_PROMPT
     assert "Klinik rapor gibi yazma" in SYSTEM_PROMPT
     assert "alt alta tek ölçüm" in SYSTEM_PROMPT
+    assert "günlük dille" in SYSTEM_PROMPT
+    assert "en fazla iki" in SYSTEM_PROMPT
+    assert "son ölçümde" in SYSTEM_PROMPT
+    assert "birkaç ay önceye göre" in SYSTEM_PROMPT
+    assert "ne yapabilirsin" in SYSTEM_PROMPT
+    assert "iki, üç ya da dört" in SYSTEM_PROMPT
     assert "sen diye" in SYSTEM_PROMPT
     assert "atım sıklığı" in SYSTEM_PROMPT
     assert "Aynı cümleyi tekrarlama" in SYSTEM_PROMPT
@@ -511,10 +521,10 @@ def test_flag_word_follows_the_record_range_or_label():
     assert "düşük" in from_range.answer.casefold()
     assert "yüksek" not in from_range.answer.casefold()
     bare = _tiny("Giriş.\n\n## Laboratuvar\n- Alfa 58 mL/dk.\n")
-    stripped = ground_answer("DURUM: YANIT\nAlfa 58 mL/dk yüksek. [Laboratuvar]\n", bare)
-    assert stripped.ok, stripped.debug
-    assert "58" in stripped.answer
-    assert "yüksek" not in stripped.answer.casefold()
+    untouched = ground_answer("DURUM: YANIT\nAlfa 58 mL/dk yüksek. [Laboratuvar]\n", bare)
+    assert untouched.ok, untouched.debug
+    assert "58" in untouched.answer
+    assert "yüksek" in untouched.answer.casefold()
     agreed = ground_answer("DURUM: YANIT\nAlfa 58 mL/dk düşük. [Laboratuvar]\n", low)
     assert agreed.ok, agreed.debug
     assert "düşük" in agreed.answer.casefold()
@@ -527,6 +537,92 @@ def test_flag_word_follows_the_record_range_or_label():
     extreme = ground_answer("DURUM: YANIT\nEn yüksek nabız 80/dk. [Ölçüm]\n", peak)
     assert extreme.ok, extreme.debug
     assert "en yüksek" in extreme.answer.casefold()
+    prose = _tiny("Giriş.\n\n## Ölçüm\n- Nabız 47/dk.\n")
+    kept = ground_answer(
+        "DURUM: YANIT\nNabız 47/dk yüksek değerine göre kalmış. [Ölçüm]\n",
+        prose,
+    )
+    assert kept.ok, kept.debug
+    assert "yüksek" in kept.answer.casefold()
+    assert "değerine göre kalmış" in kept.answer.casefold()
+    labeled = _tiny("Giriş.\n\n## Ölçüm\n- Nabız 47/dk, düşük (aralık 60-100).\n")
+    rewritten = ground_answer(
+        "DURUM: YANIT\nNabız 47/dk yüksek değerine göre kalmış. [Ölçüm]\n",
+        labeled,
+    )
+    assert rewritten.ok, rewritten.debug
+    assert "düşük" in rewritten.answer.casefold()
+    assert "yüksek" not in rewritten.answer.casefold()
+    assert "değerine göre kalmış" in rewritten.answer.casefold()
+
+
+def test_numberless_paraphrase_inherits_a_supported_neighbor():
+    record = _tiny(
+        "Giriş.\n\n## Laboratuvar\n- Alfa 58 mL/dk.\n\n## Not\n- baska bir satir yazildi.\n"
+    )
+    before = ground_answer(
+        "DURUM: OZET\n"
+        "Bu ölçüm son seferinde biraz zayıf duruyor. [Laboratuvar]\n"
+        "Alfa 58 mL/dk. [Laboratuvar]\n",
+        record,
+    )
+    assert before.ok, before.debug
+    assert before.status == "answered"
+    assert "DURUM" not in before.answer
+    assert "zayıf" in before.answer.casefold()
+    assert "58" in before.answer
+    chained = ground_answer(
+        "DURUM: YANIT\n"
+        "Bu ölçüm son seferinde biraz zayıf duruyor. [Laboratuvar]\n"
+        "Günlük dilde bu güç biraz zayıf kalmış. [Laboratuvar]\n"
+        "Alfa 58 mL/dk. [Laboratuvar]\n",
+        record,
+    )
+    assert chained.ok, chained.debug
+    assert chained.answer.casefold().count("zayıf") == 2
+    other = ground_answer(
+        "DURUM: YANIT\n"
+        "Bu ölçüm son seferinde biraz zayıf duruyor. [Not]\n"
+        "Alfa 58 mL/dk. [Laboratuvar]\n",
+        record,
+    )
+    assert other.ok, other.debug
+    assert "58" in other.answer
+    assert "zayıf" not in other.answer.casefold()
+    alone = ground_answer(
+        "DURUM: YANIT\nBu ölçüm son seferinde biraz zayıf duruyor. [Laboratuvar]\n",
+        record,
+    )
+    assert alone.ok is False
+    assert alone.error == "unsupported_claim"
+    invented = ground_answer(
+        "DURUM: YANIT\n"
+        "Bu ölçüm son seferinde biraz zayıf duruyor. [Laboratuvar]\n"
+        "Alfa 999 mL/dk. [Laboratuvar]\n",
+        record,
+    )
+    assert invented.ok is False
+
+
+def test_any_durum_line_is_a_status_line():
+    record = _tiny("Giriş.\n\n## Laboratuvar\n- Alfa 58 mL/dk.\n")
+    status, answer, citations = format_model_text(
+        "DURUM: OZET\nBu cümle duruyor. [Laboratuvar]\n",
+        record,
+    )
+    assert status == "answered"
+    assert "DURUM" not in answer
+    assert "OZET" not in answer
+    assert answer.endswith(".")
+    assert citations and citations[0]["section"] == "Laboratuvar"
+    named = ground_answer(
+        "DURUM: BELIRSIZ\nLaboratuvar satırı duruyor. [Laboratuvar]\n",
+        record,
+    )
+    assert named.ok, named.debug
+    assert named.status == "answered"
+    assert "DURUM" not in named.answer
+    assert "BELIRSIZ" not in named.answer
 
 
 def test_chart_abbreviation_is_recalled_without_a_nearby_digit():

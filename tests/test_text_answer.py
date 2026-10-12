@@ -538,7 +538,10 @@ def test_import_answers_and_does_not_invent_a_number(text_client):
     opened = raw.json()
     assert opened["status"] == "answered"
     assert opened["validation"] == {"enabled": False}
-    assert opened["answer"].startswith("DURUM: YANIT")
+    assert "DURUM" not in opened["answer"]
+    assert "[" not in opened["answer"]
+    assert "41 mL/dk" in opened["answer"]
+    assert opened["citations"]
     assert "tıbbi tanı" not in opened["answer"]
     assert len(text_client.calls) == 2
 
@@ -1367,16 +1370,33 @@ def test_validation_switch_returns_raw_text_and_keeps_safety(tmp_path, monkeypat
     ))
     assert opened["status"] == "answered"
     assert opened["validation"] == {"enabled": False}
-    assert opened["answer"] == raw.strip()
+    assert "DURUM" not in opened["answer"]
     assert DISCLAIMER not in opened["answer"]
     assert "99" in opened["answer"]
     assert "çünkü" in opened["answer"]
+    assert opened["answer"].rstrip().endswith(".")
+
+    tagged = (
+        "DURUM: BİLGİ_YOK\n"
+        "Bunu gösteren bir satır yok [Laboratuvar (hastane)]\n"
+    )
+    formatted = asyncio.run(TextAnswerer(_scripted_model(tagged)).answer(
+        record, "Ölçüm ne?", validate=False,
+    ))
+    assert formatted["status"] == "insufficient_evidence"
+    assert "DURUM" not in formatted["answer"]
+    assert "[" not in formatted["answer"]
+    assert formatted["answer"].rstrip().endswith(".")
+    assert formatted["citations"]
+    assert formatted["citations"][0]["section"] == "Laboratuvar (hastane)"
+    assert "satır yok" in formatted["answer"]
 
     monkeypatch.setenv("QA_VALIDATION_ENABLED", "false")
     assert validation_enabled(None) is False
     from_env = asyncio.run(TextAnswerer(_scripted_model(raw)).answer(record, "Ölçüm ne?"))
     assert from_env["validation"] == {"enabled": False}
-    assert from_env["answer"] == raw.strip()
+    assert "DURUM" not in from_env["answer"]
+    assert "99" in from_env["answer"]
     forced = asyncio.run(TextAnswerer(_scripted_model(raw)).answer(
         record, "Ölçüm ne?", validate=True,
     ))
@@ -1397,3 +1417,19 @@ def test_validation_switch_returns_raw_text_and_keeps_safety(tmp_path, monkeypat
     assert body.validation is False
     omitted = TextAnswerRequest.model_validate({"recordId": "rec-1", "question": "Ölçüm ne?"})
     assert omitted.validation is None
+
+    partial = asyncio.run(TextAnswerer(_scripted_model(
+        "DURUM: YANIT\n"
+        "Son eGFR 41 mL/dk duruyor. Nabız 999 mg oldu. [Laboratuvar (hastane)]\n"
+    )).answer(record, "Ölçüm ne?", validate=True))
+    assert partial["status"] == "answered", partial
+    assert partial["validation"]["partial"] is True
+    assert "999" not in partial["answer"]
+    prose = [
+        line for line in partial["answer"].splitlines()
+        if line.strip() and "tıbbi tanı" not in line
+    ]
+    warning = "Doğrulanamayan cümle gösterilmedi."
+    assert prose[-1] == warning
+    assert prose[-2].rstrip()[-1] in ".!?"
+    assert "41" in prose[-2]

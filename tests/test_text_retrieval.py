@@ -124,6 +124,10 @@ def test_prompt_states_general_answer_shape_without_digits():
     assert "Kısmen" in SYSTEM_PROMPT
     assert "Kayıtta yeterli bilgi yok" in SYSTEM_PROMPT
     assert "hüküm değildir" in SYSTEM_PROMPT
+    assert "Evet, düzelmiş" in SYSTEM_PROMPT
+    assert "hekiminle konuşabilirsin" in SYSTEM_PROMPT
+    assert "Klinik rapor gibi yazma" in SYSTEM_PROMPT
+    assert "alt alta tek ölçüm" in SYSTEM_PROMPT
     assert "sen diye" in SYSTEM_PROMPT
     assert "atım sıklığı" in SYSTEM_PROMPT
     assert "Aynı cümleyi tekrarlama" in SYSTEM_PROMPT
@@ -493,6 +497,36 @@ def test_trimmed_answer_capitalizes_the_first_letter():
     )
     assert kidney.ok, kidney.debug
     assert kidney.answer.startswith("eGFR")
+
+
+def test_flag_word_follows_the_record_range_or_label():
+    low = _tiny("Giriş.\n\n## Laboratuvar\n- Alfa 58 mL/dk, düşük (aralık 90-120).\n")
+    flipped = ground_answer("DURUM: YANIT\nAlfa 58 mL/dk yüksek. [Laboratuvar]\n", low)
+    assert flipped.ok, flipped.debug
+    assert "düşük" in flipped.answer.casefold()
+    assert "yüksek" not in flipped.answer.casefold()
+    ranged = _tiny("Giriş.\n\n## Laboratuvar\n- Alfa 58 mL/dk (aralık 90-120).\n")
+    from_range = ground_answer("DURUM: YANIT\nAlfa 58 mL/dk yüksek. [Laboratuvar]\n", ranged)
+    assert from_range.ok, from_range.debug
+    assert "düşük" in from_range.answer.casefold()
+    assert "yüksek" not in from_range.answer.casefold()
+    bare = _tiny("Giriş.\n\n## Laboratuvar\n- Alfa 58 mL/dk.\n")
+    stripped = ground_answer("DURUM: YANIT\nAlfa 58 mL/dk yüksek. [Laboratuvar]\n", bare)
+    assert stripped.ok, stripped.debug
+    assert "58" in stripped.answer
+    assert "yüksek" not in stripped.answer.casefold()
+    agreed = ground_answer("DURUM: YANIT\nAlfa 58 mL/dk düşük. [Laboratuvar]\n", low)
+    assert agreed.ok, agreed.debug
+    assert "düşük" in agreed.answer.casefold()
+    inside = _tiny("Giriş.\n\n## Laboratuvar\n- Beta 15 mg/dL, normal (aralık 10-20).\n")
+    within = ground_answer("DURUM: YANIT\nBeta 15 mg/dL yüksek. [Laboratuvar]\n", inside)
+    assert within.ok, within.debug
+    assert "normal" in within.answer.casefold()
+    assert "yüksek" not in within.answer.casefold()
+    peak = _tiny("Giriş.\n\n## Ölçüm\n- En yüksek nabız 80/dk.\n")
+    extreme = ground_answer("DURUM: YANIT\nEn yüksek nabız 80/dk. [Ölçüm]\n", peak)
+    assert extreme.ok, extreme.debug
+    assert "en yüksek" in extreme.answer.casefold()
 
 
 def test_chart_abbreviation_is_recalled_without_a_nearby_digit():

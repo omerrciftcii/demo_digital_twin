@@ -1613,6 +1613,261 @@ def _take_issues(
         )
 
 
+# Lab flags and the phrases that name a side of a reference range. Not a chart value.
+_FLAG_PHRASES = (
+    ("normalin ustunde", "high"),
+    ("normalin uzerinde", "high"),
+    ("araligin ustunde", "high"),
+    ("araligin uzerinde", "high"),
+    ("referansin ustunde", "high"),
+    ("referansin uzerinde", "high"),
+    ("normalin altinda", "low"),
+    ("araligin altinda", "low"),
+    ("referansin altinda", "low"),
+)
+_HIGH_STEM = "yuksek"
+_LOW_STEM = "dusuk"
+_WITHIN_STEM = "normal"
+_FLAG_SURFACE = re.compile(
+    r"(?i)(?:normalin\s+(?:üstünde|üzerinde|altında)"
+    r"|(?:aralığın|referansın)\s+(?:üstünde|üzerinde|altında)"
+    r"|\byüksek\w*"
+    r"|\bdüşük\w*"
+    r"|\bnormal\w*)"
+)
+_RANGE_PAIR = re.compile(r"(\d+(?:[.,]\d+)?)\s*[-–—]\s*(\d+(?:[.,]\d+)?)")
+_FLAG_WORD = {"high": "yüksek", "low": "düşük", "within": "normal"}
+
+
+def _end_sentence(text: str) -> str:
+    """A displayed sentence ends with punctuation. This is formatting, not a check."""
+    kept = text.strip()
+    if not kept or kept[-1] in ".!?":
+        return kept
+    return kept + "."
+
+
+def _pole_of_token(token: str) -> str | None:
+    """A flag stem plus a short ending. A longer word that merely shares the stem is not a flag."""
+    if token.startswith(_HIGH_STEM) and len(token) - len(_HIGH_STEM) <= 6:
+        return "high"
+    if token.startswith(_LOW_STEM) and len(token) - len(_LOW_STEM) <= 6:
+        return "low"
+    if token.startswith(_WITHIN_STEM) and len(token) - len(_WITHIN_STEM) <= 6:
+        return "within"
+    return None
+
+
+def _polarities(text: str) -> set[str]:
+    """High, low, or within. A superlative such as 'en yüksek' is an extreme, not a flag."""
+    folded = normalize_text(text)
+    folded = re.sub(r"\ben yuksek\b", " ", folded)
+    folded = re.sub(r"\ben dusuk\b", " ", folded)
+    found: set[str] = set()
+    for phrase, pole in _FLAG_PHRASES:
+        if phrase in folded:
+            found.add(pole)
+            folded = folded.replace(phrase, " ")
+    for token in re.findall(r"[a-z]+", folded):
+        pole = _pole_of_token(token)
+        if pole:
+            found.add(pole)
+    return found
+
+
+def _bound_value(token: str) -> float | None:
+    if re.fullmatch(r"\d+,\d+", token):
+        return float(token.replace(",", "."))
+    if re.fullmatch(r"\d+", token):
+        return float(token)
+    if _parse_quantity(token) is not None and re.fullmatch(r"\d{1,2}\.\d{1,2}", token):
+        return _parse_quantity(token)
+    return None
+
+
+def _range_bounds(text: str) -> tuple[float, float] | None:
+    for match in _RANGE_PAIR.finditer(text):
+        low = _bound_value(match.group(1))
+        high = _bound_value(match.group(2))
+        if low is None or high is None or low > high:
+            continue
+        return low, high
+    return None
+
+
+def _primary_amount(line: str) -> float | None:
+    """The result the line labels. A date is not that result."""
+    for match in _numbers(line):
+        if _skipped_number(line, match):
+            continue
+        value = _parse_quantity(match.group(0))
+        if value is not None:
+            return value
+    return None
+
+
+def _explicit_polarity(line: str) -> str | None:
+    """The flag written after the result. The range's own words are not a second flag."""
+    primary_at = None
+    for match in _numbers(line):
+        if _skipped_number(line, match):
+            continue
+        if _parse_quantity(match.group(0)) is not None:
+            primary_at = match.end()
+            break
+    tail = line[primary_at:] if primary_at is not None else line
+    poles = _polarities(tail)
+    if "high" in poles and "low" in poles:
+        return None
+    if "high" in poles:
+        return "high"
+    if "low" in poles:
+        return "low"
+    if "within" in poles:
+        return "within"
+    return None
+
+
+def _sentence_amounts(sentence: str) -> list[float]:
+    found: list[float] = []
+    for match in _numbers(sentence):
+        if _skipped_number(sentence, match):
+            continue
+        value = _parse_quantity(match.group(0))
+        if value is not None:
+            found.append(value)
+    return found
+
+
+def _same_amount(left: float, right: float) -> bool:
+    return abs(left - right) <= 1e-6
+
+
+def _flag_line(sentence: str, blob: str) -> str:
+    lines = [
+        line for line in blob.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    amounts = [
+        match.group(0) for match in _numbers(sentence)
+        if not _skipped_number(sentence, match) and _parse_quantity(match.group(0)) is not None
+    ]
+    words = content_words(sentence)
+    best = ""
+    best_score = 0
+    for line in lines:
+        score = sum(3 for amount in amounts if _token_in_text(amount, line))
+        folded = normalize_text(line)
+        score += sum(1 for word in words if word in folded)
+        if score > best_score:
+            best_score = score
+            best = line
+    return best
+
+
+def _expected_polarity(sentence: str, line: str) -> str | None:
+    """The record's flag, or the side of its range the labeled result sits on."""
+    if not line:
+        return None
+    primary = _primary_amount(line)
+    amounts = _sentence_amounts(sentence)
+    if primary is None or not any(_same_amount(primary, value) for value in amounts):
+        return None
+    explicit = _explicit_polarity(line)
+    if explicit:
+        return explicit
+    bounds = _range_bounds(line)
+    if bounds is None:
+        return None
+    low, high = bounds
+    if primary < low:
+        return "low"
+    if primary > high:
+        return "high"
+    return "within"
+
+
+def _keep_superlative(text: str, match: re.Match[str]) -> bool:
+    prefix = normalize_text(text[max(0, match.start() - 4):match.start()])
+    return prefix.endswith("en ")
+
+
+def _rewrite_polarity(text: str, pole: str) -> str:
+    target = _FLAG_WORD[pole]
+
+    def repl(match: re.Match[str]) -> str:
+        if _keep_superlative(text, match):
+            return match.group(0)
+        return target
+
+    cleaned = _FLAG_SURFACE.sub(repl, text)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+([,.!?])", r"\1", cleaned)
+    return cleaned.strip()
+
+
+def _without_flag_words(text: str) -> str:
+    def repl(match: re.Match[str]) -> str:
+        if _keep_superlative(text, match):
+            return match.group(0)
+        return ""
+
+    cleaned = _FLAG_SURFACE.sub(repl, text)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+([,.!?])", r"\1", cleaned)
+    return cleaned.strip(" ,;")
+
+
+def _align_flag(sentence: str, blob: str) -> str | None:
+    """Keep a high/low/normal claim only when the record's flag or range agrees.
+
+    A claim with no such word is left alone. A word the record does not support
+    is removed. The opposite of the record's flag or range is replaced by it.
+    """
+    if not _polarities(sentence) or not _sentence_amounts(sentence):
+        return sentence
+    expected = _expected_polarity(sentence, _flag_line(sentence, blob))
+    if expected is None:
+        kept = _without_flag_words(sentence)
+        if _blank_sentence(kept):
+            return None
+        return kept
+    if _polarities(sentence) == {expected}:
+        return sentence
+    return _rewrite_polarity(sentence, expected)
+
+
+def format_model_text(raw: str, record: TextRecord) -> tuple[str, str, list[dict]]:
+    """Strip the status line and move citation tags out of the prose.
+
+    This does not check numbers, dates, trends, causes, or flags.
+    """
+    cleaned = strip_model_wrappers(raw)
+    parsed = _status_and_body(cleaned)
+    if parsed is None:
+        status, body = "answered", cleaned.strip()
+    else:
+        status, body = parsed
+    citations: list[dict] = []
+    seen: set[tuple] = set()
+    parts: list[str] = []
+    last_index: int | None = None
+    for claim, marker in _pairs(body):
+        index = _resolve_section(marker, claim, record) if marker else None
+        if index is None:
+            index = last_index
+        pieces = _sentences(claim) or ([claim.strip()] if claim.strip() else [])
+        for sentence in pieces:
+            if _blank_sentence(sentence):
+                continue
+            sentence = _end_sentence(sentence)
+            parts.append(sentence)
+            if index is not None:
+                last_index = index
+                _remember(citations, seen, record, index, sentence, marker)
+    return status, "\n".join(parts).strip(), citations
+
+
 def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
     parsed = _status_and_body(strip_model_wrappers(raw))
     if parsed is None:
@@ -1749,6 +2004,15 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
                     errors, debug, "missing_citation", sentence, _cite(marker, record, index),
                 )
                 continue
+            aligned = _align_flag(sentence, blob)
+            if aligned is None:
+                _failure(
+                    errors, debug, "unsupported_flag", sentence, _cite(marker, record, index),
+                )
+                continue
+            if aligned != sentence:
+                sentence = aligned
+                edited = True
             signature = " ".join(normalize_text(_MARKER.sub(" ", sentence)).split())
             if signature and any(
                 fuzz.ratio(signature, prior) >= _NEAR_DUPLICATE for prior in seen_sentences
@@ -1774,11 +2038,11 @@ def ground_answer(raw: str, record: TextRecord) -> GroundingResult:
             }],
         )
     changed = len(kept) != sentence_count or hide_markers or moved or edited
+    answer = "\n".join(
+        _end_sentence(_capitalize_first(part) if changed else part) for part in kept
+    ).strip()
     if changed:
-        answer = "\n".join(_capitalize_first(part) for part in kept).strip()
         answer = _capitalize_first(answer)
-    else:
-        answer = body.strip()
     if status == "answered" and _absence_only(answer):
         status = "insufficient_evidence"
     return GroundingResult(True, status, answer, citations, "", debug if errors else [])

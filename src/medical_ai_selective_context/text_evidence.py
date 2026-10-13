@@ -253,6 +253,13 @@ def concept_ids_for_text(text: str) -> frozenset[str]:
     return frozenset(found)
 
 
+def concept_matches(concept: str, canonical_ids: set[str] | frozenset[str]) -> bool:
+    """Match a canonical id and qualified upstream variants of that id."""
+    return concept in canonical_ids or any(
+        concept.startswith(f"{canonical}_") for canonical in canonical_ids
+    )
+
+
 def resolve_concept(text: str) -> str:
     """Longest alias wins. Otherwise a slug of the surface name."""
     folded = _fold(text)

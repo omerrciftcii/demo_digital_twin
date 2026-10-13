@@ -17,7 +17,7 @@ from time import perf_counter
 from typing import Any
 
 from .text_document import TextRecord
-from .text_evidence import build_evidence, concept_ids_for_text, render_catalog
+from .text_evidence import build_evidence, concept_ids_for_text, concept_matches, render_catalog
 from .text_grounding import GroundingResult, format_model_text, ground_answer
 from .text_llm import (
     ModelError,
@@ -703,7 +703,7 @@ def _rank_evidence(package: list, question: str) -> list:
     ranked: list[tuple[int, int, Any]] = []
     for index, evidence in enumerate(package):
         score = 0
-        if evidence.concept in concepts:
+        if concept_matches(evidence.concept, concepts):
             score += 1000
         named = " ".join([evidence.display_name, evidence.concept.replace("_", " ")])
         if terms and overlaps(named, terms):

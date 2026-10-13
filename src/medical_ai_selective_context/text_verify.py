@@ -19,6 +19,7 @@ from .text_evidence import (
     Evidence,
     chat_date,
     concept_ids_for_text,
+    concept_matches,
     lexicon_ids,
     resolve_concept,
     to_iso,
@@ -843,7 +844,7 @@ def _absence_targets(sentence: str, evidence: Evidence) -> bool:
             if (
                 (name and name in window)
                 or (concept and concept in window)
-                or evidence.concept in family_concepts
+                or concept_matches(evidence.concept, family_concepts)
             ):
                 return True
             at = folded.find(phrase, at + len(phrase))
@@ -1203,7 +1204,7 @@ def _relevant(package: list[Evidence], question: str) -> list[Evidence]:
         blob = " ".join(filter(None, [
             evidence.display_name, evidence.concept.replace("_", " "),
         ]))
-        score = 100 if evidence.concept in concepts else 0
+        score = 100 if concept_matches(evidence.concept, concepts) else 0
         if terms and overlaps(blob, terms):
             score += 10
         if score:

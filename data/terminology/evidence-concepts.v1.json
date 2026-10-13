@@ -30,8 +30,13 @@
     },
     {
       "id": "liver_enzymes",
-      "aliases": ["karaciger enzimi", "karaciger enzimleri", "karaciger fonksiyon testi", "karaciger testleri"],
+      "aliases": ["karaciger enzimi", "karaciger enzimleri", "karaciger fonksiyon testi", "karaciger testleri", "karaciger degeri", "karaciger degerleri"],
       "members": ["alt", "ast"]
+    },
+    {
+      "id": "kidney_function",
+      "aliases": ["bobrek", "bobrek fonksiyonu", "bobrek fonksiyon testi", "bobrek testi", "bobrek degeri", "bobrek degerleri"],
+      "members": ["creatinine", "egfr"]
     },
     {
       "id": "hemogram",

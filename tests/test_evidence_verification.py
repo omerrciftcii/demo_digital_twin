@@ -348,13 +348,17 @@ def test_concept_families_drive_safe_fallback_and_false_absence_checks():
         _sfact("f-trig", "triglyceride", "Trigliserit", 160, "mg/dL"),
         _sfact("f-alt", "alt", "ALT", 48, "U/L"),
         _sfact("f-ast", "ast", "AST", 42, "U/L"),
+        _sfact("f-creatinine", "creatinine", "Kreatinin", 0.8, "mg/dL"),
+        _sfact("f-egfr", "egfr_hesaplanan_ckd_epi_2021", "eGFR", 105, "mL/min/1.73m2"),
     ]))
 
     lipid_answer = fallback_answer(package, "Lipid sonuçlarım nasıl?")
     for label in ("Total kolesterol", "LDL", "HDL", "Trigliserit"):
         assert label in lipid_answer
-    liver_ids = fallback_ids(package, "Karaciğer enzimlerim nasıl?")
+    liver_ids = fallback_ids(package, "Karaciğer değerlerim yüksek mi?")
     assert liver_ids == [package[4].id, package[5].id]
+    kidney_ids = fallback_ids(package, "Böbreklerim iyi mi?")
+    assert kidney_ids == [package[6].id, package[7].id]
 
     false_absence = verify_payload(parse_model_payload(_body(
         {
@@ -377,6 +381,17 @@ def test_concept_families_drive_safe_fallback_and_false_absence_checks():
         [],
     )), package)
     assert "false_absence" in inflected_absence.codes
+
+    qualified_concept_absence = verify_payload(parse_model_payload(_body(
+        {
+            "status": "uncertain",
+            "text": "Böbrek kaydı bulunmuyor.",
+            "claim_type": "missing_information",
+            "evidence_ids": [],
+        },
+        [],
+    )), package)
+    assert "false_absence" in qualified_concept_absence.codes
 
 
 def test_false_absence_checks_the_complete_catalog_after_prompt_trimming():

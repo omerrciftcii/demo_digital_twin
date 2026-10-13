@@ -101,6 +101,53 @@ def _fact(text: str, evidence_ids: list[str], claim_type: str = "fact") -> dict:
     return {"text": text, "claim_type": claim_type, "evidence_ids": evidence_ids}
 
 
+def _facts_package(facts: list[dict]) -> dict:
+    return {
+        "format": "cco-derived-facts/1",
+        "schema_version": "test",
+        "subject_id": "anon",
+        "snapshot_id": "snapshot-test",
+        "as_of": AS_OF,
+        "language": "tr",
+        "source": {
+            "cco_id": "cco-test",
+            "cco_format": "cco-text/1",
+            "derived_from_cco_text": True,
+            "authoritative": False,
+            "warning": "synthetic test package",
+        },
+        "facts": facts,
+    }
+
+
+def _sfact(
+    fact_id: str, concept: str, display: str, value=None, unit: str | None = None,
+    date: str | None = "2024-02-02", date_precision: str | None = "day",
+    type_: str = "lab", **extra,
+) -> dict:
+    row = {
+        "fact_id": fact_id,
+        "type": type_,
+        "concept": concept,
+        "display_name": display,
+        "source_section": "Sentetik",
+        "source_text": f"{display} kaynak satırı",
+        "source_type": "derived_from_cco_text",
+        "confidence": "high",
+        "requires_human_review": False,
+    }
+    if value is not None:
+        row["value"] = value
+    if unit is not None:
+        row["unit"] = unit
+    if date is not None:
+        row["date"] = date
+    if date_precision is not None:
+        row["date_precision"] = date_precision
+    row.update(extra)
+    return row
+
+
 def test_package_keeps_value_on_its_concept():
     package = parse_chart(_labs(), AS_OF)
     by_concept = {item.concept: item for item in package}
@@ -108,6 +155,60 @@ def test_package_keeps_value_on_its_concept():
     assert by_concept["triglyceride"].unit.lower() == "mg/dl"
     assert by_concept["glucose"].value == "95,2"
     assert [item.id for item in package] == ["E1", "E2"]
+
+
+def test_structured_facts_are_primary_and_preserve_metadata():
+    record = _record("Giriş.\n\n## Laboratuvar\n- Bu metin ikinci kaynak olmamalı.\n")
+    facts = _facts_package([
+        _sfact(
+            "f-a", "ornek_a", "Ornek A", 12.3, "mg/dL",
+            reference_range={"low": 1, "high": 20, "unit": "mg/dL"},
+            components={"left": {"value": 1}},
+            operation="latest_minus_previous",
+            observation_role="latest_in_cco",
+            status="normal",
+        ),
+    ])
+    package = build_evidence(record, structured=facts)
+    assert len(package) == 1
+    item = package[0]
+    assert item.id == "E1"
+    assert item.fact_id == "f-a"
+    assert item.source_authoritative is False
+    assert item.source_derived_from_cco_text is True
+    assert item.reference_range == '{"high": 20, "low": 1, "unit": "mg/dL"}'
+    assert item.extras["components"] == {"left": {"value": 1}}
+    assert item.extras["operation"] == "latest_minus_previous"
+
+
+def test_structured_facts_skip_cco_text_parser(monkeypatch):
+    from medical_ai_selective_context import text_evidence
+
+    def explode(_text, _as_of):
+        raise AssertionError("CCO parser should not run when structured facts exist")
+
+    monkeypatch.setattr(text_evidence, "parse_chart", explode)
+    record = _record("Giriş.\n\n## Laboratuvar\n- Ornek A 99 mg/dL.\n")
+    package = text_evidence.build_evidence(
+        record,
+        structured=_facts_package([_sfact("f-a", "ornek_a", "Ornek A", 12.3, "mg/dL")]),
+    )
+    assert package[0].value == "12.3"
+
+
+def test_wrong_evidence_id_does_not_get_rescued_by_another_fact():
+    record = _record("Giriş.\n")
+    package = build_evidence(record, structured=_facts_package([
+        _sfact("f-a", "ornek_a", "Ornek A", 12.3, "mg/dL"),
+        _sfact("f-b", "ornek_b", "Ornek B", 45.6, "mg/dL"),
+    ]))
+    wrong = next(item for item in package if item.concept == "ornek_b")
+    verdict = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Ornek A 12,3 mg/dL.", "evidence_ids": [wrong.id]},
+        [_fact("Ornek A 12,3 mg/dL.", [wrong.id])],
+    )), package)
+    assert not verdict.fully_ok
+    assert "evidence_concept_mismatch" in verdict.codes
 
 
 def test_swapped_triglyceride_value_is_rejected():
@@ -143,7 +244,7 @@ def test_old_prescription_is_not_current_use():
     assert item.record_type == "prescription"
     bad = verify_payload(parse_model_payload(_body(
         {"status": "supported", "text": "ORNEKILAC halen kullanıyorsun.", "evidence_ids": [item.id]},
-        [_fact("ORNEKILAC halen kullanıyorsun.", [item.id], "current_use")],
+        [_fact("ORNEKILAC halen kullanıyorsun.", [item.id], "medication_status")],
     )), package)
     assert "unconfirmed_current_use" in bad.codes
     good = verify_payload(parse_model_payload(_body(
@@ -172,7 +273,7 @@ def test_same_date_does_not_create_a_cause():
         },
         [_fact(
             "Bu hastalık için yatırıldın ve tedavisinde ORNEKILAC kullanıldı.",
-            ids, "causal",
+            ids, "causal_relation",
         )],
     )), package)
     assert "unsupported_causality" in bad.codes
@@ -182,7 +283,7 @@ def test_same_date_does_not_create_a_cause():
             "text": "Aynı tarihte Ornekdurum kaydı ve ORNEKILAC reçetesi var.",
             "evidence_ids": ids,
         },
-        [_fact("Aynı tarihte Ornekdurum kaydı ve ORNEKILAC reçetesi var.", ids, "temporal")],
+        [_fact("Aynı tarihte Ornekdurum kaydı ve ORNEKILAC reçetesi var.", ids, "temporal_relation")],
     )), package)
     assert good.fully_ok, good.reasons
 
@@ -199,7 +300,7 @@ def test_normal_labs_cannot_support_a_deficiency():
         },
         [_fact(
             "Anemi ve B12 eksikliği laboratuvarla destekleniyor.",
-            ids, "lab_support",
+            ids, "fact",
         )],
     )), package)
     assert "normal_results_cannot_support" in bad.codes
@@ -210,10 +311,10 @@ def test_normal_labs_cannot_support_a_deficiency():
             "evidence_ids": ids,
         },
         [
-            _fact("Mevcut hemogram anemiyi desteklemiyor.", ids, "interpretation"),
+            _fact("Mevcut hemogram anemiyi desteklemiyor.", ids, "fact"),
             _fact(
                 "Demir depoları ferritin olmadığı için değerlendirilemiyor.",
-                [], "uncertainty",
+                [], "missing_information",
             ),
         ],
         ["Ferritin kaydı yok."],
@@ -257,6 +358,56 @@ def test_matching_number_date_unit_and_concept_passes():
     assert "E1" not in shown
 
 
+def test_wrong_date_is_hard_fail_and_missing_date_is_ok():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact("f-a", "ornek_a", "Ornek A", 12.3, "mg/dL", date="2024-02-02"),
+    ]))
+    item = package[0]
+    wrong = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Ornek A 12,3 mg/dL (03.02.2024).", "evidence_ids": [item.id]},
+        [_fact("Ornek A 12,3 mg/dL (03.02.2024).", [item.id])],
+    )), package)
+    assert not wrong.fully_ok
+    assert "date_mismatch" in wrong.codes
+    no_date = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Ornek A 12,3 mg/dL.", "evidence_ids": [item.id]},
+        [_fact("Ornek A 12,3 mg/dL.", [item.id])],
+    )), package)
+    assert no_date.fully_ok, no_date.reasons
+
+
+def test_date_precision_rejects_exact_day_and_made_up_year():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact(
+            "f-month", "ornek_a", "Ornek A", 12.3, "mg/dL",
+            date="2024-02", date_precision="month",
+        ),
+        _sfact(
+            "f-yearless", "ornek_b", "Ornek B", 45.6, "mg/dL",
+            date="--10-11", date_precision="day_month_without_year",
+        ),
+    ]))
+    month = next(item for item in package if item.fact_id == "f-month")
+    exact_day = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Ornek A 12,3 mg/dL (02.02.2024).", "evidence_ids": [month.id]},
+        [_fact("Ornek A 12,3 mg/dL (02.02.2024).", [month.id])],
+    )), package)
+    assert not exact_day.fully_ok
+    assert "date_mismatch" in exact_day.codes
+    yearless = next(item for item in package if item.fact_id == "f-yearless")
+    made_up_year = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Ornek B 45,6 mg/dL (11.10.2026).", "evidence_ids": [yearless.id]},
+        [_fact("Ornek B 45,6 mg/dL (11.10.2026).", [yearless.id])],
+    )), package)
+    assert not made_up_year.fully_ok
+    assert "date_mismatch" in made_up_year.codes
+    without_year = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Ornek B 45,6 mg/dL (11.10).", "evidence_ids": [yearless.id]},
+        [_fact("Ornek B 45,6 mg/dL (11.10).", [yearless.id])],
+    )), package)
+    assert without_year.fully_ok, without_year.reasons
+
+
 def test_unsupported_interpretation_stays_uncertain():
     package = parse_chart(_labs(), AS_OF)
     verdict = verify_payload(parse_model_payload(_body(
@@ -270,6 +421,50 @@ def test_unsupported_interpretation_stays_uncertain():
     )), package)
     assert verdict.fully_ok, verdict.reasons
     assert verdict.conclusion_status == "uncertain"
+
+
+def test_unknown_claim_type_is_rejected():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact("f-a", "ornek_a", "Ornek A", 12.3, "mg/dL"),
+    ]))
+    item = package[0]
+    verdict = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Ornek A 12,3 mg/dL.", "evidence_ids": [item.id]},
+        [_fact("Ornek A 12,3 mg/dL.", [item.id], "made_up_claim")],
+    )), package)
+    assert not verdict.fully_ok
+    assert "invalid_claim_type" in verdict.codes
+
+
+def test_token_similarity_does_not_select_unrelated_evidence():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact("f-alpha", "alpha_marker", "Alpha marker", 17, "puan"),
+        _sfact("f-score", "beta_score", "Alpha score", 18, "puan"),
+    ]))
+    wrong = next(item for item in package if item.fact_id == "f-alpha")
+    verdict = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Alpha score 18 puan.", "evidence_ids": [wrong.id]},
+        [_fact("Alpha score 18 puan.", [wrong.id])],
+    )), package)
+    assert not verdict.fully_ok
+    assert "evidence_concept_mismatch" in verdict.codes
+
+
+def test_broken_derived_reference_is_rejected():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact(
+            "f-trend", "ornek_a", "Ornek A değişimi", 3, "mg/dL",
+            type_="measurement", operation="latest_minus_previous",
+            observation_role="derived", derived_from_fact_ids=["missing-fact"],
+        ),
+    ]))
+    item = package[0]
+    verdict = verify_payload(parse_model_payload(_body(
+        {"status": "supported", "text": "Ornek A son ölçüme göre 3 mg/dL değişmiş.", "evidence_ids": [item.id]},
+        [_fact("Ornek A son ölçüme göre 3 mg/dL değişmiş.", [item.id], "trend")],
+    )), package)
+    assert not verdict.fully_ok
+    assert "broken_derived_reference" in verdict.codes
 
 
 def test_structured_atoms_are_used_when_upstream_sends_them():
@@ -398,11 +593,12 @@ def test_flag_off_keeps_the_status_line_path(monkeypatch):
 
 def test_broken_json_retries_then_falls_back(monkeypatch):
     monkeypatch.setenv("DETERMINISTIC_EVIDENCE_VERIFICATION_ENABLED", "true")
-    answerer, _cursor = _answerer(["bu json değil", "hâlâ json değil"])
+    answerer, _cursor = _answerer(["Ornek serbest metin 12,3", "hâlâ json değil"])
     result = asyncio.run(answerer.answer(_record(_labs()), "Trigliserit ne çıktı?"))
     assert result["answer"].strip()
     assert result["validation"]["fallback"] is True
     assert "invalid_answer_json" in result["validation"]["errorCodes"]
+    assert "Ornek serbest metin" not in result["answer"]
 
 
 @pytest.mark.parametrize("lead", [". ", ", ", ",. "])
@@ -468,8 +664,8 @@ def test_dates_units_and_ranges_are_not_measured_values():
         {"status": "supported", "text": year, "evidence_ids": [sleep.id]},
         [_fact(year, [sleep.id])],
     )), package)
-    assert dated.fully_ok, dated.reasons
-    assert "date_mismatch" not in dated.codes
+    assert not dated.fully_ok
+    assert "date_unconfirmed" in dated.codes
 
 
 def test_number_is_compared_only_with_the_matching_concept():
@@ -480,10 +676,11 @@ def test_number_is_compared_only_with_the_matching_concept():
         {"status": "supported", "text": "Uyku skoru 86.", "evidence_ids": [renal.id]},
         [_fact("Uyku skoru 86.", [renal.id])],
     )), package)
-    assert cited_wrong.fully_ok, cited_wrong.reasons
+    assert not cited_wrong.fully_ok
+    assert "evidence_concept_mismatch" in cited_wrong.codes
     vague = verify_payload(parse_model_payload(_body(
         {"status": "uncertain", "text": "Bir skor 86 görünüyor.", "evidence_ids": [renal.id]},
-        [_fact("Bir skor 86 görünüyor.", [renal.id], "uncertainty")],
+        [_fact("Bir skor 86 görünüyor.", [renal.id], "missing_information")],
     )), package)
     assert "value_concept_mismatch" not in vague.codes
     assert "value_not_in_evidence" not in vague.codes

@@ -40,16 +40,13 @@ from .text_verify import (
     citations_for,
     compose_answer,
     fallback_ids,
-    filter_prose,
     meaningful_text,
     needs_retry,
     parse_model_payload,
     preferred_attempt,
-    prose_usable,
     public_status,
     render_answer,
     retry_instruction,
-    salvage_prose,
     verify_payload,
 )
 
@@ -376,7 +373,7 @@ class TextAnswerer:
 
     async def events(
         self, record: TextRecord, question: str, history: list[dict[str, str]] | None = None,
-        validate: bool | None = None,
+        validate: bool | None = None, structured_facts: object | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         started = perf_counter()
         try:
@@ -409,7 +406,9 @@ class TextAnswerer:
             yield {"type": "done", **_failure(exc, record, self.model, started, calls=0)}
             return
         if deterministic_verification_enabled():
-            async for event in self._verified_events(record, question, history, started):
+            async for event in self._verified_events(
+                record, question, history, started, structured_facts,
+            ):
                 yield event
             return
         end: dict[str, Any] | None = None
@@ -510,16 +509,17 @@ class TextAnswerer:
 
     async def answer(
         self, record: TextRecord, question: str, history: list[dict[str, str]] | None = None,
-        validate: bool | None = None,
+        validate: bool | None = None, structured_facts: object | None = None,
     ) -> dict[str, Any]:
         done: dict[str, Any] = {}
-        async for event in self.events(record, question, history, validate):
+        async for event in self.events(record, question, history, validate, structured_facts):
             if event["type"] == "done":
                 done = {key: value for key, value in event.items() if key != "type"}
         return done
 
     async def _verified_events(
-        self, record: TextRecord, question: str, history: list[dict[str, str]] | None, started: float,
+        self, record: TextRecord, question: str, history: list[dict[str, str]] | None,
+        started: float, structured_facts: object | None,
     ) -> AsyncIterator[dict[str, Any]]:
         """One JSON completion. Retry only for a bad conclusion or an empty pass."""
         correlation = uuid.uuid4().hex
@@ -531,7 +531,7 @@ class TextAnswerer:
             yield {"type": "done", **_failure(exc, record, self.model, started, calls=0)}
             return
         chart = _chart_from_record_message(messages[1]["content"])
-        package = build_evidence(record, chart)
+        package = build_evidence(record, chart, structured=structured_facts)
         messages, package = _fit_evidence(messages, package, output_tokens)
         first = await _collect(self.model, messages, schema)
         if isinstance(first, ModelError):
@@ -539,7 +539,6 @@ class TextAnswerer:
             return
         verdict = verify_payload(parse_model_payload(first["text"]), package)
         attempts = [verdict]
-        raws = [first["text"]]
         retried = False
         calls = 1
         usage = dict(first.get("usage") or {})
@@ -557,8 +556,7 @@ class TextAnswerer:
                 usage = _merge_usage(usage, second.get("usage") or {})
                 verdict = verify_payload(parse_model_payload(second["text"]), package)
                 attempts.append(verdict)
-                raws.append(second["text"])
-        answer, passed, fallback, chosen = _choose_answer(attempts, raws, package, question)
+        answer, passed, fallback, chosen = _choose_answer(attempts, package, question)
         if not answer.strip():
             answer = compose_answer([], [], question, supplement=True)
             status = "insufficient_evidence"
@@ -599,13 +597,16 @@ class TextAnswerer:
             "clinicalMeaningVerified": False,
             "requiresClinicianReview": chosen.requires_review,
             "correlationId": correlation,
+            "sourceAuthoritative": (
+                package[0].source_authoritative if package else None
+            ),
         }
         if chosen.debug and (not passed or chosen.codes or chosen.warning_codes):
             validation["debug"] = chosen.debug
         log.info(
             "deterministic_evidence correlation=%s evidence_ids=%s passed=%s codes=%s "
             "warnings=%s retried=%s fallback=%s ttft_ms=%s total_ms=%s "
-            "prompt_tokens=%s completion_tokens=%s",
+            "prompt_tokens=%s completion_tokens=%s source_authoritative=%s",
             correlation,
             ",".join(evidence_ids),
             passed,
@@ -617,6 +618,7 @@ class TextAnswerer:
             metrics["totalMs"],
             usage.get("prompt_tokens"),
             usage.get("completion_tokens"),
+            validation["sourceAuthoritative"],
         )
         payload = _public(
             status=status, answer=answer, citations=citations, record_id=record.id,
@@ -667,9 +669,9 @@ def _merge_usage(left: dict, right: dict) -> dict:
 
 
 def _choose_answer(
-    attempts: list[Verdict], raws: list[str], package: list, question: str,
+    attempts: list[Verdict], package: list, question: str,
 ) -> tuple[str, bool, bool, Verdict]:
-    """Verified sentences win. A partial pass is the answer. Templates fill a gap."""
+    """Verified sentences win. Invalid JSON never becomes user-visible prose."""
     clean = [
         item for item in attempts
         if item.parsed and item.texts and not item.conclusion_rejected and meaningful_text(item.texts)
@@ -680,11 +682,6 @@ def _choose_answer(
     chosen = preferred_attempt(attempts)
     if chosen is not None and meaningful_text(chosen.texts):
         return compose_answer(chosen.texts, package, question, supplement=True), False, True, chosen
-    for raw in reversed(raws):
-        prose, _issues = filter_prose(salvage_prose(raw), package)
-        if prose_usable(prose, package, question):
-            base = attempts[-1]
-            return prose, False, True, base
     base = attempts[-1]
     return compose_answer([], package, question, supplement=True), False, True, base
 

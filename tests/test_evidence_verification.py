@@ -438,6 +438,22 @@ def test_fallback_excludes_unrelated_status_summary_and_review_atoms():
     assert "Son 5 muayene" not in answer
     assert "Uyku kalitesi" not in answer
 
+    inflected_answer = fallback_answer(package, "Uykum nasıl, yeterince uyuyor muyum?")
+    assert "Uyku süresi" in inflected_answer
+    assert "6.5" in inflected_answer
+
+
+def test_cervical_cytology_alias_selects_smear_evidence():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact(
+            "f-smear", "cervical_cytology", "Servikal sitoloji",
+            value="negatif", type_="pathology",
+        ),
+        _sfact("f-other", "ornek_a", "Ornek A", 12, "mg/dL"),
+    ]))
+
+    assert fallback_ids(package, "Smear sonucum nasıldı?") == [package[0].id]
+
 
 def test_passing_prose_is_never_extended_with_uncited_atoms():
     package = parse_chart(_labs(), AS_OF)

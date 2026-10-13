@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "key": "evidence-concepts-v1",
   "concepts": [
     {"id": "triglyceride", "aliases": ["trigliserit", "triglyceride"]},
@@ -20,7 +20,9 @@
     {"id": "alt", "aliases": ["alt"]},
     {"id": "ast", "aliases": ["ast"]},
     {"id": "tsh", "aliases": ["tsh"]},
-    {"id": "egfr", "aliases": ["egfr"]}
+    {"id": "egfr", "aliases": ["egfr"]},
+    {"id": "sleep_duration", "aliases": ["uyku suresi", "ortalama uyku suresi"]},
+    {"id": "cervical_cytology", "aliases": ["smear", "smear testi", "pap smear", "servikal sitoloji"]}
   ],
   "families": [
     {
@@ -37,6 +39,11 @@
       "id": "kidney_function",
       "aliases": ["bobrek", "bobrek fonksiyonu", "bobrek fonksiyon testi", "bobrek testi", "bobrek degeri", "bobrek degerleri"],
       "members": ["creatinine", "egfr"]
+    },
+    {
+      "id": "sleep_metrics",
+      "aliases": ["uyku", "uykum", "uykun", "uyku duzeni"],
+      "members": ["sleep_duration"]
     },
     {
       "id": "hemogram",

@@ -105,6 +105,7 @@ def _summarize(rows: list[dict]) -> dict:
     total_ms = _numbers(rows, "metrics.totalMs")
     input_tokens = _numbers(rows, "metrics.usage.prompt_tokens")
     output_tokens = _numbers(rows, "metrics.usage.completion_tokens")
+    retried = [row for row in rows if bool((row.get("metrics") or {}).get("retry"))]
     return {
         "questionCount": total,
         "gradeCounts": grade_counts,
@@ -112,9 +113,12 @@ def _summarize(rows: list[dict]) -> dict:
         "firstPassRate": _rate(rows, lambda row: not (row.get("metrics") or {}).get("retry")),
         "retryRate": _rate(rows, lambda row: bool((row.get("metrics") or {}).get("retry"))),
         "retrySuccessRate": _rate(
-            rows,
-            lambda row: bool((row.get("metrics") or {}).get("retry"))
-            and bool((row.get("validation") or {}).get("passed")),
+            retried,
+            lambda row: bool((row.get("validation") or {}).get("passed")),
+        ),
+        "retryCount": len(retried),
+        "retrySuccessCount": sum(
+            1 for row in retried if bool((row.get("validation") or {}).get("passed"))
         ),
         "fallbackRate": _rate(rows, lambda row: bool((row.get("metrics") or {}).get("fallback"))),
         "emptyAnswerRate": _rate(rows, lambda row: not str(row.get("answer") or "").strip()),

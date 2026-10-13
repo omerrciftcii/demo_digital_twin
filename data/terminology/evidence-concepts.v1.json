@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "key": "evidence-concepts-v1",
   "concepts": [
     {"id": "triglyceride", "aliases": ["trigliserit", "triglyceride"]},
@@ -13,6 +13,7 @@
     {"id": "iron", "aliases": ["serum demir", "demir", "iron"]},
     {"id": "anemia", "aliases": ["anemi", "anemia"]},
     {"id": "hba1c", "aliases": ["hba1c", "hb a1c"]},
+    {"id": "total_cholesterol", "aliases": ["total kolesterol", "toplam kolesterol", "total cholesterol", "kolesterol"]},
     {"id": "ldl", "aliases": ["ldl"]},
     {"id": "hdl", "aliases": ["hdl"]},
     {"id": "creatinine", "aliases": ["kreatinin", "creatinine"]},
@@ -20,5 +21,22 @@
     {"id": "ast", "aliases": ["ast"]},
     {"id": "tsh", "aliases": ["tsh"]},
     {"id": "egfr", "aliases": ["egfr"]}
+  ],
+  "families": [
+    {
+      "id": "lipid_panel",
+      "aliases": ["lipid", "lipit", "lipid paneli", "lipit paneli", "lipid profili", "lipit profili"],
+      "members": ["total_cholesterol", "ldl", "hdl", "triglyceride"]
+    },
+    {
+      "id": "liver_enzymes",
+      "aliases": ["karaciger enzimi", "karaciger enzimleri", "karaciger fonksiyon testi", "karaciger testleri"],
+      "members": ["alt", "ast"]
+    },
+    {
+      "id": "hemogram",
+      "aliases": ["hemogram", "tam kan sayimi", "kan sayimi"],
+      "members": ["hemoglobin", "hematocrit", "mcv"]
+    }
   ]
 }

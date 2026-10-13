@@ -20,7 +20,9 @@ from medical_ai_selective_context.text_qa import (
 from medical_ai_selective_context.text_verify import (
     ANSWER_JSON_SCHEMA,
     _quantities,
+    compose_answer,
     fallback_answer,
+    fallback_ids,
     parse_model_payload,
     verify_payload,
 )
@@ -322,6 +324,115 @@ def test_normal_labs_cannot_support_a_deficiency():
     assert good.fully_ok, good.reasons
 
 
+def test_typed_conclusion_rejects_normal_labs_as_symptom_support():
+    package = parse_chart(_blood(), AS_OF)
+    ids = [item.id for item in package]
+    verdict = verify_payload(parse_model_payload(_body(
+        {
+            "status": "supported",
+            "text": "Yorgunluğun tahlillerle uyumlu.",
+            "claim_type": "clinical_support",
+            "evidence_ids": ids,
+        },
+        [],
+    )), package)
+    assert verdict.conclusion_rejected
+    assert "normal_results_cannot_support" in verdict.codes
+
+
+def test_concept_families_drive_safe_fallback_and_false_absence_checks():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact("f-total", "total_cholesterol", "Total kolesterol", 230, "mg/dL"),
+        _sfact("f-ldl", "ldl", "LDL", 140, "mg/dL"),
+        _sfact("f-hdl", "hdl", "HDL", 55, "mg/dL"),
+        _sfact("f-trig", "triglyceride", "Trigliserit", 160, "mg/dL"),
+        _sfact("f-alt", "alt", "ALT", 48, "U/L"),
+        _sfact("f-ast", "ast", "AST", 42, "U/L"),
+    ]))
+
+    lipid_answer = fallback_answer(package, "Lipid sonuçlarım nasıl?")
+    for label in ("Total kolesterol", "LDL", "HDL", "Trigliserit"):
+        assert label in lipid_answer
+    liver_ids = fallback_ids(package, "Karaciğer enzimlerim nasıl?")
+    assert liver_ids == [package[4].id, package[5].id]
+
+    false_absence = verify_payload(parse_model_payload(_body(
+        {
+            "status": "uncertain",
+            "text": "Lipid kaydı bulunmuyor.",
+            "claim_type": "missing_information",
+            "evidence_ids": [],
+        },
+        [],
+    )), package)
+    assert "false_absence" in false_absence.codes
+
+    inflected_absence = verify_payload(parse_model_payload(_body(
+        {
+            "status": "uncertain",
+            "text": "Kolesterolüm kayıtta yok.",
+            "claim_type": "missing_information",
+            "evidence_ids": [],
+        },
+        [],
+    )), package)
+    assert "false_absence" in inflected_absence.codes
+
+
+def test_false_absence_checks_the_complete_catalog_after_prompt_trimming():
+    catalog = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact("f-other", "ornek_a", "Ornek A", 12, "mg/dL"),
+        _sfact("f-alt", "alt", "ALT", 48, "U/L"),
+        _sfact("f-ast", "ast", "AST", 42, "U/L"),
+    ]))
+    prompt_package = catalog[:1]
+    verdict = verify_payload(parse_model_payload(_body(
+        {
+            "status": "uncertain",
+            "text": "Karaciğer enzimi kaydı yoktur.",
+            "claim_type": "missing_information",
+            "evidence_ids": [],
+        },
+        [],
+    )), prompt_package, catalog=catalog)
+    assert "false_absence" in verdict.codes
+
+
+def test_fallback_excludes_unrelated_status_summary_and_review_atoms():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact(
+            "f-status", "last_visits", "Son 5 muayene", 5, type_="data_status",
+            source_type="counter", observation_role="summary",
+        ),
+        _sfact(
+            "f-dx", "rosacea", "Rozasea", type_="diagnosis", value=None,
+            source_section="Uyku özeti",
+        ),
+        _sfact(
+            "f-sleep", "sleep_duration", "Uyku süresi", 6.5, "saat", type_="wearable",
+        ),
+        _sfact(
+            "f-review", "sleep_quality", "Uyku kalitesi", "düşük", type_="wearable",
+            requires_human_review=True,
+        ),
+    ]))
+    answer = fallback_answer(package, "Uyku sürem nasıl?")
+    assert "Uyku süresi" in answer
+    assert "6.5" in answer
+    assert "Rozasea" not in answer
+    assert "Son 5 muayene" not in answer
+    assert "Uyku kalitesi" not in answer
+
+
+def test_passing_prose_is_never_extended_with_uncited_atoms():
+    package = parse_chart(_labs(), AS_OF)
+    answer = compose_answer(
+        ["Trigliserit 80 mg/dL."], package, "Trigliserit ve glukoz nasıl?", supplement=True,
+    )
+    assert "Trigliserit 80" in answer
+    assert "Açlık şekeri" not in answer
+
+
 def test_preliminary_diagnosis_stays_preliminary():
     package = parse_chart(_dx_preliminary(), AS_OF)
     item = package[0]
@@ -560,7 +671,20 @@ def test_retry_returns_the_second_answer_when_it_passes(monkeypatch):
     assert "95" not in result["answer"]
     assert "E1" not in result["answer"]
     assert result["metrics"]["modelCalls"] == 2
+    assert result["metrics"]["usageAvailable"] is True
+    assert result["validation"]["trace"]["facts_loaded_count"] == len(package)
+    assert result["validation"]["trace"]["cited_evidence_ids"]
+    assert "usage_unavailable" not in result["validation"]["warningCodes"]
     assert result["validation"]["correlationId"]
+    retry_messages = cursor["last"]["messages"]
+    assert retry_messages[-1]["role"] == "user"
+    assert "allowed_evidence_ids" in retry_messages[-1]["content"]
+    assert "preserve_verified_claims" in retry_messages[-1]["content"]
+    assert "Yeni claim ekleme" in retry_messages[-1]["content"]
+    assert not any(
+        message["role"] == "assistant" and bad in message["content"]
+        for message in retry_messages
+    )
 
 
 def test_double_failure_returns_a_safe_fallback(monkeypatch):
@@ -578,6 +702,43 @@ def test_double_failure_returns_a_safe_fallback(monkeypatch):
     assert "95" not in result["answer"]
     assert "80" in result["answer"]
     assert result["status"] in {"answered", "insufficient_evidence"}
+
+
+def test_answerer_checks_absence_against_catalog_after_prompt_trimming(monkeypatch):
+    from medical_ai_selective_context import text_qa
+
+    monkeypatch.setenv("DETERMINISTIC_EVIDENCE_VERIFICATION_ENABLED", "true")
+    facts = _facts_package([
+        _sfact("f-other", "ornek_a", "Ornek A", 12, "mg/dL"),
+        _sfact("f-alt", "alt", "ALT", 48, "U/L"),
+        _sfact("f-ast", "ast", "AST", 42, "U/L"),
+    ])
+    absent = _body(
+        {
+            "status": "uncertain",
+            "text": "Karaciğer enzimi kaydı yoktur.",
+            "claim_type": "missing_information",
+            "evidence_ids": [],
+        },
+        [],
+    )
+
+    def trim(messages, package, _max_output, *, question=""):
+        assert question
+        return messages, package[:1]
+
+    monkeypatch.setattr(text_qa, "_fit_evidence", trim)
+    answerer, cursor = _answerer([absent, absent])
+    result = asyncio.run(answerer.answer(
+        _record("Giriş.\n"), "Karaciğer enzimlerim nasıl?", structured_facts=facts,
+    ))
+    assert cursor["n"] == 2
+    assert result["validation"]["fallback"] is True
+    assert "false_absence" in result["validation"]["errorCodes"]
+    assert "yoktur" not in result["answer"]
+    assert "ALT" in result["answer"]
+    assert "AST" in result["answer"]
+    assert result["validation"]["trace"]["dropped_for_budget_ids"] == ["E2", "E3"]
 
 
 def test_flag_off_keeps_the_status_line_path(monkeypatch):
@@ -744,6 +905,23 @@ def test_catalog_reserves_output_tokens(monkeypatch):
     assert _prompt_budget(max_output) == 4000 - 1200 - 128
 
 
+def test_catalog_budget_keeps_question_relevant_evidence(monkeypatch):
+    monkeypatch.setenv("QA_CONTEXT_TOKENS", "4000")
+    facts = [
+        _sfact(f"f-{index}", f"other_{index}", f"Başka ölçüm {index}", index, "puan")
+        for index in range(80)
+    ]
+    facts.append(_sfact("f-alt", "alt", "ALT", 48, "U/L"))
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package(facts))
+    messages = [
+        {"role": "system", "content": "s" * 40},
+        {"role": "user", "content": "ALT sonucum nasıl?"},
+    ]
+    _fitted, kept = _fit_evidence(messages, package, 1200, question="ALT sonucum nasıl?")
+    assert len(kept) < len(package)
+    assert any(item.concept == "alt" for item in kept)
+
+
 def test_fallback_keeps_passing_sentences_and_closes_parentheses():
     package = parse_chart(_dx_preliminary(), AS_OF)
     item = package[0]
@@ -786,6 +964,7 @@ def test_local_schema_is_optional_and_a_400_drops_it():
     plain = chat_body(local, [{"role": "user", "content": "kayıt"}])
     assert "response_format" not in plain
     guided = chat_body(local, [{"role": "user", "content": "kayıt"}], ANSWER_JSON_SCHEMA)
+    assert guided["stream_options"] == {"include_usage": True}
     assert guided["response_format"]["type"] == "json_schema"
     routed = chat_body(
         TextModelSettings(

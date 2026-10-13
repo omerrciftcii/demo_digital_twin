@@ -274,6 +274,7 @@ def chat_body(
         "temperature": 0,
         "max_tokens": settings.answer_max_tokens,
         "stream": True,
+        "stream_options": {"include_usage": True},
     }
     if json_schema and not _is_openrouter(settings.base_url):
         body["response_format"] = {

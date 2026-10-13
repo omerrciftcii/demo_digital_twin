@@ -11,12 +11,13 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from collections import Counter
 from collections.abc import AsyncIterator
 from time import perf_counter
 from typing import Any
 
 from .text_document import TextRecord
-from .text_evidence import build_evidence, render_catalog
+from .text_evidence import build_evidence, concept_ids_for_text, render_catalog
 from .text_grounding import GroundingResult, format_model_text, ground_answer
 from .text_llm import (
     ModelError,
@@ -26,7 +27,7 @@ from .text_llm import (
     env_number,
     strip_think_blocks,
 )
-from .text_relevance import prompt_plan
+from .text_relevance import overlaps, prompt_plan, question_terms
 from .text_safety import (
     DISCLAIMER,
     classify_question,
@@ -532,31 +533,50 @@ class TextAnswerer:
             return
         chart = _chart_from_record_message(messages[1]["content"])
         package = build_evidence(record, chart, structured=structured_facts)
-        messages, package = _fit_evidence(messages, package, output_tokens)
+        messages, prompt_package = _fit_evidence(
+            messages, package, output_tokens, question=question,
+        )
         first = await _collect(self.model, messages, schema)
         if isinstance(first, ModelError):
             yield {"type": "done", **_failure(first, record, self.model, started, calls=1)}
             return
-        verdict = verify_payload(parse_model_payload(first["text"]), package)
+        validation_started = perf_counter()
+        verdict = verify_payload(
+            parse_model_payload(first["text"]), prompt_package, catalog=package,
+        )
+        first_validation_ms = _ms(validation_started)
         attempts = [verdict]
         retried = False
         calls = 1
         usage = dict(first.get("usage") or {})
         ttft = first.get("ttftMs")
+        second_model_ms: float | None = None
+        second_validation_ms: float | None = None
         if needs_retry(verdict):
             retried = True
             retry_messages = [
                 *messages,
-                {"role": "assistant", "content": first["text"][:8000]},
-                {"role": "user", "content": retry_instruction(verdict.reasons)},
+                {
+                    "role": "user",
+                    "content": retry_instruction(
+                        verdict, [item.id for item in prompt_package],
+                    ),
+                },
             ]
             second = await _collect(self.model, retry_messages, schema)
             calls = 2
             if not isinstance(second, ModelError):
+                second_model_ms = second.get("totalMs")
                 usage = _merge_usage(usage, second.get("usage") or {})
-                verdict = verify_payload(parse_model_payload(second["text"]), package)
+                validation_started = perf_counter()
+                verdict = verify_payload(
+                    parse_model_payload(second["text"]), prompt_package, catalog=package,
+                )
+                second_validation_ms = _ms(validation_started)
                 attempts.append(verdict)
+        selection_started = perf_counter()
         answer, passed, fallback, chosen = _choose_answer(attempts, package, question)
+        selection_ms = _ms(selection_started)
         if not answer.strip():
             answer = compose_answer([], [], question, supplement=True)
             status = "insufficient_evidence"
@@ -569,10 +589,18 @@ class TextAnswerer:
                 if "doğrulayan bir cümle kurulamadı" in answer
                 else "answered"
             )
-            evidence_ids = chosen.evidence_ids if passed else fallback_ids(package, question)
-            if not passed and chosen.texts:
-                evidence_ids = list(dict.fromkeys([*chosen.evidence_ids, *evidence_ids]))
+            evidence_ids = (
+                chosen.evidence_ids if chosen.texts else fallback_ids(package, question)
+            )
         citations = citations_for(record, evidence_ids, package)
+        prompt_ids = [item.id for item in prompt_package]
+        prompt_id_set = set(prompt_ids)
+        dropped_ids = [item.id for item in package if item.id not in prompt_id_set]
+        fact_counts = dict(sorted(Counter(item.type for item in package).items()))
+        usage_available = all(key in usage for key in ("prompt_tokens", "completion_tokens"))
+        warning_codes = list(chosen.warning_codes)
+        if not usage_available and "usage_unavailable" not in warning_codes:
+            warning_codes.append("usage_unavailable")
         metrics = {
             "timeToFirstTokenMs": ttft,
             "totalMs": _ms(started),
@@ -581,6 +609,31 @@ class TextAnswerer:
             "correlationId": correlation,
             "retry": retried,
             "fallback": fallback,
+            "usageAvailable": usage_available,
+            "stagesMs": {
+                "modelCall1": first.get("totalMs"),
+                "validation1": first_validation_ms,
+                "modelCall2": second_model_ms,
+                "validation2": second_validation_ms,
+                "answerSelection": selection_ms,
+                "fallback": selection_ms if fallback else 0.0,
+            },
+        }
+        fallback_evidence_ids = evidence_ids if fallback else []
+        retry_evidence_ids = verdict.evidence_ids if retried else []
+        trace = {
+            "facts_loaded_count": len(package),
+            "facts_by_type": fact_counts,
+            "candidate_fact_ids": [item.fact_id or item.id for item in prompt_package],
+            "catalog_evidence_ids": [item.id for item in package],
+            "prompt_evidence_ids": prompt_ids,
+            "cited_evidence_ids": evidence_ids,
+            "dropped_for_budget_ids": dropped_ids,
+            "validation_error_codes": list(dict.fromkeys(
+                code for attempt in attempts for code in attempt.codes
+            )),
+            "retry_evidence_ids": retry_evidence_ids,
+            "fallback_evidence_ids": fallback_evidence_ids,
         }
         validation = {
             "enabled": True,
@@ -589,7 +642,7 @@ class TextAnswerer:
             "evidenceIds": evidence_ids,
             "errorCodes": [] if passed else chosen.codes,
             "droppedCodes": chosen.codes if passed else [],
-            "warningCodes": chosen.warning_codes,
+            "warningCodes": warning_codes,
             "retried": retried,
             "fallback": fallback,
             "citationsValid": True,
@@ -600,6 +653,7 @@ class TextAnswerer:
             "sourceAuthoritative": (
                 package[0].source_authoritative if package else None
             ),
+            "trace": trace,
         }
         if chosen.debug and (not passed or chosen.codes or chosen.warning_codes):
             validation["debug"] = chosen.debug
@@ -611,7 +665,7 @@ class TextAnswerer:
             ",".join(evidence_ids),
             passed,
             ",".join(validation["errorCodes"]),
-            ",".join(chosen.warning_codes),
+            ",".join(validation["warningCodes"]),
             retried,
             fallback,
             ttft,
@@ -643,12 +697,34 @@ def _prompt_budget(max_output: int) -> int:
     return max(256, context_token_budget() - reserve)
 
 
+def _rank_evidence(package: list, question: str) -> list:
+    terms = question_terms(question)
+    concepts = concept_ids_for_text(question)
+    ranked: list[tuple[int, int, Any]] = []
+    for index, evidence in enumerate(package):
+        score = 0
+        if evidence.concept in concepts:
+            score += 1000
+        named = " ".join([evidence.display_name, evidence.concept.replace("_", " ")])
+        if terms and overlaps(named, terms):
+            score += 300
+        if terms and overlaps(evidence.source_section, terms):
+            score += 80
+        if evidence.freshness == "current":
+            score += 20
+        if evidence.date:
+            score += 5
+        ranked.append((-score, index, evidence))
+    ranked.sort(key=lambda item: (item[0], item[1]))
+    return [item[2] for item in ranked]
+
+
 def _fit_evidence(
-    messages: list[dict[str, str]], package: list, max_output: int,
+    messages: list[dict[str, str]], package: list, max_output: int, *, question: str = "",
 ) -> tuple[list[dict[str, str]], list]:
-    """Swap in the JSON prompt and keep input plus output inside the window."""
+    """Rank for the question, then keep input plus output inside the window."""
     budget = _prompt_budget(max_output)
-    kept = list(package)
+    kept = _rank_evidence(package, question) if question.strip() else list(package)
     base = messages[-1]["content"]
     while True:
         catalog = render_catalog(kept)
@@ -681,7 +757,7 @@ def _choose_answer(
         return render_answer(chosen.texts, package), True, False, chosen
     chosen = preferred_attempt(attempts)
     if chosen is not None and meaningful_text(chosen.texts):
-        return compose_answer(chosen.texts, package, question, supplement=True), False, True, chosen
+        return render_answer(chosen.texts, package), False, False, chosen
     base = attempts[-1]
     return compose_answer([], package, question, supplement=True), False, True, base
 

@@ -18,7 +18,7 @@ from typing import Any, Protocol
 from .index import normalize_text
 from .text_document import TextRecord
 from .text_llm import env_number
-from .text_relevance import section_kind
+from .text_relevance import question_terms, section_kind
 
 _CONCEPTS = Path(__file__).resolve().parents[2] / "data" / "terminology" / "evidence-concepts.v1.json"
 
@@ -177,12 +177,20 @@ def _has_phrase(folded: str, phrases: tuple[str, ...]) -> bool:
 
 
 @lru_cache(maxsize=1)
-def _lexicon() -> tuple[tuple[str, tuple[str, ...]], ...]:
+def _terminology_payload() -> dict[str, Any]:
     if not _CONCEPTS.is_file():
-        return ()
+        return {}
     try:
         payload = json.loads(_CONCEPTS.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+@lru_cache(maxsize=1)
+def _lexicon() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    payload = _terminology_payload()
+    if not payload:
         return ()
     rows: list[tuple[str, tuple[str, ...]]] = []
     for item in payload.get("concepts", []):
@@ -197,8 +205,52 @@ def _lexicon() -> tuple[tuple[str, tuple[str, ...]], ...]:
     return tuple(rows)
 
 
+@lru_cache(maxsize=1)
+def _families() -> tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...]:
+    rows: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = []
+    known = lexicon_ids()
+    for item in _terminology_payload().get("families", []):
+        if not isinstance(item, dict):
+            continue
+        family_id = str(item.get("id") or "").strip()
+        aliases = tuple(_fold(alias) for alias in item.get("aliases", []) if str(alias).strip())
+        members = tuple(
+            str(member).strip() for member in item.get("members", [])
+            if str(member).strip() in known
+        )
+        if family_id and aliases and members:
+            rows.append((family_id, aliases, members))
+    return tuple(rows)
+
+
+def _alias_present(folded: str, alias: str) -> bool:
+    return bool(re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", folded))
+
+
+def _query_alias_present(text: str, alias: str) -> bool:
+    if _alias_present(_fold(text), alias):
+        return True
+    wanted = set(question_terms(alias))
+    if any(len(term) <= 3 for term in wanted):
+        return False
+    return bool(wanted) and wanted.issubset(question_terms(text))
+
+
 def lexicon_ids() -> frozenset[str]:
     return frozenset(concept_id for concept_id, _aliases in _lexicon())
+
+
+def concept_ids_for_text(text: str) -> frozenset[str]:
+    """Canonical concepts named directly or through a registry family alias."""
+    found = {
+        concept_id
+        for concept_id, aliases in _lexicon()
+        if any(_query_alias_present(text, alias) for alias in aliases)
+    }
+    for _family_id, aliases, members in _families():
+        if any(_query_alias_present(text, alias) for alias in aliases):
+            found.update(members)
+    return frozenset(found)
 
 
 def resolve_concept(text: str) -> str:
@@ -210,7 +262,7 @@ def resolve_concept(text: str) -> str:
         for alias in aliases:
             if len(alias) <= best_len:
                 continue
-            if re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", folded):
+            if _alias_present(folded, alias):
                 best_id = concept_id
                 best_len = len(alias)
     if best_id:

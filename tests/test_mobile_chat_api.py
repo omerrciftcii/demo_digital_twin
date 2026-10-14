@@ -115,3 +115,29 @@ def test_mobile_api_uses_compact_contextual_prompt_for_quick_reply():
     assert "önceki takip sorusuna seçtiği yanıt" in calls[0][-1]["content"]
     assert "2-3 kısa, doğal cümlede" in calls[0][-1]["content"]
     assert "Yanıtı şu sırayla" not in calls[0][-1]["content"]
+
+
+def test_mobile_api_accepts_multi_select_mode_without_changing_raw_record():
+    calls = []
+
+    async def complete(messages):
+        calls.append(messages)
+        return {"answer": "Birleşik değerlendirme.", "model": "gemma-test", "latencyMs": 16}
+
+    with make_client(completion=complete) as client:
+        response = client.post(
+            "/api/chat",
+            headers={"X-Demo-Token": TOKEN},
+            json={
+                "patientId": "P01",
+                "question": "Seçtiklerim",
+                "interactionMode": "multi_select",
+                "quickReply": True,
+                "selectedOptions": ["Dinlenirken oluyor", "Nefes darlığı eşlik ediyor"],
+            },
+        )
+
+    assert response.status_code == 200
+    assert calls[0][1] == {"role": "user", "content": "HAM CCO METNİ"}
+    assert "- Dinlenirken oluyor" in calls[0][-1]["content"]
+    assert "- Nefes darlığı eşlik ediyor" in calls[0][-1]["content"]

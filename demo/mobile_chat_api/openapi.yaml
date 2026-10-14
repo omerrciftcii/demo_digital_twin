@@ -139,6 +139,23 @@ components:
             True when question is an option selected from the assistant's previous
             follow-up. The answer becomes a short, context-aware continuation rather
             than repeating the full initial-answer format.
+        interactionMode:
+          type: string
+          enum: [stepwise, multi_select]
+          default: stepwise
+          description: >-
+            stepwise renders one-click follow-ups. multi_select asks the model for
+            five or six question- and patient-specific options that can be selected
+            together.
+        selectedOptions:
+          type: array
+          maxItems: 6
+          default: []
+          description: Options selected together in multi_select mode.
+          items:
+            type: string
+            minLength: 1
+            maxLength: 300
     ChatResponse:
       type: object
       additionalProperties: false

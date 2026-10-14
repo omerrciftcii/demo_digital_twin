@@ -2,7 +2,9 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
-  const state = { patients: [], activePatient: null, history: [], busy: false };
+  const state = {
+    patients: [], activePatient: null, history: [], busy: false, mode: "stepwise",
+  };
   const starterQuestions = {
     P01: [
       ["Uykum gerçekten düzensiz mi?", "Geceleri iyi uyuyamadığımı hissediyorum. Son uyku verilerim bunu destekliyor mu?"],
@@ -70,7 +72,7 @@
 
   function extractQuickReplies(markdown) {
     const lines = markdown.replace(/\r\n/g, "\n").split("\n");
-    const optionPattern = /^(?:[-*]\s*)?([A-Ea-e])[).]\s*(.+)$/;
+    const optionPattern = /^(?:[-*]\s*)?([A-Fa-f])[).]\s*(.+)$/;
     let activeRun = [];
     let bestRun = [];
     for (let index = 0; index < lines.length; index += 1) {
@@ -112,8 +114,8 @@
     $("activity").hidden = !busy;
     $("question").disabled = busy;
     $("send-button").disabled = busy;
-    document.querySelectorAll(".quick-replies button,.starter-prompts button,.patient-button")
-      .forEach((button) => { button.disabled = busy; });
+    document.querySelectorAll(".quick-replies button,.multi-replies button,.multi-replies input,.starter-prompts button,.patient-button,.mode-button")
+      .forEach((control) => { control.disabled = busy; });
   }
 
   function scrollToBottom() {
@@ -130,9 +132,51 @@
     const body = document.createElement("div");
     body.className = "message-content";
     if (role === "assistant") {
-      const parsed = extractQuickReplies(content);
+      const parseOptions = state.mode === "stepwise" || meta.allowMultiSelect;
+      const parsed = parseOptions
+        ? extractQuickReplies(content)
+        : { markdown: content, options: [] };
       body.innerHTML = markdownToHtml(parsed.markdown);
-      if (parsed.options.length) {
+      if (parsed.options.length && state.mode === "multi_select") {
+        const form = document.createElement("div");
+        form.className = "multi-replies";
+        const hint = document.createElement("p");
+        hint.className = "multi-hint";
+        hint.textContent = "Size uyan bir veya daha fazla seçeneği işaretleyin.";
+        const choices = document.createElement("div");
+        choices.className = "multi-options";
+        const submit = document.createElement("button");
+        submit.type = "button";
+        submit.className = "multi-submit";
+        submit.textContent = "Seçilenleri değerlendir";
+        submit.disabled = true;
+        for (const [index, option] of parsed.options.slice(0, 6).entries()) {
+          const labelElement = document.createElement("label");
+          labelElement.className = "multi-option";
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.value = option;
+          checkbox.id = `multi-option-${Date.now()}-${index}`;
+          const text = document.createElement("span");
+          text.textContent = option;
+          checkbox.addEventListener("change", () => {
+            submit.disabled = !choices.querySelector("input:checked");
+          });
+          labelElement.append(checkbox, text);
+          choices.appendChild(labelElement);
+        }
+        submit.addEventListener("click", () => {
+          const selectedOptions = [...choices.querySelectorAll("input:checked")]
+            .map((checkbox) => checkbox.value);
+          if (!selectedOptions.length) return;
+          ask(`Seçtiklerim: ${selectedOptions.join(" · ")}`, {
+            quickReply: true,
+            selectedOptions,
+          });
+        });
+        form.append(hint, choices, submit);
+        article.append(label, body, form);
+      } else if (parsed.options.length) {
         const replies = document.createElement("div");
         replies.className = "quick-replies";
         for (const option of parsed.options) {
@@ -141,7 +185,7 @@
           button.textContent = option;
           button.addEventListener("click", () => {
             const answer = /[?？]\s*$/.test(option) ? `Evet: ${option}` : option;
-            ask(answer, true);
+            ask(answer, { quickReply: true });
           });
           replies.appendChild(button);
         }
@@ -168,7 +212,9 @@
       <div id="welcome" class="welcome">
         <div class="welcome-icon" aria-hidden="true">✦</div>
         <h3>Kayıtların hakkında doğal şekilde sor</h3>
-        <p>Gemma son ilgili klinik kayıtları ve güncel wearable verilerini önceliklendirerek kısa bir yanıt hazırlar.</p>
+        <p>${state.mode === "multi_select"
+    ? "Gemma soruna ve kayıtlarına göre 5–6 seçenek üretir; sana uyanları birlikte işaretleyebilirsin."
+    : "Gemma son ilgili klinik kayıtları ve güncel wearable verilerini önceliklendirerek kısa bir yanıt hazırlar."}</p>
         <div id="starter-prompts" class="starter-prompts" aria-label="Önceden denenmiş örnek sorular"></div>
       </div>`;
     const container = $("starter-prompts");
@@ -206,7 +252,18 @@
     });
   }
 
-  async function ask(question, quickReply = false) {
+  function setMode(mode) {
+    if (state.busy || mode === state.mode) return;
+    state.mode = mode;
+    document.querySelectorAll(".mode-button").forEach((button) => {
+      const active = button.dataset.mode === mode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    resetConversation();
+  }
+
+  async function ask(question, { quickReply = false, selectedOptions = [] } = {}) {
     question = (question || $("question").value).trim();
     if (!question || state.busy || !state.activePatient) return;
     addMessage("user", question);
@@ -220,9 +277,16 @@
           question,
           history: state.history,
           quickReply,
+          interactionMode: state.mode,
+          selectedOptions,
         }),
       });
-      addMessage("assistant", result.answer, result);
+      addMessage("assistant", result.answer, {
+        ...result,
+        allowMultiSelect: state.mode === "multi_select"
+          && !quickReply
+          && selectedOptions.length === 0,
+      });
       state.history.push(
         { role: "user", content: question },
         { role: "assistant", content: result.answer },
@@ -243,6 +307,9 @@
       if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); }
     });
     $("clear-button").addEventListener("click", resetConversation);
+    document.querySelectorAll(".mode-button").forEach((button) => {
+      button.addEventListener("click", () => setMode(button.dataset.mode));
+    });
     try {
       const [patients, health] = await Promise.all([api("/api/patients"), api("/api/health")]);
       state.patients = patients;

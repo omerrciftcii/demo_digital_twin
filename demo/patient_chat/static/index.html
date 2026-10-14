@@ -34,6 +34,10 @@
           <h2 id="active-patient">Hasta seçiliyor…</h2>
         </div>
         <div class="header-actions">
+          <div class="mode-switch" role="group" aria-label="Görüşme modu">
+            <button type="button" class="mode-button active" data-mode="stepwise" aria-pressed="true">Adım adım</button>
+            <button type="button" class="mode-button" data-mode="multi_select" aria-pressed="false">Çoklu seçim</button>
+          </div>
           <div class="connection"><span id="status-dot" class="status-dot"></span><span id="status-text">Bağlantı kontrol ediliyor</span></div>
           <button id="clear-button" class="ghost-button" type="button">Sohbeti temizle</button>
         </div>

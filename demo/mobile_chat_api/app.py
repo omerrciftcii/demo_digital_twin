@@ -14,14 +14,13 @@ from pydantic import BaseModel, ConfigDict
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from demo.patient_chat.app import (
-    FOLLOW_UP_SELECTION_SUFFIX,
     PATIENT_FILES,
     PATIENT_LABELS,
-    QUESTION_SUFFIX,
     SYSTEM_PROMPT,
     ChatRequest,
     Completion,
     DirectVllmClient,
+    build_question_prompt,
     load_patient_records,
 )
 
@@ -178,16 +177,7 @@ def create_mobile_app(
             {"role": "user", "content": patient_text},
         ]
         messages.extend(item.model_dump() for item in body.history[-6:])
-        if body.quick_reply:
-            current_prompt = (
-                f"Bugünün tarihi {today}.\n"
-                "Kullanıcının önceki takip sorusuna seçtiği yanıt: "
-                f"{body.question}\n\n{FOLLOW_UP_SELECTION_SUFFIX}"
-            )
-        else:
-            current_prompt = (
-                f"Bugünün tarihi {today}.\nHasta sorusu: {body.question}\n\n{QUESTION_SUFFIX}"
-            )
+        current_prompt = build_question_prompt(body, today)
         messages.append({"role": "user", "content": current_prompt})
         try:
             result: dict[str, Any] = await complete(messages)

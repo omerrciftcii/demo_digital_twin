@@ -53,6 +53,20 @@ Yanıtı şu sırayla kur:
 
 FOLLOW_UP_SELECTION_SUFFIX = """Bu mesaj, önceki yanıtındaki takip sorusuna kullanıcının seçtiği yanıttır. Önceki konuşma ile hasta kaydını birlikte değerlendir. Uzun ilk-yanıt şablonunu ve bölüm başlıklarını tekrarlama. Seçilen bilginin değerlendirmeyi nasıl değiştirdiğini veya neden değiştirmediğini 2-3 kısa, doğal cümlede açıkla. Yalnızca doğrudan ilgili klinik veya wearable bilgisini kullan; kişisel kayıtta bağlantı yoksa bunu zorlamadan söyle. Kesin tanı veya nedensellik kurma. Değerlendirme için gerçekten gerekli tek bir bilgi daha varsa en sonda kısa bir soru sorabilir ve 3-4 kısa A), B), C) yanıt seçeneği verebilirsin."""
 
+MULTI_SELECT_QUESTION_SUFFIX = """
+
+Yanıtı şu sırayla kur:
+1. Kısa ve doğrudan cevap; gerekiyorsa sık görülen genel olasılıklar.
+2. "Son kayıtlarına göre" altında yalnızca doğrudan ilgili en güncel bilgiler.
+3. "Şimdilik ne yapabilirsin?" altında güvenli genel adımlar.
+4. Varsa acil uyarı işaretleri.
+5. En sonda, yanıtı kişiselleştirmek için kullanıcının aynı anda birden fazlasını seçebileceği tam 5 veya 6 kısa seçenek üret. Seçenekleri A), B), C), D), E) ve gerekiyorsa F) biçiminde ayrı satırlara yaz.
+
+Seçenekler kullanıcının sorusuna ve verilen hasta kaydındaki ilgili klinik/wearable bağlama özel olsun. Kullanıcının kendisi hakkında işaretleyebileceği belirti, süre, şiddet, tetikleyici veya eşlik eden durum ifadeleri yaz; tanı, kesin neden ya da kayıtta zaten varmış gibi yeni bilgi yazma. Birlikte doğru olabilecek seçenekler üret. Uygunsa "Bunların hiçbiri" veya "Başka bir durum var" seçeneği ekle. İlişkisiz kayıtları yanıta alma. Eski reçete veya tedaviyi bugün kullanmasını söyleme.
+""".strip()
+
+MULTI_SELECTION_SUFFIX = """Bu mesaj, önceki yanıtındaki seçeneklerden kullanıcının aynı anda işaretlediği birden fazla bilgiyi içerir. Önceki konuşma, seçilen maddeler ve hasta kaydını birlikte değerlendir. Seçimlerin değerlendirmeyi nasıl değiştirdiğini 3-5 kısa, doğal cümlede açıkla. Uzun ilk-yanıt şablonunu ve bölüm başlıklarını tekrarlama. Yanıt yalnızca birleşik değerlendirme metninden oluşsun; sonunda soru sorma, önceki seçenekleri tekrarlama ve A)-F) seçenek satırları üretme. Yalnızca doğrudan ilgili klinik veya wearable bilgisini kullan, kişisel kayıtta bağlantı yoksa bunu zorlamadan söyle. Seçimlerden biri acil uyarı işaretiyse bunu açık ve uygun öncelikle belirt. Kesin tanı veya nedensellik kurma."""
+
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
@@ -64,6 +78,10 @@ class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2_000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=8)
     quick_reply: bool = Field(default=False, alias="quickReply")
+    interaction_mode: Literal["stepwise", "multi_select"] = Field(
+        default="stepwise", alias="interactionMode"
+    )
+    selected_options: list[str] = Field(default_factory=list, alias="selectedOptions", max_length=6)
 
     @field_validator("patient_id", "question")
     @classmethod
@@ -72,6 +90,34 @@ class ChatRequest(BaseModel):
         if not value:
             raise ValueError("blank_value")
         return value
+
+    @field_validator("selected_options")
+    @classmethod
+    def clean_selected_options(cls, values: list[str]) -> list[str]:
+        cleaned = [value.strip() for value in values]
+        if any(not value or len(value) > 300 for value in cleaned):
+            raise ValueError("invalid_selected_option")
+        return cleaned
+
+
+def build_question_prompt(body: ChatRequest, today: str) -> str:
+    if body.interaction_mode == "multi_select" and body.selected_options:
+        selected = "\n".join(f"- {option}" for option in body.selected_options)
+        return (
+            f"Bugünün tarihi {today}.\n"
+            "Kullanıcının önceki seçeneklerden birlikte işaretlediği bilgiler:\n"
+            f"{selected}\n\n{MULTI_SELECTION_SUFFIX}"
+        )
+    if body.quick_reply:
+        return (
+            f"Bugünün tarihi {today}.\n"
+            "Kullanıcının önceki takip sorusuna seçtiği yanıt: "
+            f"{body.question}\n\n{FOLLOW_UP_SELECTION_SUFFIX}"
+        )
+    suffix = (
+        MULTI_SELECT_QUESTION_SUFFIX if body.interaction_mode == "multi_select" else QUESTION_SUFFIX
+    )
+    return f"Bugünün tarihi {today}.\nHasta sorusu: {body.question}\n\n{suffix}"
 
 
 Completion = Callable[[list[dict[str, str]]], Awaitable[dict[str, Any]]]
@@ -215,16 +261,7 @@ def create_app(
             {"role": "user", "content": patient_text},
         ]
         messages.extend(item.model_dump() for item in body.history[-6:])
-        if body.quick_reply:
-            current_prompt = (
-                f"Bugünün tarihi {today}.\n"
-                "Kullanıcının önceki takip sorusuna seçtiği yanıt: "
-                f"{body.question}\n\n{FOLLOW_UP_SELECTION_SUFFIX}"
-            )
-        else:
-            current_prompt = (
-                f"Bugünün tarihi {today}.\nHasta sorusu: {body.question}\n\n{QUESTION_SUFFIX}"
-            )
+        current_prompt = build_question_prompt(body, today)
         messages.append({"role": "user", "content": current_prompt})
         try:
             result = await complete(messages)

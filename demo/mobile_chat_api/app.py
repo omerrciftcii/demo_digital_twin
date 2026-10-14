@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from demo.patient_chat.app import (
@@ -26,6 +26,12 @@ from demo.patient_chat.app import (
 
 DEFAULT_OFFICE_CIDRS = ("10.34.14.0/23", "127.0.0.0/8")
 DEFAULT_ALLOWED_HOSTS = ("10.34.14.76", "127.0.0.1", "localhost", "testserver")
+
+FOLLOW_UP_SELECTION_SUFFIX = """Bu mesaj, önceki yanıtındaki takip sorusuna kullanıcının seçtiği yanıttır. Önceki konuşma ile hasta kaydını birlikte değerlendir. Uzun ilk-yanıt şablonunu ve bölüm başlıklarını tekrarlama. Seçilen bilginin değerlendirmeyi nasıl değiştirdiğini veya neden değiştirmediğini 2-3 kısa, doğal cümlede açıkla. Yalnızca doğrudan ilgili klinik veya wearable bilgisini kullan; kişisel kayıtta bağlantı yoksa bunu zorlamadan söyle. Kesin tanı veya nedensellik kurma. Değerlendirme için gerçekten gerekli tek bir bilgi daha varsa en sonda kısa bir soru sorabilir ve 3-4 kısa A), B), C) seçeneği verebilirsin."""
+
+
+class MobileChatRequest(ChatRequest):
+    quick_reply: bool = Field(default=False, alias="quickReply")
 
 
 class PatientSummary(BaseModel):
@@ -59,7 +65,9 @@ def _csv_env(name: str, fallback: Sequence[str]) -> tuple[str, ...]:
     return values or tuple(fallback)
 
 
-def _parse_networks(values: Sequence[str]) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
+def _parse_networks(
+    values: Sequence[str],
+) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
     networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
     for value in values:
         networks.append(ipaddress.ip_network(value, strict=True))
@@ -142,9 +150,7 @@ def create_mobile_app(
         return JSONResponse(
             status_code=422,
             content={
-                "detail": [
-                    {"loc": error["loc"], "type": error["type"]} for error in exc.errors()
-                ]
+                "detail": [{"loc": error["loc"], "type": error["type"]} for error in exc.errors()]
             },
         )
 
@@ -166,7 +172,7 @@ def create_mobile_app(
         ]
 
     @application.post("/api/chat", response_model=ChatResponse)
-    async def chat(body: ChatRequest) -> ChatResponse:
+    async def chat(body: MobileChatRequest) -> ChatResponse:
         patient_text = patient_records.get(body.patient_id)
         if patient_text is None:
             raise HTTPException(404, "Hasta kaydı bulunamadı.")
@@ -177,15 +183,17 @@ def create_mobile_app(
             {"role": "user", "content": patient_text},
         ]
         messages.extend(item.model_dump() for item in body.history[-6:])
-        messages.append(
-            {
-                "role": "user",
-                "content": (
-                    f"Bugünün tarihi {today}.\n"
-                    f"Hasta sorusu: {body.question}\n\n{QUESTION_SUFFIX}"
-                ),
-            }
-        )
+        if body.quick_reply:
+            current_prompt = (
+                f"Bugünün tarihi {today}.\n"
+                "Kullanıcının önceki takip sorusuna seçtiği yanıt: "
+                f"{body.question}\n\n{FOLLOW_UP_SELECTION_SUFFIX}"
+            )
+        else:
+            current_prompt = (
+                f"Bugünün tarihi {today}.\nHasta sorusu: {body.question}\n\n{QUESTION_SUFFIX}"
+            )
+        messages.append({"role": "user", "content": current_prompt})
         try:
             result: dict[str, Any] = await complete(messages)
         except RuntimeError as exc:

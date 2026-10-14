@@ -136,6 +136,7 @@ class MobileApiClient {
     required String patientId,
     required String question,
     required List<ChatHistoryMessage> history,
+    bool quickReply = false,
   }) async {
     final response = await _client
         .post(
@@ -145,6 +146,7 @@ class MobileApiClient {
             'patientId': patientId,
             'question': question,
             'history': history.map((message) => message.toJson()).toList(),
+            'quickReply': quickReply,
           }),
         )
         .timeout(const Duration(seconds: 190));

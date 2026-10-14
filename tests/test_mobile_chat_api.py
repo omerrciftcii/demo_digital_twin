@@ -82,3 +82,36 @@ def test_mobile_api_rejects_unknown_patient():
         )
 
     assert response.status_code == 404
+
+
+def test_mobile_api_uses_compact_contextual_prompt_for_quick_reply():
+    calls = []
+
+    async def complete(messages):
+        calls.append(messages)
+        return {"answer": "Kısa takip yanıtı.", "model": "gemma-test", "latencyMs": 18}
+
+    with make_client(completion=complete) as client:
+        response = client.post(
+            "/api/chat",
+            headers={"X-Demo-Token": TOKEN},
+            json={
+                "patientId": "P01",
+                "question": "Kaşıntı veya sulanma var",
+                "quickReply": True,
+                "history": [
+                    {"role": "user", "content": "Gözüm biraz kızarık."},
+                    {
+                        "role": "assistant",
+                        "content": "Hangisi var? A) Kaşıntı veya sulanma var",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 200
+    assert calls[0][1] == {"role": "user", "content": "HAM CCO METNİ"}
+    assert calls[0][2]["content"] == "Gözüm biraz kızarık."
+    assert "önceki takip sorusuna seçtiği yanıt" in calls[0][-1]["content"]
+    assert "2-3 kısa, doğal cümlede" in calls[0][-1]["content"]
+    assert "Yanıtı şu sırayla" not in calls[0][-1]["content"]

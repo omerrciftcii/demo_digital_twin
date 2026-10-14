@@ -132,6 +132,13 @@ components:
           default: []
           items:
             $ref: "#/components/schemas/ChatMessage"
+        quickReply:
+          type: boolean
+          default: false
+          description: >-
+            True when question is an option selected from the assistant's previous
+            follow-up. The answer becomes a short, context-aware continuation rather
+            than repeating the full initial-answer format.
     ChatResponse:
       type: object
       additionalProperties: false

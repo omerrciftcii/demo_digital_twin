@@ -308,6 +308,7 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _send([String? suggestedQuestion]) async {
     if (_waiting) return;
     final question = (suggestedQuestion ?? _questionController.text).trim();
+    final isQuickReply = suggestedQuestion != null;
     if (question.isEmpty) return;
     FocusScope.of(context).unfocus();
 
@@ -336,6 +337,7 @@ class _ChatPageState extends State<ChatPage> {
         patientId: _patientId,
         question: question,
         history: history,
+        quickReply: isQuickReply,
       );
       if (!mounted) return;
       setState(() {

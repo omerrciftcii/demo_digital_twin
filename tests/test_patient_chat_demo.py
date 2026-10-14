@@ -9,10 +9,15 @@ def test_demo_serves_local_ui_and_patient_aliases():
 
     with TestClient(create_app(records={"P01": "HAM METİN"}, completion=complete)) as client:
         page = client.get("/")
+        styles = client.get("/static/styles.css")
         assert page.status_code == 200
+        assert styles.status_code == 200
         assert "MedicalAI" in page.text
         assert "Adım adım" in page.text
         assert "Çoklu seçim" in page.text
+        assert "height: calc(100dvh - 32px);" in styles.text
+        assert "overflow-y: auto;" in styles.text
+        assert "scrollbar-gutter: stable;" in styles.text
         assert "script-src 'self'" in page.headers["content-security-policy"]
         assert client.get("/api/patients").json() == [{"id": "P01", "label": "Hasta 1"}]
         assert client.get("/api/health").json()["status"] == "ready"

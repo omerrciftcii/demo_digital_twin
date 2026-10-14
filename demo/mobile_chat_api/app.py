@@ -10,10 +10,11 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from demo.patient_chat.app import (
+    FOLLOW_UP_SELECTION_SUFFIX,
     PATIENT_FILES,
     PATIENT_LABELS,
     QUESTION_SUFFIX,
@@ -26,12 +27,6 @@ from demo.patient_chat.app import (
 
 DEFAULT_OFFICE_CIDRS = ("10.34.14.0/23", "127.0.0.0/8")
 DEFAULT_ALLOWED_HOSTS = ("10.34.14.76", "127.0.0.1", "localhost", "testserver")
-
-FOLLOW_UP_SELECTION_SUFFIX = """Bu mesaj, önceki yanıtındaki takip sorusuna kullanıcının seçtiği yanıttır. Önceki konuşma ile hasta kaydını birlikte değerlendir. Uzun ilk-yanıt şablonunu ve bölüm başlıklarını tekrarlama. Seçilen bilginin değerlendirmeyi nasıl değiştirdiğini veya neden değiştirmediğini 2-3 kısa, doğal cümlede açıkla. Yalnızca doğrudan ilgili klinik veya wearable bilgisini kullan; kişisel kayıtta bağlantı yoksa bunu zorlamadan söyle. Kesin tanı veya nedensellik kurma. Değerlendirme için gerçekten gerekli tek bir bilgi daha varsa en sonda kısa bir soru sorabilir ve 3-4 kısa A), B), C) seçeneği verebilirsin."""
-
-
-class MobileChatRequest(ChatRequest):
-    quick_reply: bool = Field(default=False, alias="quickReply")
 
 
 class PatientSummary(BaseModel):
@@ -172,7 +167,7 @@ def create_mobile_app(
         ]
 
     @application.post("/api/chat", response_model=ChatResponse)
-    async def chat(body: MobileChatRequest) -> ChatResponse:
+    async def chat(body: ChatRequest) -> ChatResponse:
         patient_text = patient_records.get(body.patient_id)
         if patient_text is None:
             raise HTTPException(404, "Hasta kaydı bulunamadı.")

@@ -46,10 +46,12 @@ Yanıtı şu sırayla kur:
 2. "Son kayıtlarına göre" altında yalnızca doğrudan ilgili en güncel bilgiler.
 3. "Şimdilik ne yapabilirsin?" altında güvenli genel adımlar.
 4. Varsa acil uyarı işaretleri.
-5. Yanıtı iyileştirecekse en sonda tek takip sorusu ve A), B), C) biçiminde 3-5 kısa seçenek. Faydalı bir takip sorusu yoksa seçenek üretmek zorunda değilsin.
+5. Yanıtı iyileştirecekse en sonda tek takip sorusu ve A), B), C) biçiminde 3-5 kısa seçenek. Seçenekleri ayrı soru cümleleri olarak değil, kullanıcının tıklayarak kendi yanıtı olarak gönderebileceği kısa ifadeler biçiminde yaz. Faydalı bir takip sorusu yoksa seçenek üretmek zorunda değilsin.
 
 İlişkisiz kayıtları yanıta alma. Eski reçete veya tedaviyi bugün kullanmasını söyleme.
 """.strip()
+
+FOLLOW_UP_SELECTION_SUFFIX = """Bu mesaj, önceki yanıtındaki takip sorusuna kullanıcının seçtiği yanıttır. Önceki konuşma ile hasta kaydını birlikte değerlendir. Uzun ilk-yanıt şablonunu ve bölüm başlıklarını tekrarlama. Seçilen bilginin değerlendirmeyi nasıl değiştirdiğini veya neden değiştirmediğini 2-3 kısa, doğal cümlede açıkla. Yalnızca doğrudan ilgili klinik veya wearable bilgisini kullan; kişisel kayıtta bağlantı yoksa bunu zorlamadan söyle. Kesin tanı veya nedensellik kurma. Değerlendirme için gerçekten gerekli tek bir bilgi daha varsa en sonda kısa bir soru sorabilir ve 3-4 kısa A), B), C) yanıt seçeneği verebilirsin."""
 
 
 class ChatMessage(BaseModel):
@@ -61,6 +63,7 @@ class ChatRequest(BaseModel):
     patient_id: str = Field(alias="patientId")
     question: str = Field(min_length=1, max_length=2_000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=8)
+    quick_reply: bool = Field(default=False, alias="quickReply")
 
     @field_validator("patient_id", "question")
     @classmethod
@@ -130,7 +133,9 @@ class DirectVllmClient:
 
 
 def create_app(
-    *, records: dict[str, str] | None = None, completion: Completion | None = None,
+    *,
+    records: dict[str, str] | None = None,
+    completion: Completion | None = None,
 ) -> FastAPI:
     patient_records = dict(records) if records is not None else load_patient_records()
     model_client = DirectVllmClient()
@@ -169,9 +174,7 @@ def create_app(
         return JSONResponse(
             status_code=422,
             content={
-                "detail": [
-                    {"loc": error["loc"], "type": error["type"]} for error in exc.errors()
-                ]
+                "detail": [{"loc": error["loc"], "type": error["type"]} for error in exc.errors()]
             },
         )
 
@@ -212,15 +215,17 @@ def create_app(
             {"role": "user", "content": patient_text},
         ]
         messages.extend(item.model_dump() for item in body.history[-6:])
-        messages.append(
-            {
-                "role": "user",
-                "content": (
-                    f"Bugünün tarihi {today}.\n"
-                    f"Hasta sorusu: {body.question}\n\n{QUESTION_SUFFIX}"
-                ),
-            }
-        )
+        if body.quick_reply:
+            current_prompt = (
+                f"Bugünün tarihi {today}.\n"
+                "Kullanıcının önceki takip sorusuna seçtiği yanıt: "
+                f"{body.question}\n\n{FOLLOW_UP_SELECTION_SUFFIX}"
+            )
+        else:
+            current_prompt = (
+                f"Bugünün tarihi {today}.\nHasta sorusu: {body.question}\n\n{QUESTION_SUFFIX}"
+            )
+        messages.append({"role": "user", "content": current_prompt})
         try:
             result = await complete(messages)
         except RuntimeError as exc:

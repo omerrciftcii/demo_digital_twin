@@ -55,3 +55,31 @@ def test_demo_rejects_unknown_patient_and_cross_origin_write():
         )
     assert missing.status_code == 404
     assert blocked.status_code == 403
+
+
+def test_demo_uses_short_continuation_prompt_for_clicked_option():
+    calls = []
+
+    async def complete(messages):
+        calls.append(messages)
+        return {"answer": "Kısa takip yanıtı.", "model": "gemma-test", "latencyMs": 9}
+
+    with TestClient(create_app(records={"P01": "HAM METİN"}, completion=complete)) as client:
+        response = client.post(
+            "/api/chat",
+            json={
+                "patientId": "P01",
+                "question": "Yanma veya batma var",
+                "quickReply": True,
+                "history": [
+                    {"role": "user", "content": "Gözüm kızardı."},
+                    {"role": "assistant", "content": "Hangisi var?\n\nA) Yanma var"},
+                ],
+            },
+        )
+
+    assert response.status_code == 200
+    assert calls[0][1] == {"role": "user", "content": "HAM METİN"}
+    assert "önceki takip sorusuna seçtiği yanıt" in calls[0][-1]["content"]
+    assert "2-3 kısa, doğal cümlede" in calls[0][-1]["content"]
+    assert "Yanıtı şu sırayla" not in calls[0][-1]["content"]

@@ -70,23 +70,31 @@
 
   function extractQuickReplies(markdown) {
     const lines = markdown.replace(/\r\n/g, "\n").split("\n");
-    const questionIndex = markdown.lastIndexOf("?");
-    if (questionIndex < 0) return { markdown, options: [] };
-    let cursor = 0;
-    const options = [];
-    const kept = [];
-    for (const line of lines) {
-      const startsAfterQuestion = cursor > questionIndex;
-      const match = startsAfterQuestion
-        ? line.trim().match(/^(?:[-*]\s*)?[A-Ea-e][).]\s*(.+)$/)
-        : null;
-      if (match) options.push(match[1].trim());
-      else kept.push(line);
-      cursor += line.length + 1;
+    const optionPattern = /^(?:[-*]\s*)?([A-Ea-e])[).]\s*(.+)$/;
+    let activeRun = [];
+    let bestRun = [];
+    for (let index = 0; index < lines.length; index += 1) {
+      const trimmed = lines[index].trim();
+      if (!trimmed) continue;
+      const match = trimmed.match(optionPattern);
+      if (!match) {
+        activeRun = [];
+        continue;
+      }
+      const letter = match[1].toUpperCase();
+      const expected = String.fromCharCode(65 + activeRun.length);
+      if (letter === "A") activeRun = [{ index, text: match[2].trim() }];
+      else if (activeRun.length && letter === expected) {
+        activeRun.push({ index, text: match[2].trim() });
+      } else activeRun = [];
+      if (activeRun.length > bestRun.length) bestRun = [...activeRun];
     }
-    return options.length >= 2
-      ? { markdown: kept.join("\n").trim(), options }
-      : { markdown, options: [] };
+    if (bestRun.length < 2) return { markdown, options: [] };
+    const optionLines = new Set(bestRun.map((item) => item.index));
+    return {
+      markdown: lines.filter((_, index) => !optionLines.has(index)).join("\n").trim(),
+      options: bestRun.map((item) => item.text),
+    };
   }
 
   async function api(path, options = {}) {
@@ -131,7 +139,10 @@
           const button = document.createElement("button");
           button.type = "button";
           button.textContent = option;
-          button.addEventListener("click", () => ask(option));
+          button.addEventListener("click", () => {
+            const answer = /[?？]\s*$/.test(option) ? `Evet: ${option}` : option;
+            ask(answer, true);
+          });
           replies.appendChild(button);
         }
         article.append(label, body, replies);
@@ -195,7 +206,7 @@
     });
   }
 
-  async function ask(question) {
+  async function ask(question, quickReply = false) {
     question = (question || $("question").value).trim();
     if (!question || state.busy || !state.activePatient) return;
     addMessage("user", question);
@@ -208,6 +219,7 @@
           patientId: state.activePatient,
           question,
           history: state.history,
+          quickReply,
         }),
       });
       addMessage("assistant", result.answer, result);

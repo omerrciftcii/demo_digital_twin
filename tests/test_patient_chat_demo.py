@@ -139,6 +139,9 @@ def test_demo_evaluates_multiple_selected_options_together():
     assert "- Yanma var" in prompt
     assert "- Dün başladı" in prompt
     assert "birlikte işaretlediği" in prompt
+    assert 'İlk cümleyi "Seçimlerine göre, ... birlikte öne çıkıyor."' in prompt
+    assert "Bu ilk cümlede tanı koyma" in prompt
+    assert "Seçimleri yalnızca tekrarlama" in prompt
     assert "önceki seçenekleri tekrarlama" in prompt
     assert "A)-F) seçenek satırları üretme" in prompt
     assert "Son kayıtlarına göre" not in prompt

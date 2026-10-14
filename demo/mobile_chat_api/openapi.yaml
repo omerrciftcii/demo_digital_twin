@@ -1,0 +1,147 @@
+openapi: 3.1.0
+info:
+  title: MedicalAI Mobile Demo API
+  version: 0.1.0
+  description: >-
+    Office-WiFi-only Android chat demo. Requests must originate from the configured
+    office CIDR and include the demo access token. Raw patient CCO text is never
+    returned to the client.
+servers:
+  - url: http://10.34.14.76:8093
+security:
+  - DemoToken: []
+paths:
+  /api/health:
+    get:
+      operationId: mobileHealth
+      responses:
+        "200":
+          description: API and model availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/OutsideOfficeNetwork"
+  /api/patients:
+    get:
+      operationId: listMobileDemoPatients
+      responses:
+        "200":
+          description: Patient aliases only; no raw clinical text
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PatientSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/OutsideOfficeNetwork"
+  /api/chat:
+    post:
+      operationId: mobileChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Raw Gemma Markdown answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/OutsideOfficeNetwork"
+        "404":
+          description: Patient alias not found
+        "422":
+          description: Invalid request
+        "502":
+          description: GPU model unavailable
+components:
+  securitySchemes:
+    DemoToken:
+      type: apiKey
+      in: header
+      name: X-Demo-Token
+  responses:
+    Unauthorized:
+      description: Missing or invalid demo token
+    OutsideOfficeNetwork:
+      description: Client IP is outside the configured office CIDR
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, modelReady, patientCount]
+      properties:
+        status:
+          type: string
+          enum: [ready, unavailable]
+        modelReady:
+          type: boolean
+        patientCount:
+          type: integer
+          minimum: 0
+    PatientSummary:
+      type: object
+      additionalProperties: false
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          enum: [P01, P02, P03]
+        label:
+          type: string
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+    ChatRequest:
+      type: object
+      additionalProperties: false
+      required: [patientId, question]
+      properties:
+        patientId:
+          type: string
+          enum: [P01, P02, P03]
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        history:
+          type: array
+          maxItems: 8
+          default: []
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+    ChatResponse:
+      type: object
+      additionalProperties: false
+      required: [answer, model, latencyMs]
+      properties:
+        answer:
+          type: string
+          minLength: 1
+        model:
+          type: string
+        latencyMs:
+          type: integer
+          minimum: 0

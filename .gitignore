@@ -12,6 +12,9 @@ data/text-records/
 data/subject-ids.txt
 data/runtime/
 data/evaluation/
+# Generated reports can contain real clinical data; keep them local/Drive-only.
+output/
+tmp/
 .cache/
 *.egg-info/
 dist/

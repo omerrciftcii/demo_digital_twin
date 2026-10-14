@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The office demo API uses HTTP on the isolated LAN. Release builds keep
+         Android's default cleartext prohibition and must use HTTPS. -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>

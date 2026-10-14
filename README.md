@@ -32,6 +32,21 @@ docker compose up -d neo4j
 .\scripts\start.ps1
 ```
 
+### Hasta sohbeti sunum demosu
+
+Üç özel hasta kaydını ham `text` alanıyla Gemma'ya gönderen, retrieval/fact/verifier
+kullanmayan sade localhost demosunu başlatmak için:
+
+```powershell
+.\scripts\start_patient_chat_demo.ps1
+```
+
+Ardından `http://127.0.0.1:8092` adresini açın. Başlatıcı mevcut SSH anahtarıyla
+GPU sunucusuna yerel bir tünel kurar; uygulama ve hasta seçimi yalnızca localhost'ta
+çalışır. Modelin yanıt sonunda ürettiği `A)`, `B)`, `C)` seçenekleri arayüzde
+tıklanabilir hızlı yanıtlara dönüşür. Çıkmak ve açılan SSH tünelini kapatmak için
+terminalde `Ctrl+C` kullanın.
+
 Mevcut sanal ortam ve embedding önbelleği hazırlanmıştır. Sonraki çalıştırmalarda `scripts\start.ps1` yeterlidir; Neo4j konteyneri ayrıca açık olmalıdır. İlk model yükleme/indeksleme zaman alabilir. Runtime otomatik model indirmez.
 
 - Arayüz: [http://127.0.0.1:8091](http://127.0.0.1:8091)

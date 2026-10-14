@@ -56,7 +56,11 @@ ERROR_MESSAGES = {
 
 def _trusted_synthetic() -> dict[str, Any]:
     raw = SYNTHETIC_PATH.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != SYNTHETIC_SHA256:
+    # Git may materialize the tracked JSON with CRLF on Windows. Verify the
+    # canonical LF representation so the bundled fixture has the same trusted
+    # digest on every supported platform.
+    canonical_raw = raw.replace(b"\r\n", b"\n")
+    if hashlib.sha256(canonical_raw).hexdigest() != SYNTHETIC_SHA256:
         raise ValueError("Bundled synthetic fixture integrity check failed")
     return unwrap_and_validate_cco(json.loads(raw))
 

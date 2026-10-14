@@ -114,6 +114,10 @@ python scripts/evaluate_text.py --base-url http://127.0.0.1:8091
 
 `DETERMINISTIC_EVIDENCE_VERIFICATION_ENABLED` varsayılanı kapalıdır. Açıkken model iç JSON üretir, her olgusal cümle kanıt kimliğine bağlanır ve sayı, tarih, tanı durumu, ilaç aktivitesi, nedensellik ve güncellik kodla denetlenir. vLLM'e `response_format` JSON şeması gider; sunucu 400 dönerse şemasız bir kez daha istenir. Katalog, çıktı token tavanı ve bir pay bırakılarak kısılır. Hatalı cümle düşer; sonuç reddedilmediyse ve kalan metin anlamlıysa yeniden üretim olmaz. Yeniden üretim yalnız sonuç reddedilirse ya da geçen cümle kalmazsa bir kez yapılır. O da yetmezse geçen cümleler ve soruya değen kısa kanıt özeti döner. JSON okunamazsa serbest metin yoluna düşülür ve yalnız sayı kontrolü çalışır. Kapalıyken bu katman çalışmaz; mevcut doğrulama aynen durur.
 
+`QA_FULL_CONTEXT_ENABLED` varsayılanı kapalıdır ve yalnız doğrulamalı yolda etkilidir. Açıkken `cco-text/1` `text` alanı değiştirilmeden ve bütün olgular tek katalogda gider; bölüm ipucu ve kısma yoktur. İleti sırası sistem, kayıt ve katalog, onay, geçmiş, sorudur; ilk üçü sorudan bağımsızdır, önek önbelleği bunu kullanır. Token sayısı yerel vLLM `/tokenize` ucundan alınır (`LLM_TOKENIZE_URL`, varsayılan `LLM_BASE_URL` eksi `/v1`). Uç yoksa ya da yerel değilse karakter tahmini kullanılır ve `tokenCountSource` bunu söyler. Sınır `QA_CONTEXT_TOKENS` ile sunucunun `max_model_len` değerinin küçüğüdür; istem, çıktı tavanı ve 128 token pay sığmazsa model çağrılmaz, durum `context_overflow` olur. Yeniden üretim istemi sığmazsa yeniden üretim atlanır (`retry_skipped`). `validation.context` gönderilen kaydın hash'ini, olgu sayısını, geçmiş kesimlerini ve token dökümünü taşır. Model ağ geçidi `/tokenize` ucunu taşımaz.
+
+`scripts/run_full_context_eval.py` 33 soruyu Full ve Oracle kollarında çalıştırır. Oracle kolu yalnız altın olguların kaynak satırlarını ve o olguları gönderir. `--dry-run` model çağırmadan istem ve sığma raporu üretir; `--tokenize` sayımı yerel sunucudan alır. Çıktı `data/evaluation` altında kalmalıdır.
+
 Mock sınamalar anahtarsızdır:
 
 ```bash

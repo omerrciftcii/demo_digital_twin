@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MedicalAI Hasta Sohbeti</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">M</span>
+        <div><strong>MedicalAI</strong><span>Hasta görüşü · Demo</span></div>
+      </div>
+
+      <section class="patient-section" aria-labelledby="patient-title">
+        <p class="eyebrow">AKTİF KAYIT</p>
+        <h1 id="patient-title">Hasta seç</h1>
+        <div id="patient-list" class="patient-list" aria-live="polite"></div>
+      </section>
+
+      <div class="privacy-note">
+        <span class="privacy-dot" aria-hidden="true"></span>
+        <p>Hasta metni tarayıcıya yüklenmez. Bu demo yalnızca localhost ve şifreli SSH tüneli üzerinden çalışır.</p>
+      </div>
+    </aside>
+
+    <main class="chat-panel">
+      <header class="chat-header">
+        <div>
+          <p class="eyebrow">KİŞİSEL SAĞLIK SOHBETİ</p>
+          <h2 id="active-patient">Hasta seçiliyor…</h2>
+        </div>
+        <div class="header-actions">
+          <div class="connection"><span id="status-dot" class="status-dot"></span><span id="status-text">Bağlantı kontrol ediliyor</span></div>
+          <button id="clear-button" class="ghost-button" type="button">Sohbeti temizle</button>
+        </div>
+      </header>
+
+      <section id="messages" class="messages" aria-live="polite">
+        <div id="welcome" class="welcome">
+          <div class="welcome-icon" aria-hidden="true">✦</div>
+          <h3>Kayıtların hakkında doğal şekilde sor</h3>
+          <p>Gemma son ilgili klinik kayıtları ve güncel wearable verilerini önceliklendirerek kısa bir yanıt hazırlar.</p>
+          <div class="starter-prompts" aria-label="Önceden denenmiş örnek sorular"></div>
+        </div>
+      </section>
+
+      <div id="activity" class="activity" hidden><span class="spinner"></span><span>Gemma kayıtlarını değerlendiriyor…</span></div>
+
+      <form id="composer" class="composer">
+        <label class="sr-only" for="question">Sorunuzu yazın</label>
+        <textarea id="question" rows="2" maxlength="2000" placeholder="Örn. Gözlerim biraz kızarmış, neden olabilir?"></textarea>
+        <div class="composer-footer">
+          <p>Enter ile gönder · Shift+Enter ile yeni satır</p>
+          <button id="send-button" type="submit">Gönder <span aria-hidden="true">↑</span></button>
+        </div>
+      </form>
+
+      <p class="disclaimer">Bu demo tanı koymaz ve acil sağlık hizmetinin yerini tutmaz. Şiddetli veya ani belirtilerde sağlık kuruluşuna başvurun.</p>
+    </main>
+  </div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

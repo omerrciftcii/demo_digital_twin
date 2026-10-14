@@ -16,14 +16,17 @@ from medical_ai_selective_context.text_qa import (
     _prompt_budget,
     deterministic_verification_enabled,
     estimate_tokens,
+    full_question_message,
 )
 from medical_ai_selective_context.text_verify import (
     ANSWER_JSON_SCHEMA,
+    VERIFIED_SYSTEM,
     _quantities,
     compose_answer,
     fallback_answer,
     fallback_ids,
     parse_model_payload,
+    render_answer,
     verify_payload,
 )
 
@@ -394,6 +397,65 @@ def test_concept_families_drive_safe_fallback_and_false_absence_checks():
     assert "false_absence" in qualified_concept_absence.codes
 
 
+def test_absence_without_an_id_is_allowed_when_the_chart_has_no_such_record():
+    package = parse_chart(_labs(), AS_OF)
+    for wording, claim in (
+        ("Kayıtta göz kızarıklığı bulunmuyor.", "fact"),
+        ("Geçmiş kayıtlarında göz batmasıyla ilgili bir bilgi yer almıyor.", "fact"),
+        ("Kayıtta göz ilacı bilgisi bulunmuyor.", "missing_information"),
+    ):
+        verdict = verify_payload(parse_model_payload(_body(
+            {"status": "uncertain", "text": wording, "claim_type": claim, "evidence_ids": []},
+            [],
+        )), package)
+        assert verdict.fully_ok, (wording, verdict.reasons)
+        assert "missing_evidence_id" not in verdict.codes
+
+
+def test_hour_and_minute_durations_match_minutes_on_the_cited_fact():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact(
+            "f-sleep-a", "sleep_duration", "Uyku süresi", 486, "minutes",
+            date="2024-10-08", type_="wearable",
+        ),
+        _sfact(
+            "f-sleep-b", "sleep_duration", "Uyku süresi", 467, "minutes",
+            date="2024-10-05", type_="wearable",
+        ),
+    ]))
+    eight = next(item for item in package if item.value == "486")
+    five = next(item for item in package if item.value == "467")
+    amounts = {amount: family for _match, amount, family in _quantities("Uyku 8 saat 6 dakika sürdü.")}
+    assert amounts[486.0] == "minute"
+    good = verify_payload(parse_model_payload(_body(
+        {
+            "status": "supported",
+            "text": "8 Ekim gecesi 8 saat 6 dakika uyumuşsun.",
+            "evidence_ids": [eight.id],
+        },
+        [_fact("8 Ekim gecesi 8 saat 6 dakika uyumuşsun.", [eight.id])],
+    )), package)
+    assert good.fully_ok, good.reasons
+    minutes = verify_payload(parse_model_payload(_body(
+        {
+            "status": "supported",
+            "text": "5 Ekim gecesi 467 dakika uyumuşsun.",
+            "evidence_ids": [five.id],
+        },
+        [_fact("5 Ekim gecesi 467 dakika uyumuşsun.", [five.id])],
+    )), package)
+    assert minutes.fully_ok, minutes.reasons
+    wrong = verify_payload(parse_model_payload(_body(
+        {
+            "status": "supported",
+            "text": "5 Ekim gecesi 5 saat 10 dakika uyumuşsun.",
+            "evidence_ids": [five.id],
+        },
+        [_fact("5 Ekim gecesi 5 saat 10 dakika uyumuşsun.", [five.id])],
+    )), package)
+    assert "value_not_in_evidence" in wrong.codes
+
+
 def test_false_absence_checks_the_complete_catalog_after_prompt_trimming():
     catalog = build_evidence(_record("Giriş.\n"), structured=_facts_package([
         _sfact("f-other", "ornek_a", "Ornek A", 12, "mg/dL"),
@@ -493,11 +555,30 @@ def test_matching_number_date_unit_and_concept_passes():
     )), package)
     assert verdict.fully_ok, verdict.reasons
     assert "E1" not in "\n".join(verdict.texts) or True
-    shown = __import__(
-        "medical_ai_selective_context.text_verify", fromlist=["render_answer"],
-    ).render_answer(verdict.texts, package)
+    shown = render_answer(verdict.texts, package)
     assert "80" in shown
     assert "E1" not in shown
+
+
+def test_render_keeps_icd_codes_that_look_like_evidence_ids():
+    package = parse_chart(
+        "Giriş.\n\n## Tanılar (hastane kaydı)\nDiğer:\n"
+        "- Vitamin eksiklikleri, diğer (E56) — ön tanı; son kayıt 08.04.2026, İç Hastalıkları.\n"
+        "- Vitamin D eksikliği, tanımlanmamış (E55.9) — ön tanı; son kayıt 08.04.2026, İç Hastalıkları.\n",
+        AS_OF,
+    )
+    shown = render_answer(
+        ["Vitamin eksiklikleri (E56) ve vitamin D eksikliği (E55.9) ön tanı olarak kayıtlı [E2]."],
+        package,
+    )
+    assert "(E56)" in shown
+    assert "(E55.9)" in shown
+    assert "E2" not in shown
+    assert "E7" not in render_answer(["Kayıtta E7 var."], package)
+    empty = render_answer(["Vitamin eksiklikleri ( ) ön tanı olarak kayıtlı."], package)
+    assert "( )" not in empty
+    assert "()" not in empty
+    assert "Vitamin eksiklikleri" in empty
 
 
 def test_wrong_date_is_hard_fail_and_missing_date_is_ok():
@@ -1030,3 +1111,47 @@ def test_local_schema_is_optional_and_a_400_drops_it():
     ended = asyncio.run(_run())
     assert ended is not None
     assert ended["text"] == "tamam"
+
+
+def test_fallback_speaks_minutes_in_turkish_without_yearless_tag():
+    package = build_evidence(_record("Giriş.\n"), structured=_facts_package([
+        _sfact(
+            "f-sleep", "sleep_duration", "Uyku süresi", 395, "minutes",
+            date="--10-11", date_precision="day_month_without_year",
+            type_="wearable",
+        ),
+    ]))
+    answer = fallback_answer(package, "Uyku sürem nasıl?")
+    assert "minutes" not in answer
+    assert "yıl yok" not in answer
+    assert "6 sa 35 dk" in answer
+    assert "11.10" in answer
+    assert "Uyku süresi" in answer
+
+
+def test_missing_information_labels_are_not_dumped_into_the_answer():
+    package = parse_chart(_labs(), AS_OF)
+    verdict = verify_payload(parse_model_payload(_body(
+        {
+            "status": "uncertain",
+            "text": "Nabız ve uyku kaydı bulunmuyor.",
+            "claim_type": "missing_information",
+            "evidence_ids": [],
+        },
+        [],
+        missing=["Nabız.", "Uyku.", "Kayıtta ferritin ölçümü yok."],
+    )), package)
+    assert verdict.fully_ok, verdict.reasons
+    shown = render_answer(verdict.texts, package)
+    assert "Nabız." not in shown.splitlines()
+    assert "Uyku." not in shown.splitlines()
+    assert "ferritin" in shown.lower()
+    assert "Nabız ve uyku kaydı bulunmuyor" in shown
+
+
+def test_verified_prompt_asks_for_latest_record_and_normal_labs():
+    assert "en güncel kaydı" in VERIFIED_SYSTEM
+    assert "normal laboratuvar" in VERIFIED_SYSTEM.lower()
+    question = full_question_message("Gözlerim nasıl?")
+    assert "en güncel kaydı" in question
+    assert "Normal laboratuvar" in question

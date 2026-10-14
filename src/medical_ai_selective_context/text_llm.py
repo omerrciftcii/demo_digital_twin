@@ -107,6 +107,8 @@ class TextModelSettings:
     allow_fallbacks: bool = True
     retry_max: int = 2
     retry_backoff_seconds: float = 0.75
+    # vLLM /tokenize. Empty derives it from base_url. Only a trusted local host is called.
+    tokenize_url: str = ""
     # auto | true | false. Unset env is true: OpenRouter gets reasoning off,
     # and any other host gets chat_template_kwargs.enable_thinking false.
     # false on a non-OpenRouter host sends enable_thinking true.
@@ -137,6 +139,7 @@ class TextModelSettings:
             allow_fallbacks=env_bool("OPENROUTER_ALLOW_FALLBACKS", True),
             retry_max=int(env_number("LLM_RETRY_MAX", 2, 0, 5, integer=True)),
             retry_backoff_seconds=env_number("LLM_RETRY_BACKOFF_SECONDS", 0.75, 0, 30, integer=False),
+            tokenize_url=os.getenv("LLM_TOKENIZE_URL", "").strip().rstrip("/"),
             disable_thinking=_thinking_mode("LLM_DISABLE_THINKING"),
         )
 
@@ -467,6 +470,58 @@ class TextModelClient:
     def _headers(self) -> dict[str, str]:
         token = self.settings.api_key or "local"
         return {"Authorization": f"Bearer {token}"}
+
+    def _tokenize_endpoint(self) -> str | None:
+        """vLLM serves /tokenize at the server root, not under /v1."""
+        url = self.settings.tokenize_url
+        if not url:
+            base = self.settings.base_url.rstrip("/")
+            url = base.removesuffix("/v1") + "/tokenize"
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or parsed.username or parsed.password:
+            return None
+        if not _host_is_trusted_local((parsed.hostname or "").lower(), self.settings.local_hosts):
+            return None
+        return url
+
+    async def count_tokens(
+        self, messages: list[dict[str, str]] | None = None, prompt: str | None = None,
+    ) -> dict[str, int | None] | None:
+        """Served tokenizer and chat template. None means the count is unavailable.
+
+        Messages are counted with the generation prompt, as a completion would be.
+        Patient text goes only to a trusted local host; anything else returns None.
+        """
+        endpoint = self._tokenize_endpoint()
+        if endpoint is None or (messages is None) == (prompt is None):
+            return None
+        body: dict[str, Any] = {"model": self.settings.model}
+        if messages is not None:
+            body["messages"] = messages
+            body["add_generation_prompt"] = True
+            kwargs = chat_body(self.settings, messages).get("chat_template_kwargs")
+            if kwargs:
+                body["chat_template_kwargs"] = kwargs
+        else:
+            body["prompt"] = prompt
+            body["add_special_tokens"] = False
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.settings.timeout_seconds, transport=self._transport,
+            ) as client:
+                response = await client.post(endpoint, json=body, headers=self._headers())
+            if response.status_code != 200:
+                return None
+            payload = response.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        count = payload.get("count") if isinstance(payload, dict) else None
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+            return None
+        limit = payload.get("max_model_len")
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0:
+            limit = None
+        return {"count": count, "maxModelLen": limit}
 
     async def complete(
         self, messages: list[dict[str, str]], json_schema: dict[str, Any] | None = None,

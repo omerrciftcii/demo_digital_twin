@@ -7,6 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $projectDirectory = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+$settingsFile = Join-Path $projectDirectory ".env"
 
 if ($CcoDirectory) {
     $resolvedCcoDirectory = [System.IO.Path]::GetFullPath($CcoDirectory)
@@ -43,8 +44,15 @@ Write-Host ""
 
 Push-Location -LiteralPath $projectDirectory
 try {
-    & $pythonExecutable -X utf8 -m uvicorn demo.patient_chat.app:app `
-        --host $BindHost --port $Port --no-access-log
+    $serverArguments = @(
+        "-X", "utf8", "-m", "uvicorn", "demo.patient_chat.app:app",
+        "--host", $BindHost, "--port", $Port, "--no-access-log"
+    )
+    if (Test-Path -LiteralPath $settingsFile) {
+        $serverArguments += @("--env-file", $settingsFile)
+        Write-Host ".env ayarları yüklendi." -ForegroundColor DarkGray
+    }
+    & $pythonExecutable @serverArguments
 } finally {
     Pop-Location
 }

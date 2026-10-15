@@ -15,6 +15,8 @@ python -m venv .venv
 
 Arayüz: `http://127.0.0.1:8092`. Dosyalar ada göre sıralanır ve yalnız `Hasta 1`, `Hasta 2`, ... olarak gösterilir. `data/cco/` Git dışında kalır. Başka bir güvenli klasör kullanmak için `DEMO_CCO_DIR` ayarlanabilir.
 
+Başlatıcı proje kökündeki Git-dışı `.env` dosyasını otomatik yükler. GPU adresi ve model kimliği gibi gizli olmayan değerler önceden doldurulabilir; `OPENAI_API_KEY` ve `OPENROUTER_API_KEY` yalnız yerel `.env` dosyasına kullanıcı tarafından eklenmelidir.
+
 Öncelikli modeller GPU sunucusunda çalışan yerel Gemma 4 ve doğrudan OpenAI GPT-6 Luna'dır. Qwen 3.5 9B, Kimi K2.5, DeepSeek V4.1 Flash ve NVIDIA Nemotron 3 Nano OpenRouter üzerinden çalışır. Gemma erişimi dış model anahtarından bağımsızdır; OpenRouter ve OpenAI aktarımı varsayılan olarak kilitlidir. SSH tüneli, etkinleştirme ve ofis kurulumu için [docs/office-deployment.md](docs/office-deployment.md) dosyasına bakın.
 
 Kaynak bağlantıları deterministik metin eşleşmesidir; klinik doğruluk veya gerçek atıf garantisi değildir. Doktor, vurgulanan CCO bölümünü mutlaka kendisi doğrulamalıdır.

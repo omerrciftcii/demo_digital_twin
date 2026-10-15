@@ -570,7 +570,7 @@
       state.patients = patients;
       state.models = models;
       state.activePatient = patients[0]?.id || null;
-      const preferred = models.find((model) => model.id === "openrouter-gemma4" && model.status === "ready")
+      const preferred = models.find((model) => model.id === "gpu-gemma4" && model.status === "ready")
         || models.find((model) => model.id === "openai-luna" && model.status === "ready")
         || models.find((model) => model.status === "ready")
         || models[0];

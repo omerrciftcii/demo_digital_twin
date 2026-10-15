@@ -79,7 +79,7 @@ class ModelSpec:
     id: str
     label: str
     short_label: str
-    provider: Literal["openrouter", "openai"]
+    provider: Literal["local", "openrouter", "openai"]
     model: str
     endpoint_env: str
     model_env: str
@@ -97,19 +97,27 @@ class ModelSpec:
         value = os.getenv(self.endpoint_env, self.endpoint_default or "").strip()
         return value.rstrip("/") or None
 
+    @property
+    def api_root(self) -> str | None:
+        endpoint = self.endpoint
+        if endpoint is None:
+            return None
+        if self.provider == "local" and not endpoint.endswith("/v1"):
+            return f"{endpoint}/v1"
+        return endpoint
+
 
 MODEL_SPECS = (
     ModelSpec(
-        id="openrouter-gemma4",
+        id="gpu-gemma4",
         label="Gemma 4 26B-A4B",
-        short_label="Gemma 4",
-        provider="openrouter",
-        model="google/gemma-4-26b-a4b-it",
-        endpoint_env="OPENROUTER_BASE_URL",
+        short_label="GPU Gemma",
+        provider="local",
+        model="gemma4-26b-a4b",
+        endpoint_env="DEMO_VLLM_BASE_URL",
         model_env="DEMO_GEMMA_MODEL",
-        endpoint_default="https://openrouter.ai/api/v1",
-        api_key_env="OPENROUTER_API_KEY",
-        note="Birincil OpenRouter modeli · 26B-A4B",
+        endpoint_default="http://127.0.0.1:18000",
+        note="Birincil yerel model · GPU sunucundaki Gemma 4",
         featured=True,
     ),
     ModelSpec(
@@ -193,7 +201,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     patient_id: str = Field(alias="patientId")
-    model_id: str = Field(default="openrouter-gemma4", alias="modelId")
+    model_id: str = Field(default="gpu-gemma4", alias="modelId")
     question: str = Field(min_length=1, max_length=2_000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=8)
     quick_reply: bool = Field(default=False, alias="quickReply")
@@ -479,8 +487,8 @@ class ModelRouter:
         spec = MODEL_BY_ID.get(model_id)
         if spec is None:
             raise HTTPException(422, "Bilinmeyen model seçimi.")
-        endpoint = spec.endpoint
-        if endpoint is None:
+        api_root = spec.api_root
+        if api_root is None:
             raise HTTPException(503, f"{spec.short_label} için sunucu adresi yapılandırılmadı.")
 
         headers = {"Content-Type": "application/json"}
@@ -489,18 +497,30 @@ class ModelRouter:
             "messages": messages,
             "stream": False,
         }
-        if not self.allow_external:
-            raise HTTPException(403, "Dış model aktarımı sunucu ayarlarında kapalı.")
-        api_key = os.getenv(spec.api_key_env or "", "").strip()
-        if not api_key:
-            if spec.provider == "openai":
-                raise HTTPException(503, "OpenAI API anahtarı yapılandırılmadı.")
-            raise HTTPException(503, "OpenRouter API anahtarı yapılandırılmadı.")
-        headers["Authorization"] = f"Bearer {api_key}"
+        if spec.provider == "local":
+            local_key = os.getenv("DEMO_LOCAL_API_KEY", "").strip()
+            if local_key:
+                headers["Authorization"] = f"Bearer {local_key}"
+            payload.update(
+                {
+                    "temperature": 0.0,
+                    "max_tokens": 900,
+                    "chat_template_kwargs": {"enable_thinking": False},
+                }
+            )
+        else:
+            if not self.allow_external:
+                raise HTTPException(403, "Dış model aktarımı sunucu ayarlarında kapalı.")
+            api_key = os.getenv(spec.api_key_env or "", "").strip()
+            if not api_key:
+                if spec.provider == "openai":
+                    raise HTTPException(503, "OpenAI API anahtarı yapılandırılmadı.")
+                raise HTTPException(503, "OpenRouter API anahtarı yapılandırılmadı.")
+            headers["Authorization"] = f"Bearer {api_key}"
 
         if spec.provider == "openai":
             payload.update({"max_completion_tokens": 900, "reasoning_effort": "low"})
-        else:
+        elif spec.provider == "openrouter":
             provider: dict[str, Any] = {
                 "allow_fallbacks": self.openrouter_allow_fallbacks,
                 "data_collection": "deny",
@@ -523,7 +543,7 @@ class ModelRouter:
                 timeout=httpx.Timeout(180.0, connect=10.0), transport=self._transport
             ) as client:
                 response = await client.post(
-                    f"{endpoint}/chat/completions",
+                    f"{api_root}/chat/completions",
                     headers=headers,
                     json=payload,
                 )
@@ -542,11 +562,24 @@ class ModelRouter:
         }
 
     async def status(self, spec: ModelSpec) -> str:
-        if not self.allow_external:
-            return "locked"
-        if spec.endpoint is None or not os.getenv(spec.api_key_env or "", "").strip():
+        if spec.provider != "local":
+            if not self.allow_external:
+                return "locked"
+            if spec.api_root is None or not os.getenv(spec.api_key_env or "", "").strip():
+                return "setup"
+            return "ready"
+        if spec.api_root is None:
             return "setup"
-        return "ready"
+        headers: dict[str, str] = {}
+        local_key = os.getenv("DEMO_LOCAL_API_KEY", "").strip()
+        if local_key:
+            headers["Authorization"] = f"Bearer {local_key}"
+        try:
+            async with httpx.AsyncClient(timeout=1.5, transport=self._transport) as client:
+                response = await client.get(f"{spec.api_root}/models", headers=headers)
+            return "ready" if response.status_code == 200 else "offline"
+        except httpx.HTTPError:
+            return "offline"
 
     async def catalog(self, mocked: bool = False) -> list[dict[str, Any]]:
         statuses = (
@@ -559,8 +592,12 @@ class ModelRouter:
                 "id": spec.id,
                 "label": spec.label,
                 "shortLabel": spec.short_label,
-                "provider": "OpenAI" if spec.provider == "openai" else "OpenRouter",
-                "privacy": "external",
+                "provider": {
+                    "local": "GPU",
+                    "openrouter": "OpenRouter",
+                    "openai": "OpenAI",
+                }[spec.provider],
+                "privacy": "on-prem" if spec.provider == "local" else "external",
                 "note": spec.note,
                 "featured": spec.featured,
                 "status": status,
@@ -574,13 +611,13 @@ class DirectVllmClient:
 
     def __init__(self) -> None:
         self.router = ModelRouter()
-        self.model = MODEL_BY_ID["openrouter-gemma4"].resolved_model
+        self.model = MODEL_BY_ID["gpu-gemma4"].resolved_model
 
     async def complete(self, messages: list[dict[str, str]]) -> dict[str, Any]:
-        return await self.router.complete("openrouter-gemma4", messages)
+        return await self.router.complete("gpu-gemma4", messages)
 
     async def health(self) -> bool:
-        return await self.router.status(MODEL_BY_ID["openrouter-gemma4"]) == "ready"
+        return await self.router.status(MODEL_BY_ID["gpu-gemma4"]) == "ready"
 
 
 def _allowed_networks() -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:

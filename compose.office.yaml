@@ -8,9 +8,11 @@ services:
       DEMO_CCO_DIR: /app/data/cco
       DEMO_ALLOWED_HOSTS: ${DEMO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       DEMO_ALLOWED_NETWORKS: ${DEMO_ALLOWED_NETWORKS:-127.0.0.0/8}
+      DEMO_VLLM_BASE_URL: ${DEMO_VLLM_BASE_URL:-http://host.docker.internal:18000}
+      DEMO_LOCAL_API_KEY: ${DEMO_LOCAL_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
-      DEMO_GEMMA_MODEL: ${DEMO_GEMMA_MODEL:-google/gemma-4-26b-a4b-it}
+      DEMO_GEMMA_MODEL: ${DEMO_GEMMA_MODEL:-gemma4-26b-a4b}
       DEMO_QWEN_MODEL: ${DEMO_QWEN_MODEL:-qwen/qwen3.5-9b}
       DEMO_KIMI_MODEL: ${DEMO_KIMI_MODEL:-moonshotai/kimi-k2.5}
       DEMO_DEEPSEEK_MODEL: ${DEMO_DEEPSEEK_MODEL:-deepseek/deepseek-v4.1-flash}
@@ -26,3 +28,5 @@ services:
       - "${DEMO_BIND_IP:-127.0.0.1}:${DEMO_PORT:-8092}:8092"
     volumes:
       - ./data/cco:/app/data/cco:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,6 +1,6 @@
 # MedicalAI Digital Twin Lab
 
-Doktorların aynı anonim CCO üzerinde OpenRouter modelleri ile doğrudan OpenAI yanıtlarını karşılaştırması için ayrı, responsive değerlendirme projesi. Kaynak JSON değişmeden saklanır; mevcut hasta-dostu cevap biçimi korunur. Sağ panelde klinik özet, okunabilir CCO ve ham JSON aynı anda incelenebilir. Model yanıtındaki olası kaynak eşleşmeleri cevap biçimini değiştirmeden CCO metninde vurgulanır.
+Doktorların aynı anonim CCO üzerinde GPU sunucusundaki Gemma 4, OpenRouter modelleri ve doğrudan OpenAI yanıtlarını karşılaştırması için ayrı, responsive değerlendirme projesi. Kaynak JSON değişmeden saklanır; mevcut hasta-dostu cevap biçimi korunur. Sağ panelde klinik özet, okunabilir CCO ve ham JSON aynı anda incelenebilir. Model yanıtındaki olası kaynak eşleşmeleri cevap biçimini değiştirmeden CCO metninde vurgulanır.
 
 Bu repo `medical_ai` içindeki `codex/mobile-chat-demo-snapshot` branch'inden ayrılmıştır. Eski selective-context ve değerlendirme araçları araştırma altyapısı olarak korunur; doktor demosunun giriş noktası `demo.patient_chat.app`'tir.
 
@@ -15,7 +15,7 @@ python -m venv .venv
 
 Arayüz: `http://127.0.0.1:8092`. Dosyalar ada göre sıralanır ve yalnız `Hasta 1`, `Hasta 2`, ... olarak gösterilir. `data/cco/` Git dışında kalır. Başka bir güvenli klasör kullanmak için `DEMO_CCO_DIR` ayarlanabilir.
 
-Öncelikli modeller OpenRouter'daki Gemma 4 ve doğrudan OpenAI GPT-6 Luna'dır. Qwen 3.5 9B, Kimi K2.5, DeepSeek V4.1 Flash ve NVIDIA Nemotron 3 Nano da OpenRouter üzerinden çalışır. Tüm dış model aktarımı varsayılan olarak kilitlidir; etkinleştirme ve ofis kurulumu için [docs/office-deployment.md](docs/office-deployment.md) dosyasına bakın.
+Öncelikli modeller GPU sunucusunda çalışan yerel Gemma 4 ve doğrudan OpenAI GPT-6 Luna'dır. Qwen 3.5 9B, Kimi K2.5, DeepSeek V4.1 Flash ve NVIDIA Nemotron 3 Nano OpenRouter üzerinden çalışır. Gemma erişimi dış model anahtarından bağımsızdır; OpenRouter ve OpenAI aktarımı varsayılan olarak kilitlidir. SSH tüneli, etkinleştirme ve ofis kurulumu için [docs/office-deployment.md](docs/office-deployment.md) dosyasına bakın.
 
 Kaynak bağlantıları deterministik metin eşleşmesidir; klinik doğruluk veya gerçek atıf garantisi değildir. Doktor, vurgulanan CCO bölümünü mutlaka kendisi doğrulamalıdır.
 
@@ -62,11 +62,12 @@ kullanmayan sade localhost demosunu başlatmak için:
 .\scripts\start_patient_chat_demo.ps1
 ```
 
-Ardından `http://127.0.0.1:8092` adresini açın. Başlatıcı mevcut SSH anahtarıyla
-GPU sunucusuna yerel bir tünel kurar; uygulama ve hasta seçimi yalnızca localhost'ta
-çalışır. Modelin yanıt sonunda ürettiği `A)`, `B)`, `C)` seçenekleri arayüzde
+Ardından `http://127.0.0.1:8092` adresini açın. Başlatıcı GPU sunucusuna erişen
+SSH tünelinin açık olduğunu doğrular; parolalı bağlantıda tüneli ayrı
+bir terminalde `ssh -N -L 18000:127.0.0.1:8000 arge-adm@185.48.24.103` komutuyla
+açın. Uygulama ve hasta seçimi yalnızca localhost'ta çalışır. Modelin yanıt sonunda ürettiği `A)`, `B)`, `C)` seçenekleri arayüzde
 tıklanabilir hızlı yanıtlara dönüşür. Çıkmak ve açılan SSH tünelini kapatmak için
-terminalde `Ctrl+C` kullanın.
+ilgili terminallerde `Ctrl+C` kullanın.
 
 Mevcut sanal ortam ve embedding önbelleği hazırlanmıştır. Sonraki çalıştırmalarda `scripts\start.ps1` yeterlidir; Neo4j konteyneri ayrıca açık olmalıdır. İlk model yükleme/indeksleme zaman alabilir. Runtime otomatik model indirmez.
 

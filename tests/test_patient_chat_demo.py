@@ -33,10 +33,10 @@ def test_demo_serves_local_ui_and_patient_aliases():
         assert record["rawJson"] == {"text": "HAM METİN"}
         models = client.get("/api/models").json()
         assert [model["id"] for model in models[:2]] == [
-            "openrouter-gemma4",
+            "gpu-gemma4",
             "openai-luna",
         ]
-        assert [model["provider"] for model in models[:2]] == ["OpenRouter", "OpenAI"]
+        assert [model["provider"] for model in models[:2]] == ["GPU", "OpenAI"]
         assert all(model["status"] == "ready" for model in models)
         assert client.get("/api/health").json()["status"] == "ready"
 
@@ -231,8 +231,10 @@ def test_demo_rejects_more_than_six_selected_options():
     assert response.status_code == 422
 
 
-def test_demo_routes_open_models_through_openrouter_and_openai_directly(monkeypatch):
+def test_demo_routes_local_gemma_openrouter_models_and_openai_directly(monkeypatch):
     monkeypatch.setenv("DEMO_ALLOW_EXTERNAL_MODELS", "true")
+    monkeypatch.setenv("DEMO_VLLM_BASE_URL", "https://gpu.internal")
+    monkeypatch.setenv("DEMO_LOCAL_API_KEY", "local-secret")
     monkeypatch.setenv("OPENROUTER_API_KEY", "router-secret")
     monkeypatch.setenv("OPENAI_API_KEY", "openai-secret")
     seen = []
@@ -256,10 +258,17 @@ def test_demo_routes_open_models_through_openrouter_and_openai_directly(monkeypa
 
     router = ModelRouter(transport=httpx.MockTransport(handler))
     messages = [{"role": "user", "content": "Merhaba"}]
+    asyncio.run(router.complete("gpu-gemma4", messages))
     asyncio.run(router.complete("openrouter-qwen", messages))
     asyncio.run(router.complete("openai-luna", messages))
 
-    openrouter_request, openai_request = seen
+    local_request, openrouter_request, openai_request = seen
+    assert local_request["url"] == "https://gpu.internal/v1/chat/completions"
+    assert local_request["authorization"] == "Bearer local-secret"
+    assert local_request["body"]["model"] == "gemma4-26b-a4b"
+    assert local_request["body"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "provider" not in local_request["body"]
+
     assert openrouter_request["url"] == "https://openrouter.ai/api/v1/chat/completions"
     assert openrouter_request["authorization"] == "Bearer router-secret"
     assert openrouter_request["body"]["model"] == "qwen/qwen3.5-9b"
@@ -275,3 +284,19 @@ def test_demo_routes_open_models_through_openrouter_and_openai_directly(monkeypa
     assert openai_request["body"]["model"] == "gpt-6-luna"
     assert "provider" not in openai_request["body"]
     assert openai_request["body"]["reasoning_effort"] == "low"
+
+
+def test_local_gemma_does_not_require_external_model_permission(monkeypatch):
+    monkeypatch.setenv("DEMO_ALLOW_EXTERNAL_MODELS", "false")
+    monkeypatch.setenv("DEMO_VLLM_BASE_URL", "https://gpu.internal/v1")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://gpu.internal/v1/chat/completions"
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "Yerel yanıt"}}], "model": "gemma4"},
+        )
+
+    router = ModelRouter(transport=httpx.MockTransport(handler))
+    result = asyncio.run(router.complete("gpu-gemma4", [{"role": "user", "content": "Merhaba"}]))
+    assert result["answer"] == "Yerel yanıt"

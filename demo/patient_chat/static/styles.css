@@ -741,6 +741,41 @@ textarea:focus-visible {
 .message-content li { margin: 4px 0; }
 .message-content strong { color: var(--teal-dark); }
 
+.message-content .answer-source {
+  padding: 3px 5px;
+  margin-right: -5px;
+  margin-left: -5px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: underline dotted rgba(18, 104, 94, 0.52) 1px;
+  text-underline-offset: 4px;
+  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.message-content .answer-source::after {
+  content: "CCO ↗";
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 5px;
+  border: 1px solid #bed7cf;
+  border-radius: 999px;
+  color: var(--teal-dark);
+  background: var(--teal-soft);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.35px;
+  vertical-align: 1px;
+}
+
+.message-content .answer-source:hover,
+.message-content .answer-source:focus-visible,
+.message-content .answer-source.active-source {
+  color: var(--teal-dark);
+  background: #e9f5f1;
+  box-shadow: 0 0 0 2px rgba(40, 139, 123, 0.14);
+  outline: none;
+}
+
 .message.error .message-content {
   border-color: #eccbc1;
   color: #97452f;

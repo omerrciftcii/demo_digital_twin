@@ -169,7 +169,11 @@
     $("panel-backdrop").hidden = true;
   }
 
-  function showReference(reference) {
+  function showReference(reference, answerNode = null) {
+    document.querySelectorAll(".answer-source.active-source").forEach((node) => {
+      node.classList.remove("active-source");
+    });
+    answerNode?.classList.add("active-source");
     state.highlight = { start: reference.start, end: reference.end };
     setRecordTab("readable");
     renderReadableRecord();
@@ -178,6 +182,60 @@
     requestAnimationFrame(() => {
       const target = $("readable-record").querySelector(".source-block.highlighted");
       target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
+  function normalizeReferenceText(value) {
+    return String(value || "")
+      .toLocaleLowerCase("tr-TR")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  const referenceStopwords = new Set([
+    "acil", "altında", "ancak", "bir", "bu", "daha", "devam", "göre", "için",
+    "ile", "kayıt", "olan", "olarak", "son", "ve", "veya", "yüksek", "düşük",
+  ]);
+
+  function referenceMatchScore(node, reference) {
+    const nodeText = normalizeReferenceText(node.textContent);
+    const answerText = normalizeReferenceText(reference.answerText);
+    if (!nodeText || !answerText) return -1;
+    const answerTokens = new Set(answerText.split(" "));
+    const sourceTokens = new Set(normalizeReferenceText(reference.sourceText).split(" "));
+    const nodeTokens = [...new Set(nodeText.split(" "))]
+      .filter((token) => token.length >= 3 && !referenceStopwords.has(token));
+    const answerShared = nodeTokens.filter((token) => answerTokens.has(token));
+    const sourceShared = nodeTokens.filter((token) => sourceTokens.has(token));
+    const numbers = nodeTokens.filter((token) => /\d/.test(token) && sourceTokens.has(token));
+    const minimumAnswerOverlap = Math.min(3, Math.max(2, Math.ceil(nodeTokens.length * 0.25)));
+    if (answerShared.length < minimumAnswerOverlap) return -1;
+    if (sourceShared.length < 2 && numbers.length === 0) return -1;
+    return sourceShared.length + answerShared.length + (numbers.length * 4);
+  }
+
+  function linkAnswerTextToReferences(body, references) {
+    if (!Array.isArray(references) || !references.length) return;
+    const candidates = [...body.querySelectorAll("p, li")];
+    references.forEach((reference, index) => {
+      const target = candidates
+        .filter((node) => !node.classList.contains("answer-source"))
+        .map((node) => ({ node, score: referenceMatchScore(node, reference) }))
+        .filter((item) => item.score >= 0)
+        .sort((left, right) => right.score - left.score)[0]?.node;
+      if (!target || target.classList.contains("answer-source")) return;
+      target.classList.add("answer-source");
+      target.tabIndex = 0;
+      target.setAttribute("role", "button");
+      target.setAttribute("aria-label", `Kaynak ${index + 1}: CCO kaydında göster`);
+      target.title = "Bu bilginin CCO kaynağını göster";
+      target.addEventListener("click", () => showReference(reference, target));
+      target.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        showReference(reference, target);
+      });
     });
   }
 
@@ -214,6 +272,7 @@
       const parseOptions = state.mode === "stepwise" || meta.allowMultiSelect;
       const parsed = parseOptions ? extractQuickReplies(content) : { markdown: content, options: [] };
       body.innerHTML = markdownToHtml(parsed.markdown);
+      linkAnswerTextToReferences(body, meta.references);
       article.append(label, body);
       if (parsed.options.length && state.mode === "multi_select") {
         const form = document.createElement("div");
@@ -549,6 +608,9 @@
     });
     $("clear-highlight").addEventListener("click", () => {
       state.highlight = null;
+      document.querySelectorAll(".answer-source.active-source").forEach((node) => {
+        node.classList.remove("active-source");
+      });
       $("source-banner").hidden = true;
       renderReadableRecord();
     });

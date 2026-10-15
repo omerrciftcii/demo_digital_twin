@@ -14,8 +14,10 @@ def test_demo_serves_local_ui_and_patient_aliases():
     with TestClient(create_app(records={"P01": "HAM METİN"}, completion=complete)) as client:
         page = client.get("/")
         styles = client.get("/static/styles.css")
+        script = client.get("/static/app.js")
         assert page.status_code == 200
         assert styles.status_code == 200
+        assert script.status_code == 200
         assert "MedicalAI" in page.text
         assert "Digital Twin Lab" in page.text
         assert "Adım adım" in page.text
@@ -23,6 +25,9 @@ def test_demo_serves_local_ui_and_patient_aliases():
         assert "grid-template-areas" in styles.text
         assert "overflow-y: auto;" in styles.text
         assert "scrollbar-gutter: stable;" in styles.text
+        assert ".answer-source::after" in styles.text
+        assert "linkAnswerTextToReferences(body, meta.references)" in script.text
+        assert 'target.setAttribute("role", "button")' in script.text
         assert "script-src 'self'" in page.headers["content-security-policy"]
         patient = client.get("/api/patients").json()[0]
         assert patient["id"] == "P01"

@@ -1,23 +1,22 @@
 # Demo model shortlist
 
-The UI keeps two models one click away: on-prem Gemma 4 and OpenAI GPT-6 Luna. The rest stay in the experiment list so model choice does not dominate the doctor's workflow.
+The UI keeps two models one click away: Gemma 4 through OpenRouter and GPT-6 Luna directly through OpenAI. The rest stay in the experiment list so model choice does not dominate the doctor's workflow.
 
-| UI choice | Runtime target | 24 GB L40S-24Q position |
+| UI choice | Provider | API model id |
 | --- | --- | --- |
-| GPU Gemma | `gemma4-26b-a4b` | Primary. Use the tested Q4 checkpoint and a bounded context. Google's estimate is 14.4 GB for Q4 static loading, before runtime and KV cache. |
-| OpenAI Luna | `gpt-6-luna` | External comparison. No local VRAM use; disabled until external transfer is explicitly enabled. |
-| Qwen | `Qwen/Qwen3.5-9B` | Strong single-GPU candidate. Use text-only serving to avoid vision memory and cap context for the real CCO size. |
-| Kimi | `moonshotai/Moonlight-16B-A3B-Instruct` | Experimental. Official weights are 16B total/3B active; use a validated 4-bit checkpoint because BF16 weights do not leave safe 24 GB headroom. |
-| DeepSeek | `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B` | Experimental. Official weights are about 15B BF16; use a validated 4-bit checkpoint and measure Turkish clinical behavior. |
-| Nemotron | `nvidia/NVIDIA-Nemotron-Nano-9B-v2` | Experimental NVIDIA-native candidate; still measure full-prompt peak VRAM and output quality. |
+| Gemma 4 | OpenRouter | `google/gemma-4-26b-a4b-it` |
+| OpenAI Luna | OpenAI direct | `gpt-6-luna` |
+| Qwen | OpenRouter | `qwen/qwen3.5-9b` |
+| Kimi | OpenRouter | `moonshotai/kimi-k2.5` |
+| DeepSeek | OpenRouter | `deepseek/deepseek-v4.1-flash` |
+| Nemotron | OpenRouter | `nvidia/nemotron-3-nano-30b-a3b` |
+
+The OpenRouter ids above were checked against its live model catalog on 15 October 2026. They are configuration defaults rather than hard UI dependencies; each can be overridden with a `DEMO_*_MODEL` environment variable.
 
 Primary references:
 
-- [Google Gemma 4 model overview and memory table](https://ai.google.dev/gemma/docs/core)
+- [OpenRouter live model catalog](https://openrouter.ai/api/v1/models)
+- [OpenRouter Chat Completions API](https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion)
 - [OpenAI GPT-6 Luna model page](https://developers.openai.com/api/docs/models/gpt-6-luna)
-- [Qwen 3.5 9B official model card](https://huggingface.co/Qwen/Qwen3.5-9B)
-- [Moonshot Moonlight 16B-A3B official model card](https://huggingface.co/moonshotai/Moonlight-16B-A3B)
-- [DeepSeek R1 Distill Qwen 14B official model card](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B)
-- [NVIDIA Nemotron-H model coverage](https://docs.nvidia.com/nemo/automodel/latest/model-coverage/large-language-models/nemotron-h)
 
-These are deployment candidates, not clinical recommendations. Compare all models on the same ten anonymized patients and score factual grounding, omission of critical findings, unsupported claims, latency, and peak VRAM before choosing a default.
+These are evaluation candidates, not clinical recommendations. Compare all models on the same ten anonymized patients and score factual grounding, omission of critical findings, unsupported claims, latency, and cost before choosing a default.

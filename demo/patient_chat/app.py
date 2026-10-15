@@ -79,7 +79,7 @@ class ModelSpec:
     id: str
     label: str
     short_label: str
-    provider: Literal["local", "openai"]
+    provider: Literal["openrouter", "openai"]
     model: str
     endpoint_env: str
     model_env: str
@@ -100,15 +100,16 @@ class ModelSpec:
 
 MODEL_SPECS = (
     ModelSpec(
-        id="gpu-gemma4",
+        id="openrouter-gemma4",
         label="Gemma 4 26B-A4B",
-        short_label="GPU Gemma",
-        provider="local",
-        model="gemma4-26b-a4b",
-        endpoint_env="DEMO_VLLM_BASE_URL",
+        short_label="Gemma 4",
+        provider="openrouter",
+        model="google/gemma-4-26b-a4b-it",
+        endpoint_env="OPENROUTER_BASE_URL",
         model_env="DEMO_GEMMA_MODEL",
-        endpoint_default="http://127.0.0.1:18000",
-        note="Birincil yerel model · Q4 · L40S 24 GB",
+        endpoint_default="https://openrouter.ai/api/v1",
+        api_key_env="OPENROUTER_API_KEY",
+        note="Birincil OpenRouter modeli · 26B-A4B",
         featured=True,
     ),
     ModelSpec(
@@ -125,44 +126,52 @@ MODEL_SPECS = (
         featured=True,
     ),
     ModelSpec(
-        id="gpu-qwen",
+        id="openrouter-qwen",
         label="Qwen 3.5 9B",
         short_label="Qwen 9B",
-        provider="local",
-        model="Qwen/Qwen3.5-9B",
-        endpoint_env="DEMO_QWEN_BASE_URL",
+        provider="openrouter",
+        model="qwen/qwen3.5-9b",
+        endpoint_env="OPENROUTER_BASE_URL",
         model_env="DEMO_QWEN_MODEL",
-        note="Deney adayı · text-only · 24 GB uyumlu",
+        endpoint_default="https://openrouter.ai/api/v1",
+        api_key_env="OPENROUTER_API_KEY",
+        note="OpenRouter · kompakt karşılaştırma modeli",
     ),
     ModelSpec(
-        id="gpu-kimi",
-        label="Kimi / Moonlight 16B-A3B",
-        short_label="Kimi 16B",
-        provider="local",
-        model="moonshotai/Moonlight-16B-A3B-Instruct",
-        endpoint_env="DEMO_KIMI_BASE_URL",
+        id="openrouter-kimi",
+        label="Kimi K2.5",
+        short_label="Kimi K2.5",
+        provider="openrouter",
+        model="moonshotai/kimi-k2.5",
+        endpoint_env="OPENROUTER_BASE_URL",
         model_env="DEMO_KIMI_MODEL",
-        note="Deney adayı · Q4 quantization gerekli",
+        endpoint_default="https://openrouter.ai/api/v1",
+        api_key_env="OPENROUTER_API_KEY",
+        note="OpenRouter · genel klinik karşılaştırma adayı",
     ),
     ModelSpec(
-        id="gpu-deepseek",
-        label="DeepSeek R1 Distill Qwen 14B",
-        short_label="DeepSeek 14B",
-        provider="local",
-        model="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-        endpoint_env="DEMO_DEEPSEEK_BASE_URL",
+        id="openrouter-deepseek",
+        label="DeepSeek V4.1 Flash",
+        short_label="DeepSeek",
+        provider="openrouter",
+        model="deepseek/deepseek-v4.1-flash",
+        endpoint_env="OPENROUTER_BASE_URL",
         model_env="DEMO_DEEPSEEK_MODEL",
-        note="Deney adayı · Q4 quantization gerekli",
+        endpoint_default="https://openrouter.ai/api/v1",
+        api_key_env="OPENROUTER_API_KEY",
+        note="OpenRouter · hızlı DeepSeek karşılaştırması",
     ),
     ModelSpec(
-        id="gpu-nemotron",
-        label="NVIDIA Nemotron Nano 9B v2",
-        short_label="Nemotron 9B",
-        provider="local",
-        model="nvidia/NVIDIA-Nemotron-Nano-9B-v2",
-        endpoint_env="DEMO_NEMOTRON_BASE_URL",
+        id="openrouter-nemotron",
+        label="NVIDIA Nemotron 3 Nano 30B-A3B",
+        short_label="Nemotron Nano",
+        provider="openrouter",
+        model="nvidia/nemotron-3-nano-30b-a3b",
+        endpoint_env="OPENROUTER_BASE_URL",
         model_env="DEMO_NEMOTRON_MODEL",
-        note="Deney adayı · NVIDIA GPU için optimize",
+        endpoint_default="https://openrouter.ai/api/v1",
+        api_key_env="OPENROUTER_API_KEY",
+        note="OpenRouter · NVIDIA Nemotron karşılaştırması",
     ),
 )
 MODEL_BY_ID = {spec.id: spec for spec in MODEL_SPECS}
@@ -184,7 +193,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     patient_id: str = Field(alias="patientId")
-    model_id: str = Field(default="gpu-gemma4", alias="modelId")
+    model_id: str = Field(default="openrouter-gemma4", alias="modelId")
     question: str = Field(min_length=1, max_length=2_000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=8)
     quick_reply: bool = Field(default=False, alias="quickReply")
@@ -459,8 +468,12 @@ def _truthy(name: str, default: bool = False) -> bool:
 
 
 class ModelRouter:
-    def __init__(self) -> None:
+    def __init__(self, *, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.allow_external = _truthy("DEMO_ALLOW_EXTERNAL_MODELS")
+        self.openrouter_require_zdr = _truthy("DEMO_OPENROUTER_REQUIRE_ZDR", True)
+        self.openrouter_allow_fallbacks = _truthy("DEMO_OPENROUTER_ALLOW_FALLBACKS", True)
+        self.openrouter_provider = os.getenv("DEMO_OPENROUTER_PROVIDER", "").strip()
+        self._transport = transport
 
     async def complete(self, model_id: str, messages: list[dict[str, str]]) -> dict[str, Any]:
         spec = MODEL_BY_ID.get(model_id)
@@ -476,31 +489,41 @@ class ModelRouter:
             "messages": messages,
             "stream": False,
         }
-        if spec.provider == "openai":
-            if not self.allow_external:
-                raise HTTPException(403, "Dış model aktarımı sunucu ayarlarında kapalı.")
-            api_key = os.getenv(spec.api_key_env or "", "").strip()
-            if not api_key:
+        if not self.allow_external:
+            raise HTTPException(403, "Dış model aktarımı sunucu ayarlarında kapalı.")
+        api_key = os.getenv(spec.api_key_env or "", "").strip()
+        if not api_key:
+            if spec.provider == "openai":
                 raise HTTPException(503, "OpenAI API anahtarı yapılandırılmadı.")
-            headers["Authorization"] = f"Bearer {api_key}"
+            raise HTTPException(503, "OpenRouter API anahtarı yapılandırılmadı.")
+        headers["Authorization"] = f"Bearer {api_key}"
+
+        if spec.provider == "openai":
             payload.update({"max_completion_tokens": 900, "reasoning_effort": "low"})
         else:
-            local_key = os.getenv("DEMO_LOCAL_API_KEY", "").strip()
-            if local_key:
-                headers["Authorization"] = f"Bearer {local_key}"
+            provider: dict[str, Any] = {
+                "allow_fallbacks": self.openrouter_allow_fallbacks,
+                "data_collection": "deny",
+                "zdr": self.openrouter_require_zdr,
+            }
+            if self.openrouter_provider:
+                provider["only"] = [self.openrouter_provider]
             payload.update(
                 {
                     "temperature": 0.0,
                     "max_tokens": 900,
-                    "chat_template_kwargs": {"enable_thinking": False},
+                    "reasoning": {"enabled": False},
+                    "provider": provider,
                 }
             )
 
         started = perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=10.0)) as client:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(180.0, connect=10.0), transport=self._transport
+            ) as client:
                 response = await client.post(
-                    f"{endpoint}/v1/chat/completions",
+                    f"{endpoint}/chat/completions",
                     headers=headers,
                     json=payload,
                 )
@@ -519,20 +542,11 @@ class ModelRouter:
         }
 
     async def status(self, spec: ModelSpec) -> str:
-        if spec.provider == "openai":
-            if not self.allow_external:
-                return "locked"
-            if not os.getenv(spec.api_key_env or "", "").strip():
-                return "setup"
-            return "ready"
-        if spec.endpoint is None:
+        if not self.allow_external:
+            return "locked"
+        if spec.endpoint is None or not os.getenv(spec.api_key_env or "", "").strip():
             return "setup"
-        try:
-            async with httpx.AsyncClient(timeout=1.5) as client:
-                response = await client.get(f"{spec.endpoint}/v1/models")
-            return "ready" if response.status_code == 200 else "offline"
-        except httpx.HTTPError:
-            return "offline"
+        return "ready"
 
     async def catalog(self, mocked: bool = False) -> list[dict[str, Any]]:
         statuses = (
@@ -545,8 +559,8 @@ class ModelRouter:
                 "id": spec.id,
                 "label": spec.label,
                 "shortLabel": spec.short_label,
-                "provider": "OpenAI" if spec.provider == "openai" else "GPU",
-                "privacy": "external" if spec.provider == "openai" else "on-prem",
+                "provider": "OpenAI" if spec.provider == "openai" else "OpenRouter",
+                "privacy": "external",
                 "note": spec.note,
                 "featured": spec.featured,
                 "status": status,
@@ -560,13 +574,13 @@ class DirectVllmClient:
 
     def __init__(self) -> None:
         self.router = ModelRouter()
-        self.model = MODEL_BY_ID["gpu-gemma4"].resolved_model
+        self.model = MODEL_BY_ID["openrouter-gemma4"].resolved_model
 
     async def complete(self, messages: list[dict[str, str]]) -> dict[str, Any]:
-        return await self.router.complete("gpu-gemma4", messages)
+        return await self.router.complete("openrouter-gemma4", messages)
 
     async def health(self) -> bool:
-        return await self.router.status(MODEL_BY_ID["gpu-gemma4"]) == "ready"
+        return await self.router.status(MODEL_BY_ID["openrouter-gemma4"]) == "ready"
 
 
 def _allowed_networks() -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:

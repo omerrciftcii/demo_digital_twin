@@ -1,6 +1,10 @@
+import asyncio
+import json
+
+import httpx
 from fastapi.testclient import TestClient
 
-from demo.patient_chat.app import create_app
+from demo.patient_chat.app import ModelRouter, create_app
 
 
 def test_demo_serves_local_ui_and_patient_aliases():
@@ -28,7 +32,11 @@ def test_demo_serves_local_ui_and_patient_aliases():
         assert record["readableText"] == "HAM METİN"
         assert record["rawJson"] == {"text": "HAM METİN"}
         models = client.get("/api/models").json()
-        assert [model["id"] for model in models[:2]] == ["gpu-gemma4", "openai-luna"]
+        assert [model["id"] for model in models[:2]] == [
+            "openrouter-gemma4",
+            "openai-luna",
+        ]
+        assert [model["provider"] for model in models[:2]] == ["OpenRouter", "OpenAI"]
         assert all(model["status"] == "ready" for model in models)
         assert client.get("/api/health").json()["status"] == "ready"
 
@@ -221,3 +229,49 @@ def test_demo_rejects_more_than_six_selected_options():
         )
 
     assert response.status_code == 422
+
+
+def test_demo_routes_open_models_through_openrouter_and_openai_directly(monkeypatch):
+    monkeypatch.setenv("DEMO_ALLOW_EXTERNAL_MODELS", "true")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "router-secret")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-secret")
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(
+            {
+                "url": str(request.url),
+                "authorization": request.headers["Authorization"],
+                "body": json.loads(request.content),
+            }
+        )
+        body = seen[-1]["body"]
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": "Yanıt"}}],
+                "model": body["model"],
+            },
+        )
+
+    router = ModelRouter(transport=httpx.MockTransport(handler))
+    messages = [{"role": "user", "content": "Merhaba"}]
+    asyncio.run(router.complete("openrouter-qwen", messages))
+    asyncio.run(router.complete("openai-luna", messages))
+
+    openrouter_request, openai_request = seen
+    assert openrouter_request["url"] == "https://openrouter.ai/api/v1/chat/completions"
+    assert openrouter_request["authorization"] == "Bearer router-secret"
+    assert openrouter_request["body"]["model"] == "qwen/qwen3.5-9b"
+    assert openrouter_request["body"]["provider"] == {
+        "allow_fallbacks": True,
+        "data_collection": "deny",
+        "zdr": True,
+    }
+    assert openrouter_request["body"]["reasoning"] == {"enabled": False}
+
+    assert openai_request["url"] == "https://api.openai.com/v1/chat/completions"
+    assert openai_request["authorization"] == "Bearer openai-secret"
+    assert openai_request["body"]["model"] == "gpt-6-luna"
+    assert "provider" not in openai_request["body"]
+    assert openai_request["body"]["reasoning_effort"] == "low"

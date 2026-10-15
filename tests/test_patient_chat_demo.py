@@ -13,13 +13,23 @@ def test_demo_serves_local_ui_and_patient_aliases():
         assert page.status_code == 200
         assert styles.status_code == 200
         assert "MedicalAI" in page.text
+        assert "Digital Twin Lab" in page.text
         assert "Adım adım" in page.text
         assert "Çoklu seçim" in page.text
-        assert "height: calc(100dvh - 32px);" in styles.text
+        assert "grid-template-areas" in styles.text
         assert "overflow-y: auto;" in styles.text
         assert "scrollbar-gutter: stable;" in styles.text
         assert "script-src 'self'" in page.headers["content-security-policy"]
-        assert client.get("/api/patients").json() == [{"id": "P01", "label": "Hasta 1"}]
+        patient = client.get("/api/patients").json()[0]
+        assert patient["id"] == "P01"
+        assert patient["label"] == "Hasta 1"
+        assert isinstance(patient["summary"], list)
+        record = client.get("/api/patients/P01/record").json()
+        assert record["readableText"] == "HAM METİN"
+        assert record["rawJson"] == {"text": "HAM METİN"}
+        models = client.get("/api/models").json()
+        assert [model["id"] for model in models[:2]] == ["gpu-gemma4", "openai-luna"]
+        assert all(model["status"] == "ready" for model in models)
         assert client.get("/api/health").json()["status"] == "ready"
 
 
@@ -38,10 +48,16 @@ def test_demo_sends_unchanged_record_and_returns_raw_markdown():
     with TestClient(create_app(records={"P01": raw_text}, completion=complete)) as client:
         response = client.post(
             "/api/chat",
-            json={"patientId": "P01", "question": "Gözüm neden kızardı?", "history": []},
+            json={
+                "patientId": "P01",
+                "modelId": "openai-luna",
+                "question": "Gözüm neden kızardı?",
+                "history": [],
+            },
         )
     assert response.status_code == 200
     assert response.json()["answer"].startswith("**Son kayıtlarına göre**")
+    assert response.json()["modelId"] == "openai-luna"
     assert calls[0][1] == {"role": "user", "content": raw_text}
     assert "Gözüm neden kızardı?" in calls[0][-1]["content"]
     assert len(calls[0]) == 3
@@ -62,6 +78,43 @@ def test_demo_rejects_unknown_patient_and_cross_origin_write():
         )
     assert missing.status_code == 404
     assert blocked.status_code == 403
+
+
+def test_demo_rejects_unknown_model():
+    async def complete(_messages):
+        raise AssertionError("model must not be called")
+
+    with TestClient(create_app(records={"P01": "HAM METİN"}, completion=complete)) as client:
+        response = client.post(
+            "/api/chat",
+            json={"patientId": "P01", "modelId": "unknown", "question": "Merhaba"},
+        )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Bilinmeyen model seçimi."
+
+
+def test_demo_adds_model_independent_source_references():
+    async def complete(_messages):
+        return {
+            "answer": "Son hemoglobin 11,4 g/dL ile düşük görünüyor.",
+            "model": "test",
+            "latencyMs": 5,
+        }
+
+    record = (
+        "## Laboratuvar\n\n"
+        "- Hemoglobin 11,4 g/dL (18.09.2026), düşük (aralık 12,0–16,0).\n\n"
+        "## Uyku\n\nSon gece 6 saat uyku kaydı var."
+    )
+    with TestClient(create_app(records={"P01": record}, completion=complete)) as client:
+        response = client.post(
+            "/api/chat",
+            json={"patientId": "P01", "question": "Hemoglobin nasıl?"},
+        )
+    assert response.status_code == 200
+    reference = response.json()["references"][0]
+    assert "Hemoglobin 11,4" in reference["sourceText"]
+    assert record[reference["start"] : reference["end"]].strip().startswith("- Hemoglobin")
 
 
 def test_demo_uses_short_continuation_prompt_for_clicked_option():

@@ -1,4 +1,25 @@
-# MedicalAI Selective Context V2
+# MedicalAI Digital Twin Lab
+
+Doktorların aynı anonim CCO üzerinde yerel GPU modelleri ile OpenAI yanıtlarını karşılaştırması için ayrı, responsive değerlendirme projesi. Kaynak JSON değişmeden saklanır; mevcut hasta-dostu cevap biçimi korunur. Sağ panelde klinik özet, okunabilir CCO ve ham JSON aynı anda incelenebilir. Model yanıtındaki olası kaynak eşleşmeleri cevap biçimini değiştirmeden CCO metninde vurgulanır.
+
+Bu repo `medical_ai` içindeki `codex/mobile-chat-demo-snapshot` branch'inden ayrılmıştır. Eski selective-context ve değerlendirme araçları araştırma altyapısı olarak korunur; doktor demosunun giriş noktası `demo.patient_chat.app`'tir.
+
+## Digital Twin doktor demosu
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+# Anonim JSON dosyalarını data\cco altına koyun.
+.\scripts\start_digital_twin_demo.ps1
+```
+
+Arayüz: `http://127.0.0.1:8092`. Dosyalar ada göre sıralanır ve yalnız `Hasta 1`, `Hasta 2`, ... olarak gösterilir. `data/cco/` Git dışında kalır. Başka bir güvenli klasör kullanmak için `DEMO_CCO_DIR` ayarlanabilir.
+
+Öncelikli modeller GPU'daki Gemma 4 ve OpenAI GPT-6 Luna'dır. Qwen 3.5 9B, Kimi/Moonlight 16B-A3B, DeepSeek R1 Distill Qwen 14B ve NVIDIA Nemotron Nano 9B v2 isteğe bağlı OpenAI-compatible endpoint'lerle eklenir. OpenAI aktarımı varsayılan olarak kilitlidir; etkinleştirme ve ofis/GPU kurulumu için [docs/office-deployment.md](docs/office-deployment.md) dosyasına bakın.
+
+Kaynak bağlantıları deterministik metin eşleşmesidir; klinik doğruluk veya gerçek atıf garantisi değildir. Doktor, vurgulanan CCO bölümünü mutlaka kendisi doğrulamalıdır.
+
+## Korunan araştırma altyapısı
 
 ABP lisansı veya çalışan CCO/MedicalAI servisi gerektirmeyen, Python/FastAPI tabanlı yerel geliştirme alanı. **Mevcut CCO generation değiştirilmez.** Kaynak JSON değişmeden saklanır; model girdisi ayrı bir `ContextPacket` olur.
 

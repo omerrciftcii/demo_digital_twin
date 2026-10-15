@@ -2,36 +2,73 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#7047eb">
-  <title>MedicalAI Hasta Sohbeti</title>
+  <meta name="theme-color" content="#f4f2ec">
+  <title>MedicalAI · Digital Twin Lab</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
+    <header class="topbar">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">M</span>
-        <div><strong>MedicalAI</strong><span>Hasta görüşü · Demo</span></div>
+        <div>
+          <strong>MedicalAI</strong>
+          <span>Digital Twin Lab</span>
+        </div>
       </div>
+      <div class="study-label"><span></span> Klinik model karşılaştırması</div>
+      <div class="mobile-actions">
+        <button id="open-patients" class="icon-button" type="button" aria-label="Hastaları aç">Hastalar</button>
+        <button id="open-record" class="icon-button" type="button" aria-label="Hasta kaydını aç">Kayıt</button>
+      </div>
+    </header>
 
-      <section class="patient-section" aria-labelledby="patient-title">
-        <p class="eyebrow">AKTİF KAYIT</p>
-        <h1 id="patient-title">Hasta seç</h1>
-        <div id="patient-list" class="patient-list" aria-live="polite"></div>
-      </section>
-
-      <div class="privacy-note">
-        <span class="privacy-dot" aria-hidden="true"></span>
-        <p>Hasta metni tarayıcıya yüklenmez. Bu demo yalnızca localhost ve şifreli SSH tüneli üzerinden çalışır.</p>
+    <aside id="patient-rail" class="patient-rail" aria-label="Hasta seçimi">
+      <div class="rail-heading">
+        <div>
+          <p class="eyebrow">ANONİM VAKALAR</p>
+          <h1>Hastalar</h1>
+        </div>
+        <button class="panel-close" type="button" data-close-panel aria-label="Hasta panelini kapat">×</button>
+      </div>
+      <p class="rail-copy">Karşılaştırmak istediğiniz CCO kaydını seçin.</p>
+      <div id="patient-list" class="patient-list" aria-live="polite"></div>
+      <div class="privacy-card">
+        <div class="privacy-icon" aria-hidden="true">◎</div>
+        <div>
+          <strong>Yerel ve kontrollü</strong>
+          <p>Hasta verileri kalıcı sohbet geçmişine yazılmaz. Dış model aktarımı ayrıca etkinleştirilir.</p>
+        </div>
       </div>
     </aside>
 
     <main class="chat-panel">
+      <section class="model-bar" aria-labelledby="model-title">
+        <div class="model-title-row">
+          <div>
+            <p class="eyebrow">MODEL</p>
+            <h2 id="model-title">Hızlı seçim</h2>
+          </div>
+          <div id="model-connection" class="connection" aria-live="polite">
+            <span id="status-dot" class="status-dot"></span>
+            <span id="status-text">Modeller kontrol ediliyor</span>
+          </div>
+        </div>
+        <div class="model-controls">
+          <div id="featured-models" class="featured-models" aria-label="Öncelikli modeller"></div>
+          <label class="model-select-wrap" for="model-select">
+            <span>Tüm modeller</span>
+            <select id="model-select" aria-label="Tüm modeller"></select>
+          </label>
+        </div>
+        <p id="model-note" class="model-note"></p>
+      </section>
+
       <header class="chat-header">
         <div>
-          <p class="eyebrow">KİŞİSEL SAĞLIK SOHBETİ</p>
+          <p class="eyebrow">AKTİF VAKA</p>
           <h2 id="active-patient">Hasta seçiliyor…</h2>
         </div>
         <div class="header-actions">
@@ -39,34 +76,68 @@
             <button type="button" class="mode-button active" data-mode="stepwise" aria-pressed="true">Adım adım</button>
             <button type="button" class="mode-button" data-mode="multi_select" aria-pressed="false">Çoklu seçim</button>
           </div>
-          <div class="connection"><span id="status-dot" class="status-dot"></span><span id="status-text">Bağlantı kontrol ediliyor</span></div>
-          <button id="clear-button" class="ghost-button" type="button">Sohbeti temizle</button>
+          <button id="clear-button" class="ghost-button" type="button">Temizle</button>
         </div>
       </header>
 
       <section id="messages" class="messages" aria-live="polite">
         <div id="welcome" class="welcome">
-          <div class="welcome-icon" aria-hidden="true">✦</div>
-          <h3>Kayıtların hakkında doğal şekilde sor</h3>
-          <p>Gemma son ilgili klinik kayıtları ve güncel wearable verilerini önceliklendirerek kısa bir yanıt hazırlar.</p>
-          <div class="starter-prompts" aria-label="Önceden denenmiş örnek sorular"></div>
+          <div class="welcome-orbit" aria-hidden="true"><span></span></div>
+          <p class="eyebrow">DOKTOR DEĞERLENDİRME ALANI</p>
+          <h3>Yanıtı hasta kaydıyla birlikte inceleyin</h3>
+          <p>Bir soru seçin veya serbestçe yazın. Bulunan kaynaklar sağdaki kayıtta işaretlenir.</p>
+          <div id="starter-prompts" class="starter-prompts" aria-label="Örnek sorular"></div>
         </div>
       </section>
 
-      <div id="activity" class="activity" hidden><span class="spinner"></span><span>Gemma kayıtlarını değerlendiriyor…</span></div>
+      <div id="activity" class="activity" hidden>
+        <span class="spinner"></span><span id="activity-text">Model kaydı değerlendiriyor…</span>
+      </div>
 
       <form id="composer" class="composer">
         <label class="sr-only" for="question">Sorunuzu yazın</label>
-        <textarea id="question" rows="2" maxlength="2000" placeholder="Örn. Gözlerim biraz kızarmış, neden olabilir?"></textarea>
+        <textarea id="question" rows="2" maxlength="2000" placeholder="Hastanın son kayıtlarıyla ilgili bir soru yazın…"></textarea>
         <div class="composer-footer">
           <p>Enter ile gönder · Shift+Enter ile yeni satır</p>
           <button id="send-button" type="submit">Gönder <span aria-hidden="true">↑</span></button>
         </div>
       </form>
-
-      <p class="disclaimer">Bu demo tanı koymaz ve acil sağlık hizmetinin yerini tutmaz. Şiddetli veya ani belirtilerde sağlık kuruluşuna başvurun.</p>
+      <p class="disclaimer">Araştırma demosu · Tanı veya tedavi kararı için tek başına kullanılamaz.</p>
     </main>
+
+    <aside id="record-panel" class="record-panel" aria-label="Hasta kaydı">
+      <header class="record-header">
+        <div>
+          <p class="eyebrow">KAYNAK DOSYA</p>
+          <h2 id="record-title">Hasta kaydı</h2>
+        </div>
+        <button class="panel-close" type="button" data-close-panel aria-label="Kayıt panelini kapat">×</button>
+      </header>
+
+      <section class="clinical-summary" aria-labelledby="summary-title">
+        <div class="summary-heading">
+          <span class="summary-kicker">KLİNİK ÖZET</span>
+          <span id="summary-count" class="summary-count"></span>
+        </div>
+        <h3 id="summary-title">Öne çıkan kayıtlar</h3>
+        <ul id="summary-list"></ul>
+      </section>
+
+      <div class="record-tabs" role="tablist" aria-label="Kayıt görünümü">
+        <button id="readable-tab" class="record-tab active" type="button" role="tab" aria-selected="true" data-record-tab="readable">Okunabilir kayıt</button>
+        <button id="json-tab" class="record-tab" type="button" role="tab" aria-selected="false" data-record-tab="json">Ham JSON</button>
+      </div>
+      <div id="source-banner" class="source-banner" hidden>
+        <span>Kaynak eşleşmesi gösteriliyor</span>
+        <button id="clear-highlight" type="button">Vurguyu kaldır</button>
+      </div>
+      <div id="record-content" class="record-content">
+        <div id="readable-record" class="readable-record" role="tabpanel"></div>
+        <pre id="json-record" class="json-record" role="tabpanel" hidden></pre>
+      </div>
+    </aside>
   </div>
+  <div id="panel-backdrop" class="panel-backdrop" hidden></div>
   <script src="/static/app.js" defer></script>
 </body>
 </html>

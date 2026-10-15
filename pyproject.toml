@@ -1,7 +1,7 @@
 [project]
-name = "medical-ai-selective-context-v2"
-version = "0.3.0"
-description = "Standalone CCO selective-context workbench"
+name = "medical-ai-digital-twin"
+version = "0.4.0"
+description = "Private clinical CCO and AI-response comparison workbench"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1",

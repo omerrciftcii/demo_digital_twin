@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app.py": {
+      "maxDuration": 300,
+      "includeFiles": "{demo/patient_chat/static/**,data/cco/**}",
+      "excludeFiles": "{.*,.*/**,tests/**,docs/**,mobile/**,scripts/**,deploy/**,output/**,tmp/**,config/**,compose*.yaml,openapi.yaml,README.md,uv.lock,data/{evaluation,runtime}/**,**/__pycache__/**,**/*.egg-info/**}"
+    }
+  }
+}

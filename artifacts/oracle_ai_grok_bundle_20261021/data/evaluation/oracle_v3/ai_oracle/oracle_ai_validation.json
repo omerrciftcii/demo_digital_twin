@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "cco-ai-oracle-validation/0.1.0",
+  "valid": true,
+  "experimental": true,
+  "cases": 20,
+  "validatedReviews": 20,
+  "reviewStatusCounts": {
+    "ai_provisional": 20
+  },
+  "relevantEvidence": 82,
+  "irrelevantEvidence": 105,
+  "humanVerified": false,
+  "gold": false,
+  "trainable": false,
+  "errors": []
+}

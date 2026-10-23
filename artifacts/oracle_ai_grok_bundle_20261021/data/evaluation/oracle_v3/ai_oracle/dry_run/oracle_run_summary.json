@@ -1,0 +1,54 @@
+{
+  "rows": 60,
+  "statusCounts": {
+    "dry_run": 60
+  },
+  "modelCalls": 0,
+  "dryRun": true,
+  "experimental": true,
+  "humanVerifiedOracleUsed": false,
+  "aiProvisionalOracleUsed": true,
+  "runConfig": {
+    "model": "gemma4-26b-a4b",
+    "arms": [
+      "A",
+      "B_AI",
+      "C"
+    ],
+    "repeats": 1,
+    "seed": 20261021,
+    "temperature": 0,
+    "maxTokens": 2000,
+    "structuredOutput": "response-format",
+    "disableReasoning": "chat-template"
+  },
+  "pendingHumanReview": [
+    "oracle-pilot-001",
+    "oracle-pilot-002",
+    "oracle-pilot-003",
+    "oracle-pilot-004",
+    "oracle-pilot-005",
+    "oracle-pilot-006",
+    "oracle-pilot-007",
+    "oracle-pilot-008",
+    "oracle-pilot-009",
+    "oracle-pilot-010",
+    "oracle-pilot-011",
+    "oracle-pilot-012",
+    "oracle-pilot-013",
+    "oracle-pilot-014",
+    "oracle-pilot-015",
+    "oracle-pilot-016",
+    "oracle-pilot-017",
+    "oracle-pilot-018",
+    "oracle-pilot-019",
+    "oracle-pilot-020"
+  ],
+  "automaticCZeroAnnotationCases": [
+    "oracle-pilot-010",
+    "oracle-pilot-019",
+    "oracle-pilot-020"
+  ],
+  "officialOracleBReady": false,
+  "experimentalAiOracleReady": true
+}

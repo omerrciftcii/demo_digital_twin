@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "cco-oracle-package-validation/0.1.0",
+  "valid": true,
+  "cases": 20,
+  "uniqueCcos": 20,
+  "evidenceReferencesChecked": 99,
+  "questionReviewStatus": {
+    "pending": 20
+  },
+  "evidenceReviewStatus": {
+    "pending": 20
+  },
+  "oracleBReadyCases": 0,
+  "sourceCcosModified": false,
+  "realGemmaBenchmarkExecuted": false,
+  "errors": []
+}

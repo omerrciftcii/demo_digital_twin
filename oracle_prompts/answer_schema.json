@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "conclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["supported", "not_supported", "uncertain", "not_applicable"]
+        },
+        "text": {"type": "string"},
+        "claim_type": {
+          "type": "string",
+          "enum": [
+            "causal_relation", "clinical_explanation", "clinical_support", "comparison",
+            "diagnosis_status", "fact", "general_guidance", "medication_status",
+            "missing_information", "temporal_relation", "trend"
+          ]
+        },
+        "evidence_ids": {"type": "array", "items": {"type": "string"}}
+      },
+      "required": ["status", "text", "claim_type", "evidence_ids"]
+    },
+    "sentences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": {"type": "string"},
+          "claim_type": {
+            "type": "string",
+            "enum": [
+              "causal_relation", "clinical_explanation", "clinical_support", "comparison",
+              "diagnosis_status", "fact", "general_guidance", "medication_status",
+              "missing_information", "temporal_relation", "trend"
+            ]
+          },
+          "evidence_ids": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["text", "claim_type", "evidence_ids"]
+      }
+    },
+    "missing_information": {"type": "array", "items": {"type": "string"}},
+    "requires_clinician_review": {"type": "boolean"}
+  },
+  "required": [
+    "conclusion", "sentences", "missing_information", "requires_clinician_review"
+  ]
+}

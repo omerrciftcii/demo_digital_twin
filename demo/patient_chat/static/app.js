@@ -2,6 +2,8 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
+  const MODEL_PROMPT_STORAGE_KEY = "medicalai:system-prompts:v1";
+  const MAX_MODEL_PROMPT_LENGTH = 6000;
   const state = {
     patients: [],
     models: [],
@@ -9,10 +11,14 @@
     activeModel: null,
     record: null,
     history: [],
+    transcript: [],
     busy: false,
     mode: "stepwise",
+    preprocessMode: "raw",
     recordTab: "readable",
     highlight: null,
+    modelPrompts: loadModelPrompts(),
+    defaultSystemPrompt: "",
   };
 
   const starterQuestions = [
@@ -27,7 +33,31 @@
     offline: "Sunucu kapalı",
     setup: "Kurulum gerekli",
     locked: "Dış aktarım kapalı",
+    auth_error: "Anahtar geçersiz",
   };
+
+  function loadModelPrompts() {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(MODEL_PROMPT_STORAGE_KEY) || "{}");
+      if (!stored || typeof stored !== "object" || Array.isArray(stored)) return {};
+      return Object.fromEntries(
+        Object.entries(stored)
+          .filter(([, value]) => typeof value === "string")
+          .map(([modelId, value]) => [modelId, value.slice(0, MAX_MODEL_PROMPT_LENGTH)]),
+      );
+    } catch (_error) {
+      return {};
+    }
+  }
+
+  function persistModelPrompts() {
+    try {
+      window.localStorage.setItem(MODEL_PROMPT_STORAGE_KEY, JSON.stringify(state.modelPrompts));
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
 
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, (char) => ({
@@ -36,27 +66,69 @@
   }
 
   function inlineMarkdown(value) {
-    return escapeHtml(value)
+    const codeTokens = [];
+    let html = escapeHtml(value).replace(/`([^`]+)`/g, (_match, code) => {
+      const token = `\u0000CODE${codeTokens.length}\u0000`;
+      codeTokens.push(`<code>${code}</code>`);
+      return token;
+    });
+    html = html
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/`([^`]+)`/g, "<code>$1</code>");
+      .replace(/__(.+?)__/g, "<strong>$1</strong>")
+      .replace(/~~(.+?)~~/g, "<del>$1</del>")
+      .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>")
+      .replace(/(^|[^_])_([^_\n]+)_(?!_)/g, "$1<em>$2</em>");
+    return html.replace(/\u0000CODE(\d+)\u0000/g, (_match, index) => codeTokens[Number(index)]);
   }
 
   function markdownToHtml(markdown) {
     const lines = String(markdown).replace(/\r\n/g, "\n").split("\n");
     const output = [];
     let list = null;
+    let codeFence = null;
+    let codeLines = [];
     const closeList = () => {
       if (list) output.push(`</${list}>`);
       list = null;
     };
+    const closeCodeFence = () => {
+      if (codeFence === null) return;
+      const language = codeFence ? ` class="language-${escapeHtml(codeFence)}"` : "";
+      output.push(`<pre><code${language}>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+      codeFence = null;
+      codeLines = [];
+    };
     for (const rawLine of lines) {
       const line = rawLine.trim();
+      const fence = line.match(/^```([\w-]*)\s*$/);
+      if (fence) {
+        closeList();
+        if (codeFence === null) codeFence = fence[1] || "";
+        else closeCodeFence();
+        continue;
+      }
+      if (codeFence !== null) {
+        codeLines.push(rawLine);
+        continue;
+      }
       if (!line) { closeList(); continue; }
-      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+      if (/^([-*_])\1\1+$/.test(line.replace(/\s/g, ""))) {
+        closeList();
+        output.push("<hr>");
+        continue;
+      }
+      const heading = line.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
         closeList();
-        const level = Math.min(3, heading[1].length + 1);
+        const level = Math.min(4, heading[1].length + 1);
         output.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+        continue;
+      }
+      const quote = line.match(/^>\s?(.+)$/);
+      if (quote) {
+        closeList();
+        output.push(`<blockquote>${inlineMarkdown(quote[1])}</blockquote>`);
         continue;
       }
       const bullet = line.match(/^[-*]\s+(.+)$/);
@@ -75,6 +147,7 @@
       output.push(`<p>${inlineMarkdown(line)}</p>`);
     }
     closeList();
+    closeCodeFence();
     return output.join("");
   }
 
@@ -120,6 +193,139 @@
     return state.models.find((model) => model.id === state.activeModel) || null;
   }
 
+  function activePatient() {
+    return state.patients.find((patient) => patient.id === state.activePatient) || null;
+  }
+
+  function normalizePrompt(value) {
+    return String(value || "").replace(/\r\n/g, "\n").trim();
+  }
+
+  function isDefaultPrompt(value) {
+    const candidate = normalizePrompt(value);
+    const fallback = normalizePrompt(state.defaultSystemPrompt);
+    return Boolean(fallback) && candidate === fallback;
+  }
+
+  function storedSystemPrompt(modelId = state.activeModel) {
+    const stored = modelId ? state.modelPrompts[modelId] : "";
+    return stored && !isDefaultPrompt(stored) ? stored : "";
+  }
+
+  function activeSystemPrompt(modelId = state.activeModel) {
+    return storedSystemPrompt(modelId) || state.defaultSystemPrompt || "";
+  }
+
+  function promptSourceLabel(source) {
+    return source === "custom" ? "arayüzden düzenlenmiş" : "varsayılan";
+  }
+
+  function fencePrompt(prompt) {
+    const fence = String(prompt).includes("```") ? "~~~~" : "```";
+    return [`${fence}text`, prompt, fence];
+  }
+
+  function usedSystemPrompts() {
+    const used = [];
+    let answerNumber = 0;
+    state.transcript.forEach((message) => {
+      if (message.role !== "assistant" || !message.systemPrompt) return;
+      answerNumber += 1;
+      const previous = used[used.length - 1];
+      if (previous && previous.prompt === message.systemPrompt) {
+        previous.answers.push(answerNumber);
+        return;
+      }
+      used.push({
+        prompt: message.systemPrompt,
+        source: message.systemPromptSource || (isDefaultPrompt(message.systemPrompt) ? "default" : "custom"),
+        answers: [answerNumber],
+      });
+    });
+    return used;
+  }
+
+  function exportSlug(value) {
+    return String(value || "kayit")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "kayit";
+  }
+
+  function exportConversation() {
+    if (!state.transcript.length) return;
+    const patient = activePatient();
+    const model = activeModel();
+    const createdAt = new Date();
+    const lines = [
+      "# MedicalAI model değerlendirmesi",
+      "",
+      `- Hasta: ${patient?.label || "Bilinmiyor"}`,
+      `- Model: ${model?.label || "Bilinmiyor"}`,
+      `- Sağlayıcı: ${model?.provider || "Bilinmiyor"}`,
+      `- Görüşme modu: ${state.mode === "multi_select" ? "Çoklu seçim" : "Adım adım"}`,
+      `- Kayıt ön işleme: ${{ raw: "Ham kayıt", s5: "S5", s6b: "S6b" }[state.preprocessMode] || "Ham kayıt"}`,
+      `- Dışa aktarma zamanı: ${createdAt.toLocaleString("tr-TR")}`,
+      "",
+      "## Sistem promptu",
+      "",
+    ];
+    const usedPrompts = usedSystemPrompts();
+    if (!usedPrompts.length) {
+      const prepared = activeSystemPrompt();
+      lines.push("Bu dışa aktarmada modele giden bir yanıt yok.", "");
+      if (prepared) {
+        lines.push(
+          `- Hazırlanan prompt: ${isDefaultPrompt(prepared) ? "varsayılan" : "arayüzden düzenlenmiş"}`,
+          "",
+          ...fencePrompt(prepared),
+          "",
+        );
+      }
+    } else {
+      usedPrompts.forEach((item, index) => {
+        if (usedPrompts.length > 1) {
+          lines.push(`### ${index + 1}. ${promptSourceLabel(item.source)}`, "");
+        }
+        lines.push(
+          `- Durum: ${promptSourceLabel(item.source)}`,
+          `- Uygulandığı model yanıtları: ${item.answers.join(", ")}`,
+          "",
+          ...fencePrompt(item.prompt),
+          "",
+        );
+      });
+    }
+    lines.push("## Mesaj geçmişi", "");
+    state.transcript.forEach((message, index) => {
+      const title = message.role === "user"
+        ? "Soru"
+        : message.role === "assistant" ? "Model yanıtı" : "Sistem";
+      lines.push(`### ${index + 1}. ${title}`, "", message.content, "");
+      if (message.role === "assistant" && (message.model || message.latencyMs)) {
+        const details = [
+          message.model ? `Model: ${message.model}` : "",
+          message.latencyMs ? `Süre: ${(message.latencyMs / 1000).toFixed(1)} sn` : "",
+        ].filter(Boolean).join(" · ");
+        lines.push(`_${details}_`, "");
+      }
+    });
+    lines.push("---", "Bu dosya araştırma demosundan dışa aktarılmıştır; tanı veya tedavi kararı değildir.", "");
+
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const stamp = createdAt.toISOString().replace(/[:.]/g, "-");
+    link.href = url;
+    link.download = `${exportSlug(patient?.label)}_${exportSlug(model?.shortLabel)}_${stamp}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
   function updateConnection() {
     const model = activeModel();
     const ready = model?.status === "ready";
@@ -135,17 +341,56 @@
       : "Model hasta kaydını değerlendiriyor…";
   }
 
+  function renderModelPrompt(statusMessage = "") {
+    const model = activeModel();
+    const custom = storedSystemPrompt(model?.id);
+    const prompt = custom || state.defaultSystemPrompt || "";
+    $("model-prompt").value = prompt;
+    $("model-prompt").disabled = state.busy || !model;
+    $("model-prompt-label").textContent = model
+      ? `${model.shortLabel} sistem promptu`
+      : "Sistem promptu";
+    $("model-prompt-summary").textContent = custom
+      ? `${model.shortLabel} · düzenlendi`
+      : "Varsayılan sistem promptu";
+    $("model-prompt-status").textContent = statusMessage || (
+      custom ? "Bu tarayıcıya kaydedildi" : "Varsayılan sistem promptu"
+    );
+    $("clear-model-prompt").disabled = state.busy || !model || !custom;
+  }
+
+  function saveActiveModelPrompt(value) {
+    const model = activeModel();
+    if (!model) return;
+    const prompt = String(value).replace(/\r\n/g, "\n").slice(0, MAX_MODEL_PROMPT_LENGTH);
+    const custom = Boolean(prompt.trim()) && !isDefaultPrompt(prompt);
+    if (custom) state.modelPrompts[model.id] = prompt;
+    else delete state.modelPrompts[model.id];
+    const saved = persistModelPrompts();
+    $("model-prompt-summary").textContent = custom
+      ? `${model.shortLabel} · düzenlendi`
+      : "Varsayılan sistem promptu";
+    if (!saved) $("model-prompt-status").textContent = "Tarayıcı saklama alanına erişilemedi";
+    else if (!prompt.trim()) $("model-prompt-status").textContent = "Boş; gönderimde varsayılan kullanılır";
+    else if (custom) $("model-prompt-status").textContent = "Bu tarayıcıya kaydedildi";
+    else $("model-prompt-status").textContent = "Varsayılan sistem promptu";
+    $("clear-model-prompt").disabled = state.busy || normalizePrompt(prompt) === normalizePrompt(state.defaultSystemPrompt);
+  }
+
   function updateControls() {
     const ready = activeModel()?.status === "ready";
     const blocked = state.busy || !state.activePatient || !ready;
     $("activity").hidden = !state.busy;
     $("question").disabled = blocked;
     $("send-button").disabled = blocked;
+    $("export-button").disabled = state.busy || !state.transcript.length;
     $("model-select").disabled = state.busy;
+    $("model-prompt").disabled = state.busy || !activeModel();
+    $("clear-model-prompt").disabled = state.busy || !activeModel()
+      || normalizePrompt($("model-prompt").value) === normalizePrompt(state.defaultSystemPrompt);
     document.querySelectorAll(".quick-replies button,.multi-replies button,.multi-replies input,.starter-prompts button,.patient-button,.mode-button,.featured-model")
       .forEach((control) => {
-        const unavailableModel = control.classList.contains("featured-model") && control.dataset.status !== "ready";
-        control.disabled = state.busy || unavailableModel;
+        control.disabled = state.busy;
       });
   }
 
@@ -239,26 +484,8 @@
     });
   }
 
-  function addReferences(article, references) {
-    if (!Array.isArray(references) || !references.length) return;
-    const group = document.createElement("div");
-    group.className = "source-links";
-    const label = document.createElement("span");
-    label.textContent = "CCO EŞLEŞMELERİ";
-    group.appendChild(label);
-    references.forEach((reference, index) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "source-link";
-      button.textContent = `Kaynak ${index + 1}`;
-      button.title = reference.sourceText || "Kaynakta göster";
-      button.addEventListener("click", () => showReference(reference));
-      group.appendChild(button);
-    });
-    article.appendChild(group);
-  }
-
   function addMessage(role, content, meta = {}) {
+    document.body.classList.add("has-messages");
     $("welcome")?.remove();
     const article = document.createElement("article");
     article.className = `message ${role}${meta.error ? " error" : ""}`;
@@ -325,7 +552,6 @@
         }
         article.appendChild(replies);
       }
-      addReferences(article, meta.references);
     } else {
       body.textContent = content;
       article.append(label, body);
@@ -353,6 +579,8 @@
 
   function resetConversation() {
     state.history = [];
+    state.transcript = [];
+    document.body.classList.remove("has-messages");
     const model = activeModel();
     $("messages").innerHTML = `
       <div id="welcome" class="welcome">
@@ -417,7 +645,6 @@
       const option = document.createElement("option");
       option.value = model.id;
       option.textContent = `${model.label} — ${statusLabels[model.status] || model.status}`;
-      option.disabled = model.status !== "ready";
       option.selected = model.id === state.activeModel;
       select.appendChild(option);
 
@@ -435,13 +662,14 @@
       featured.appendChild(button);
     }
     updateConnection();
+    renderModelPrompt();
     updateControls();
   }
 
   function selectModel(modelId) {
     if (state.busy || modelId === state.activeModel) return;
     const model = state.models.find((item) => item.id === modelId);
-    if (!model || model.status !== "ready") return;
+    if (!model) return;
     state.activeModel = modelId;
     renderModels();
     resetConversation();
@@ -561,24 +789,38 @@
     question = (question || $("question").value).trim();
     if (!question || state.busy || !state.activePatient || activeModel()?.status !== "ready") return;
     addMessage("user", question);
+    state.transcript.push({ role: "user", content: question, createdAt: new Date().toISOString() });
     $("question").value = "";
     setBusy(true);
     try {
+      const systemPrompt = activeSystemPrompt();
       const result = await api("/api/chat", {
         method: "POST",
         body: JSON.stringify({
           patientId: state.activePatient,
           modelId: state.activeModel,
+          modelPrompt: systemPrompt,
           question,
           history: state.history,
           quickReply,
           interactionMode: state.mode,
           selectedOptions,
+          preprocessMode: state.preprocessMode,
         }),
       });
       addMessage("assistant", result.answer, {
         ...result,
         allowMultiSelect: state.mode === "multi_select" && !quickReply && selectedOptions.length === 0,
+      });
+      state.transcript.push({
+        role: "assistant",
+        content: result.answer,
+        model: result.model,
+        modelId: result.modelId,
+        latencyMs: result.latencyMs,
+        systemPrompt: result.systemPrompt || systemPrompt,
+        systemPromptSource: result.systemPromptSource || (isDefaultPrompt(systemPrompt) ? "default" : "custom"),
+        createdAt: new Date().toISOString(),
       });
       state.history.push(
         { role: "user", content: question },
@@ -587,6 +829,11 @@
       state.history = state.history.slice(-6);
     } catch (error) {
       addMessage("system", error.message, { error: true });
+      state.transcript.push({
+        role: "system",
+        content: error.message,
+        createdAt: new Date().toISOString(),
+      });
     } finally {
       setBusy(false);
       $("question").focus();
@@ -599,7 +846,26 @@
       if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); }
     });
     $("clear-button").addEventListener("click", resetConversation);
+    $("export-button").addEventListener("click", exportConversation);
     $("model-select").addEventListener("change", (event) => selectModel(event.target.value));
+    $("model-prompt").addEventListener("input", (event) => saveActiveModelPrompt(event.target.value));
+    $("clear-model-prompt").addEventListener("click", () => {
+      const model = activeModel();
+      if (model) delete state.modelPrompts[model.id];
+      persistModelPrompts();
+      renderModelPrompt("Varsayılan sistem promptu");
+      $("model-prompt").focus();
+    });
+    document.querySelectorAll(".pre-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.preprocessMode = ["raw", "s5", "s6b"].includes(button.dataset.pre) ? button.dataset.pre : "raw";
+        document.querySelectorAll(".pre-button").forEach((b) => {
+          const on = b === button;
+          b.classList.toggle("active", on);
+          b.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      });
+    });
     document.querySelectorAll(".mode-button").forEach((button) => {
       button.addEventListener("click", () => setMode(button.dataset.mode));
     });
@@ -628,9 +894,14 @@
   async function initialize() {
     bindStaticControls();
     try {
-      const [patients, models] = await Promise.all([api("/api/patients"), api("/api/models")]);
+      const [patients, models, promptPayload] = await Promise.all([
+        api("/api/patients"),
+        api("/api/models"),
+        api("/api/system-prompt"),
+      ]);
       state.patients = patients;
       state.models = models;
+      state.defaultSystemPrompt = String(promptPayload.systemPrompt || "");
       state.activePatient = patients[0]?.id || null;
       const preferred = models.find((model) => model.id === "gpu-gemma4" && model.status === "ready")
         || models.find((model) => model.id === "openai-luna" && model.status === "ready")

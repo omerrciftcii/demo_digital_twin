@@ -1,0 +1,422 @@
+{
+  "schemaVersion": "cco-oracle-question-drafts/0.2.0",
+  "questions": [
+    {
+      "recordIndex": 1,
+      "question": "Daha önce baş ağrısı için gözlük verilmişti; bilgisayar başında başım ağrırsa gözlerimle ilgili bir durum olabilir mi?",
+      "category": "headache",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        19
+      ],
+      "irrelevantLineNumbers": [
+        37,
+        40,
+        47
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Geçmiş baş ağrısı ve bulanık görme, okuma-bilgisayar kullanımıyla ilişkilendirilmiş ve hipermetropi için gözlük reçete edilmiş.",
+      "forbiddenInferences": [
+        "Geçmiş kaydın bugünkü baş ağrısını açıkladığını varsaymak",
+        "Baş ağrısının kesin olarak hipermetropiden kaynaklandığını söylemek"
+      ]
+    },
+    {
+      "recordIndex": 2,
+      "question": "Daha önce baş ağrımın kitap okurken ve bilgisayar karşısında bulanık görmeyle birlikte olduğu yazılmış; böyle olursa gözlük kullanmak yeterli mi, yeniden göz muayenesi gerekir mi?",
+      "category": "headache",
+      "evidenceAvailability": "partial",
+      "evidenceLineNumbers": [
+        49
+      ],
+      "irrelevantLineNumbers": [
+        8,
+        9,
+        65,
+        81
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Kayıtta yakın çalışma sırasında baş ağrısı ve bulanık görme, hipermetropi bulgusu ve gözlük reçetesi var; güncel durum veya gözlüğün yeterliliği bilinmiyor.",
+      "forbiddenInferences": [
+        "Baş ağrısının halen sürdüğünü varsaymak",
+        "Mevcut gözlük numarasının uygun olduğunu varsaymak"
+      ]
+    },
+    {
+      "recordIndex": 3,
+      "question": "İki yıl önce ishal ve kusmayla birlikte halsizlik yaşamışım; benzer bir mide rahatsızlığında sıvı kaybını önlemek için evde nelere dikkat etmeliyim?",
+      "category": "fatigue",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        11,
+        12
+      ],
+      "irrelevantLineNumbers": [
+        38,
+        40,
+        44
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Geçmiş gastroenterit başvurusunda ishal, kusma ve halsizlik belirtilmiş, IV sıvı tedavisi uygulanmış.",
+      "forbiddenInferences": [
+        "Şu anda halsizlik veya mide-bağırsak yakınması olduğunu varsaymak",
+        "Geçmişteki sıvı tedavisinin her durumda gerekli olduğunu çıkarsamak"
+      ]
+    },
+    {
+      "recordIndex": 4,
+      "question": "Son zamanlarda halsizlik ve çabuk yorulma için tetkik planlandığını görüyorum; uyku sürem de çoğu gece kısa. Günlük yaşamda önce uyku düzenimi toparlamam mı, yoksa doktor kontrolünü mü önceliklendirmeliyim?",
+      "category": "fatigue",
+      "evidenceAvailability": "partial",
+      "evidenceLineNumbers": [
+        23,
+        56
+      ],
+      "irrelevantLineNumbers": [
+        27,
+        28,
+        40,
+        53
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Kayıtta halsizlik ve çabuk yorulma şikâyetiyle tetkik planı ve son haftada ortalama 6 saat 40 dakika uyku bilgisi bulunuyor; tetkik sonuçları veya şikâyetin güncel durumu verilmemiş.",
+      "forbiddenInferences": [
+        "Yorgunluğun yalnızca az uykudan kaynaklandığını varsaymak",
+        "Vitamin eksikliği tanılarının doğrulandığını kabul etmek"
+      ]
+    },
+    {
+      "recordIndex": 5,
+      "question": "Geçmişte aniden başlayan sulu ishal, kusma ve karın sancısı için serum verilmiş. Böyle bir durumda hangi belirtiler olursa evde beklemeyip sağlık kuruluşuna başvurmalıyım?",
+      "category": "gastrointestinal",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        49
+      ],
+      "irrelevantLineNumbers": [
+        78,
+        80,
+        84
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Yakın tarihli başvuruda ani başlayan sulu ishal, kusma ve karın sancısı kaydı ile IV tedavi bulunuyor; kullanıcı geçmiş deneyim üzerinden güvenlik önerisi soruyor.",
+      "forbiddenInferences": [
+        "Kayıttaki atağın hâlen devam ettiğini varsaymak",
+        "Geçmiş tedavinin yeni bir atakta da gerekli olacağını söylemek"
+      ]
+    },
+    {
+      "recordIndex": 6,
+      "question": "Geçmişte H. pylori pozitif gastrit, ülser ve yemek borusunda tahriş saptanmış; bunların tamamen geçtiğini anlamak için kontrol veya yeniden test gerekir mi?",
+      "category": "gastrointestinal",
+      "evidenceAvailability": "partial",
+      "evidenceLineNumbers": [
+        50,
+        59,
+        65
+      ],
+      "irrelevantLineNumbers": [
+        60,
+        69,
+        70
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Endoskopi ve biyopsi H. pylori pozitif gastrit, bulber ülser ve özofajit göstermiş; kayıtta tedavi sonrası eradikasyon kontrolü yer almıyor.",
+      "forbiddenInferences": [
+        "H. pylori tedavisinin hiç verilmediğini varsaymak",
+        "Enfeksiyonun halen sürdüğünü veya ülserin devam ettiğini söylemek"
+      ]
+    },
+    {
+      "recordIndex": 7,
+      "question": "Yüzük ölçümümde bir gece 4 saatten biraz fazla uyku ve uzun süre uyanık kalma görünüyor; bu tek gecelik ölçüm için endişelenmeli miyim, hangi durumda takip etmeliyim?",
+      "category": "sleep",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        4,
+        5
+      ],
+      "irrelevantLineNumbers": [
+        8,
+        11,
+        14
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "İki gecelik kayıtta bir gecenin uyku süresi, verimi ve gece uyanıklığı ayrıntılı biçimde yer alıyor.",
+      "forbiddenInferences": [
+        "Tek ölçümden kronik uykusuzluk tanısı çıkarmak",
+        "Yüzük ölçümünün kesin klinik ölçüm olduğunu varsaymak"
+      ]
+    },
+    {
+      "recordIndex": 8,
+      "question": "Son haftadaki uyku kayıtlarımda bazı geceler 5–6 saat civarında uyku görünüyor; gündüz işlevimi etkiliyorsa uyku süresini artırmak için en uygulanabilir ilk adım ne olur?",
+      "category": "sleep",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        7,
+        8
+      ],
+      "irrelevantLineNumbers": [
+        17,
+        20,
+        23
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Son yedi gecenin süreleri ve son geceye ait uyku ölçümleri mevcut; günlük etkiler hakkında veri yok.",
+      "forbiddenInferences": [
+        "Gündüz uykululuğu yaşandığını varsaymak",
+        "Cihazın uyku evresi tahminlerini kesin kabul etmek"
+      ]
+    },
+    {
+      "recordIndex": 9,
+      "question": "Kalp çarpıntım olursa, bu kayıttaki tek günlük nabız ölçümü çarpıntının nedenini anlamaya yeter mi; ne zaman acile başvurmalıyım?",
+      "category": "palpitations",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        11
+      ],
+      "irrelevantLineNumbers": [
+        7,
+        8,
+        14
+      ],
+      "userIntroducesNewSymptom": true,
+      "rationale": "Kayıtta çarpıntı öyküsü bildirilmemiş; yalnızca sınırlı HRV verisi var. Soru olası yeni belirti için genel güvenlik yönlendirmesi istiyor.",
+      "forbiddenInferences": [
+        "Çarpıntının mevcut olduğunu veya daha önce yaşandığını varsaymak",
+        "HRV ölçümünden ritim bozukluğu tanısı koymak"
+      ]
+    },
+    {
+      "recordIndex": 10,
+      "question": "Hipertansiyon beyanım var; evde nabzım düşük görünürse bunu tansiyonla birlikte nasıl değerlendirmeli ve hangi belirtilerde yardım almalıyım?",
+      "category": "palpitations",
+      "evidenceAvailability": "partial",
+      "evidenceLineNumbers": [
+        4,
+        11
+      ],
+      "irrelevantLineNumbers": [
+        7,
+        8,
+        14
+      ],
+      "userIntroducesNewSymptom": true,
+      "rationale": "Hipertansiyon beyanı ve cihazın ölçtüğü dinlenik nabız mevcut; nabız düşüklüğü, çarpıntı veya eşlik eden belirtiler bildirilmemiş.",
+      "forbiddenInferences": [
+        "Düşük nabız ya da çarpıntı yaşandığını varsaymak",
+        "Cihaz ölçümünden kalp hastalığı veya ritim bozukluğu çıkarmak"
+      ]
+    },
+    {
+      "recordIndex": 11,
+      "question": "Kullandığım vitamin ve balık yağı ürünlerini birlikte almak güvenli mi; mevcut ilaçlarımın tam listesini doktor ya da eczacıya nasıl doğrulatmalıyım?",
+      "category": "medication",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        4
+      ],
+      "irrelevantLineNumbers": [
+        7,
+        10,
+        15,
+        18
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Hasta beyanında göz damlası, balık yağı, B12 ve folik asit-iyot ürünü yer alıyor; diğer ilaçlar ve kullanım dozları bu kayıtta bilinmiyor.",
+      "forbiddenInferences": [
+        "Listelenen ürünlerin tümünün halen kullanıldığını varsaymak",
+        "Dozlar veya etkileşimler hakkında kayıt dışı kesin hüküm vermek"
+      ]
+    },
+    {
+      "recordIndex": 12,
+      "question": "Astımım ve diyabetim olduğunu beyan etmişim; düzenli takipte kullandığım ilaçları ve evdeki ölçümleri doktora nasıl bir liste halinde götürmem faydalı olur?",
+      "category": "medication",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        7,
+        13,
+        16,
+        19
+      ],
+      "irrelevantLineNumbers": [
+        22,
+        25,
+        29,
+        35
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Hasta beyanında astım ve diyabet ile bir takviye ürünü var; evde tansiyon ve kan şekeri ölçümleri kaydedilmiş.",
+      "forbiddenInferences": [
+        "Folic Iod'un astım veya diyabet tedavisi olduğunu varsaymak",
+        "Ölçümlerin hastalık kontrolünü tek başına gösterdiğini söylemek"
+      ]
+    },
+    {
+      "recordIndex": 13,
+      "question": "Şu anda beyan ettiğim Lev mont ve C vitamini-çinko-propolis ürününü birlikte kullanmamda sakınca olabilir mi; bu konuda hangi ayrıntıları eczacıya söylemeliyim?",
+      "category": "medication",
+      "evidenceAvailability": "partial",
+      "evidenceLineNumbers": [
+        11
+      ],
+      "irrelevantLineNumbers": [
+        17,
+        24,
+        29,
+        32
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Hasta beyanında iki ürün listelenmiş, ancak doz, kullanım sıklığı, başka ilaçlar ve alerjiler hakkında bilgi yok.",
+      "forbiddenInferences": [
+        "Her iki ürünün halen birlikte kullanıldığını varsaymak",
+        "Birlikte kullanımın kesin olarak güvenli veya sakıncalı olduğunu söylemek"
+      ]
+    },
+    {
+      "recordIndex": 14,
+      "question": "Son haftalarda çoğu gece yaklaşık beş saat uyumuşum ama adım sayım yüksek; kısa uyku varken günlük hareketimi azaltmam gerekir mi?",
+      "category": "daily_life",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        4,
+        14
+      ],
+      "irrelevantLineNumbers": [
+        5,
+        8,
+        11
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Kayıtta kısa uyku süreleri ve son haftadaki yüksek günlük adım sayıları birlikte yer alıyor; yorgunluk veya egzersiz sırasında yakınma belirtilmemiş.",
+      "forbiddenInferences": [
+        "Kısa uykunun hareket kapasitesini mutlaka düşürdüğünü varsaymak",
+        "Adım sayısını egzersiz yoğunluğuyla eş tutmak"
+      ]
+    },
+    {
+      "recordIndex": 15,
+      "question": "Son dönemde adım sayım düşük ve uykum bazı geceler kısa görünüyor; günlük rutine daha fazla hareket eklemek için küçük ve sürdürülebilir bir hedef nasıl seçebilirim?",
+      "category": "daily_life",
+      "evidenceAvailability": "partial",
+      "evidenceLineNumbers": [
+        7,
+        17
+      ],
+      "irrelevantLineNumbers": [
+        4,
+        8,
+        12,
+        21
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Kayıtta son dönem adım ortalaması, uyku süreleri ve hedefler var; kişinin hareket kısıtlılığı ya da sağlık amacı belirtilmemiş.",
+      "forbiddenInferences": [
+        "Düşük adım sayısının hareketsiz yaşamı veya sağlık sorunu gösterdiğini varsaymak",
+        "Belirli bir egzersiz yoğunluğunun kişiye uygun olduğunu söylemek"
+      ]
+    },
+    {
+      "recordIndex": 16,
+      "question": "Panik ataklarım olduğunda alkolün beni rahatlattığı olmuş; atak sırasında kendimi daha güvenli biçimde sakinleştirmek için ne yapabilirim?",
+      "category": "acute_safety",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        31
+      ],
+      "irrelevantLineNumbers": [
+        35,
+        40,
+        71,
+        76
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Psikiyatri kaydında panik ataklar ve alkolün rahatlatıcı olarak kullanılması bildirilmiş.",
+      "forbiddenInferences": [
+        "Panik atakların şu anda sürdüğünü varsaymak",
+        "Alkolün güvenli veya etkili bir tedavi olduğunu ima etmek"
+      ]
+    },
+    {
+      "recordIndex": 17,
+      "question": "Daha önce böbrek taşı tanısı ve görüntülemede böbreklerde taşlar görülmüş; bugün yan ağrısı, ateş ya da idrar yapamama olursa ne kadar acil değerlendirilmeliyim?",
+      "category": "acute_safety",
+      "evidenceAvailability": "partial",
+      "evidenceLineNumbers": [
+        7,
+        8,
+        76,
+        78
+      ],
+      "irrelevantLineNumbers": [
+        17,
+        19,
+        84,
+        86
+      ],
+      "userIntroducesNewSymptom": true,
+      "rationale": "Geçmişte böbrek taşı tanısı ve BT'de taşlar kaydedilmiş; belirtilen bugünkü yakınmalar kayıtlı değil ve koşullu biçimde soruluyor.",
+      "forbiddenInferences": [
+        "Bugün yan ağrısı, ateş veya idrar yapamama yaşandığını varsaymak",
+        "Eski görüntüleme bulgularının güncel taş durumunu gösterdiğini kabul etmek"
+      ]
+    },
+    {
+      "recordIndex": 18,
+      "question": "Kayıtta hipotiroidi ön tanısı ve normal serbest T4 sonucu var; bunun kesinleşip kesinleşmediğini anlamak için hangi tiroid testleri ve takip bilgileri gerekir?",
+      "category": "diagnosis_status",
+      "evidenceAvailability": "supported",
+      "evidenceLineNumbers": [
+        12,
+        93
+      ],
+      "irrelevantLineNumbers": [
+        8,
+        9,
+        19,
+        38
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Hipotiroidizm ön tanısı ve serbest T4 sonucu mevcut; TSH değeri bu seçilebilir satırlarda yok ve tanının kesinleşme durumu belirtilmemiş.",
+      "forbiddenInferences": [
+        "Hipotiroidinin kesin tanı olduğunu varsaymak",
+        "Serbest T4 tek başına tiroid durumunu açıklıyor demek"
+      ]
+    },
+    {
+      "recordIndex": 19,
+      "question": "Başım ağrıyorsa, hangi belirtiler olduğunda beklemek yerine acil yardım almalıyım?",
+      "category": "general_symptom",
+      "evidenceAvailability": "not_supported",
+      "evidenceLineNumbers": [],
+      "irrelevantLineNumbers": [
+        1
+      ],
+      "userIntroducesNewSymptom": true,
+      "rationale": "Kayıtta yaş dışında sağlık bilgisi yok; soru yalnızca olası yeni belirti için genel güvenlik sorusu.",
+      "forbiddenInferences": [
+        "Baş ağrısının var olduğunu veya geçmişte yaşandığını varsaymak",
+        "Herhangi bir tanı ya da neden çıkarmak"
+      ]
+    },
+    {
+      "recordIndex": 20,
+      "question": "Yeni başlayan bir belirtiyi evde izlemek yerine doktora göstermem gerektiğini nasıl anlayabilirim?",
+      "category": "general_symptom",
+      "evidenceAvailability": "not_supported",
+      "evidenceLineNumbers": [],
+      "irrelevantLineNumbers": [
+        1
+      ],
+      "userIntroducesNewSymptom": false,
+      "rationale": "Kayıtta yalnızca yaş bilgisi var; belirli bir sağlık durumu veya belirti hakkında dayanak bulunmuyor.",
+      "forbiddenInferences": [
+        "Herhangi bir belirti yaşandığını varsaymak",
+        "Kişiye özgü risk değerlendirmesi yapmak"
+      ]
+    }
+  ]
+}

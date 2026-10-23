@@ -41,3 +41,6 @@ ignore = ["TRY004"]
 [tool.setuptools.package-data]
 medical_ai_selective_context = ["static/*", "schema/*.json", "data/*.txt"]
 
+[tool.vercel]
+entrypoint = "app:app"
+

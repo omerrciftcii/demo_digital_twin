@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "cco-ai-oracle-manifest/0.1.0",
+  "createdAt": "2026-10-21T21:21:37.115471+03:00",
+  "experimental": true,
+  "reviewStatus": "ai_provisional",
+  "humanVerified": false,
+  "gold": false,
+  "trainable": false,
+  "requestedModelForThisRun": "openai/gpt-6.1-sol",
+  "requestedReasoningEffortForThisRun": "medium",
+  "models": [
+    "openai/gpt-6-astra",
+    "openai/gpt-6.1-sol"
+  ],
+  "reasoningEfforts": [
+    "medium"
+  ],
+  "reportedUsageCost": 1.211935,
+  "seed": 20261021,
+  "cases": 20,
+  "sourceIntegrityValidatedCases": 20,
+  "arms": [
+    "A",
+    "B_AI",
+    "C"
+  ],
+  "repeats": 1,
+  "files": {
+    "oracle_cases.jsonl": "2bd4308204716615a262069a434e49631384e6e241a4e0de30786f533b2c5731",
+    "oracle_ai_reviews.jsonl": "ff1c5bf80bc2fa83d612316cee13377b2bdb68e2b46653027053ca3be1817e6a",
+    "oracle_run_manifest.json": "bb1d06913e5cb907f8d43a57a1a9eaf16da6f274720f5cfe3c5a88c5f8d41390",
+    "oracle_ai_drafts.jsonl": "acbc74361b972253a7fa0ba2cd32427c21a80c371ab58abd104b67e5f43b7bd7"
+  },
+  "officialHumanOracleUnchanged": true,
+  "realGemmaBenchmarkExecuted": false,
+  "loraStarted": false,
+  "complete": true
+}

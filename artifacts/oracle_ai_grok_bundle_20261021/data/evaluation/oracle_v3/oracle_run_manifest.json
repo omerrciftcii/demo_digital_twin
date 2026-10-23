@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "cco-oracle-run-manifest/0.1.0",
+  "generatedAt": "2026-10-21T18:08:35.253366+03:00",
+  "packageStatus": "human_review_pending",
+  "sourceContract": {
+    "fields": [
+      "id",
+      "subjectId",
+      "asOf",
+      "text"
+    ],
+    "sourceCcosModified": false,
+    "snapshotValidationRequired": true,
+    "evidenceReference": "evidenceId+sourceSpan",
+    "legacyFactRole": "legacy_audit_only"
+  },
+  "pilot": {
+    "cases": 20,
+    "uniqueCcos": 20,
+    "questionsGeneratedBy": "openai/gpt-6-luna",
+    "questionsAreGold": false,
+    "questionReviewStatus": "pending",
+    "oracleBReviewStatus": "pending",
+    "questionCuration": {
+      "source": "codex_language_only_unreviewed",
+      "scope": "language_only",
+      "clinicalLabelsChanged": false,
+      "reviewStatus": "pending"
+    }
+  },
+  "targetRuntime": {
+    "owner": "Grok",
+    "model": "gemma4-26b-a4b",
+    "quantization": "AWQ 4-bit",
+    "server": "vLLM 0.20.2",
+    "reasoning": "disabled",
+    "gpu": "NVIDIA L40S-24Q vGPU (24 GB slice of physical L40S 48 GB)",
+    "localVramObservedGb": 18.8
+  },
+  "pairedDesign": {
+    "arms": {
+      "A": "full_cco_no_relevance_guide",
+      "B": "full_cco_human_verified_oracle_guide",
+      "C": "full_cco_repo_lexical_ranker_guide"
+    },
+    "sameWeights": true,
+    "sameFullCco": true,
+    "sameQuestion": true,
+    "temperature": 0,
+    "repeats": 3,
+    "seed": 20261021,
+    "armOrder": "rotated_per_case_and_repeat"
+  },
+  "reviewGates": {
+    "allOfficialArmsRequireApprovedQuestion": true,
+    "oracleBRequiresHumanVerifiedEvidence": true,
+    "pendingCasesAreReportedAndNotRun": true
+  },
+  "files": {
+    "oracle_cases.jsonl": "2bd4308204716615a262069a434e49631384e6e241a4e0de30786f533b2c5731",
+    "oracle_evidence_reviews.jsonl": "d624420eabd9fc402226a683a7dc306c6972a61212535542c8f8cfb6c23bee18",
+    "source-audit.json": "dbe942abd525bcadc0272596382e0d83c5f87cb1a409166e63b5af43626506d8",
+    "pilot-report.json": "c8fc03a972fa37d5d85f3d6fb6038fe03577eb3ae550ad4dba3d4a0d5071d98f",
+    "question_curation.json": "10da96b14ecece1c231a4e01988a3f780b0253e7fa2fc8639458420424b8c978"
+  },
+  "promptTemplates": {
+    "A_full_cco.md": "9350ac17047f357b998c388e128a91e6e0e1936e95dbc21237256b152e63b691",
+    "answer_schema.json": "e4a35389d2c8f5f92c33146e33f8aa90d43c729b3c61d7dfde971481ade591a2",
+    "B_human_oracle.md": "ee01f2ce921c242063ca69cc9e3a1fa44065583dfd73ad2c4ce9aa9eb7a22f98",
+    "C_predicted_ranker.md": "563c900e96ebf04a7d70d5c8d797df785ea3650c78f9fb160f413e79bd2fd4aa",
+    "README.md": "f3de3a356c1350e87389ccc24bc4c85d045a27739d1f5e91d0271a9cd2b1a81b"
+  },
+  "realGemmaBenchmarkExecuted": false,
+  "modelPerformanceClaimsAvailable": false,
+  "loraStarted": false,
+  "syntheticScaleExpanded": false
+}

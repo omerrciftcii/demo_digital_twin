@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from medical_ai_selective_context.main import create_app
 from medical_ai_selective_context.models import TextAnswerRequest
 from medical_ai_selective_context.text_document import (
+    MAX_TEXT_BYTES,
     TextRecordError,
     TextRecordStore,
     parse_cco_text,
@@ -98,7 +99,7 @@ def test_wrapper_rejects_drift(mutate):
 
 def test_oversize_text_is_rejected():
     payload = _load(PATIENTS / "patient-01.json")
-    payload["text"] = "x" * (48 * 1024 + 1)
+    payload["text"] = "x" * (MAX_TEXT_BYTES + 1)
     with pytest.raises(TextRecordError, match="text_too_large"):
         parse_cco_text(payload)
 

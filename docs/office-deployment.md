@@ -76,7 +76,15 @@ The browser never receives either API key. OpenRouter requests use `data_collect
 
 The selected patient's full CCO text is sent to OpenRouter or OpenAI only when one of those models is selected. Keep `DEMO_ALLOW_EXTERNAL_MODELS=false` for any record that has not been approved for external transfer, even when it is described as anonymized. GPU Gemma is not controlled by this external-transfer switch because its traffic stays on the SSH/private path.
 
-OpenAI models never use OpenRouter. GPT-6 Luna goes directly to `api.openai.com` with `OPENAI_API_KEY`. Gemma 4 goes to the configured vLLM service. The remaining demo choices share `OPENROUTER_API_KEY`:
+OpenAI models never use OpenRouter. They go directly to `api.openai.com` with `OPENAI_API_KEY`:
+
+- GPT-6 Luna: `gpt-6-luna` (`DEMO_OPENAI_MODEL`)
+- GPT-5.4: `gpt-5.4` (`DEMO_OPENAI_GPT54_MODEL`)
+- o4-mini: `o4-mini` (`DEMO_OPENAI_O4_MINI_MODEL`)
+- GPT-6.1 Sol: `gpt-6.1-sol` (`DEMO_OPENAI_GPT61_MODEL`)
+- GPT-6 Astra: `gpt-6-astra` (`DEMO_OPENAI_ASTRA_MODEL`)
+
+Gemma 4 goes to the configured vLLM service. The remaining demo choices share `OPENROUTER_API_KEY`:
 
 - Qwen 3.5 9B: `qwen/qwen3.5-9b`
 - Kimi K2.5: `moonshotai/kimi-k2.5`

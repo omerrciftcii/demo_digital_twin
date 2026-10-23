@@ -20,6 +20,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+try:
+    from .preprocess_s import S_CONTEXT_NOTE
+    from .preprocess_s import build_context as build_preprocessed_context
+except ImportError:  # app.py doğrudan modül olarak yüklenirse
+    from preprocess_s import S_CONTEXT_NOTE  # type: ignore[no-redef]
+    from preprocess_s import build_context as build_preprocessed_context  # type: ignore[no-redef]
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = Path(__file__).parent / "static"
 LEGACY_CCO_DIR = (
@@ -44,6 +51,14 @@ PATIENT_FILES = {
 PATIENT_LABELS = {patient_id: f"Hasta {index}" for index, patient_id in enumerate(PATIENT_FILES, 1)}
 
 SYSTEM_PROMPT = """Türkçe, doğal ve hasta dostu yanıt ver; 250 kelimeyi geçme. Kişiye özel bilgiler yalnızca verilen hasta kaydından gelsin. Soruyla ilgisiz tanı, laboratuvar veya ölçümleri hiç anma. En yeni ilgili kaydı öncele; eski kaydın bugünkü durumu göstermediğini açıkça belirt ve onu halen süren tedavi sayma. Tek bir ölçüm veya geceden genel trend çıkarma; olumlu, olumsuz ve belirsiz bulguları birlikte değerlendir. Kayıtta bir veri türü varsa fakat soruyla ilişkili değilse "veri yok" deme; yalnızca soruyu açıklayan ilgili bir işaret olmadığını söyle. Wearable verisini yalnızca soruyla ilgili ve güncelse kullan, tanı gibi yorumlama. Genel tıbbi olasılıkları kişisel kayıtlardan açıkça ayır. Kesin tanı/neden, reçeteli ilaç veya doz önerme; eski tedaviyi sürdürmesini söyleme. Evidence ID, JSON ve teknik sistem dili kullanma."""
+
+
+def resolve_system_prompt(model_prompt: str) -> tuple[str, Literal["default", "custom"]]:
+    """Use the edited model prompt as the whole system prompt; blank or unchanged stays default."""
+    cleaned = model_prompt.strip()
+    if not cleaned or cleaned == SYSTEM_PROMPT:
+        return SYSTEM_PROMPT, "default"
+    return cleaned, "custom"
 
 QUESTION_SUFFIX = """
 
@@ -72,6 +87,9 @@ Seçenekler kullanıcının sorusuna ve verilen hasta kaydındaki ilgili klinik/
 """.strip()
 
 MULTI_SELECTION_SUFFIX = """Bu mesaj, önceki yanıtındaki seçeneklerden kullanıcının aynı anda işaretlediği birden fazla bilgiyi içerir. Önceki konuşma, seçilen maddeler ve hasta kaydını birlikte değerlendir. İlk cümleyi "Seçimlerine göre, ... birlikte öne çıkıyor." yapısında kur; seçilen belirtileri doğal biçimde birlikte an ve bunları gerçekten değerlendirdiğini kullanıcıya açıkça hissettir. Bu ilk cümlede tanı koyma, neden-sonuç ilişkisi kurma veya verilerin bir sonucu kanıtladığını söyleme. Ardından seçimlerin değerlendirmeyi nasıl değiştirdiğini veya birbirini nasıl tamamladığını 2-4 kısa, doğal cümlede açıkla. Seçimleri yalnızca tekrarlama; kişisel kayıttaki ilgili bulgularla birlikte taşıdıkları anlamı anlat. Uzun ilk-yanıt şablonunu ve bölüm başlıklarını tekrarlama. Yanıt yalnızca birleşik değerlendirme metninden oluşsun; sonunda soru sorma, önceki seçenekleri tekrarlama ve A)-F) seçenek satırları üretme. Yalnızca doğrudan ilgili klinik veya wearable bilgisini kullan, kişisel kayıtta bağlantı yoksa bunu zorlamadan söyle. Seçimlerden biri acil uyarı işaretiyse bunu açık ve uygun öncelikle belirt. Kesin tanı veya nedensellik kurma."""
+
+
+FOLLOW_UP_QUESTION_SUFFIX = """Bu, aynı sohbette kullanıcının yazdığı yeni bir soru. Sohbet akışını koruyarak ChatGPT gibi doğal konuş: yalnızca bu yeni soruya cevap ver, önceki yanıtını veya önceki konuyu tekrarlama; konu değiştiyse önceki konuyu bırak. İlk-yanıt şablonunu ve bölüm başlıklarını kullanma; kısa, akıcı paragraflarla, gerekiyorsa birkaç madde ile yanıtla. Kişisel bilgiyi yalnızca hasta kaydından al, eski kaydın bugünü göstermediğini gerektiğinde belirt. Acil uyarı işareti varsa bunu açıkça ve öncelikle söyle. Yanıtı iyileştirecekse en sonda tek kısa takip sorusu ve A), B), C) biçiminde 3-4 kısa seçenek ekle; seçenekler kullanıcının tıklayıp kendi yanıtı olarak gönderebileceği kısa ifadeler olsun. Faydalı bir takip sorusu yoksa seçenek üretme. Eski reçete veya tedaviyi bugün kullanmasını söyleme."""
 
 
 @dataclass(frozen=True)
@@ -132,6 +150,54 @@ MODEL_SPECS = (
         api_key_env="OPENAI_API_KEY",
         note="Hızlı karşılaştırma · dış servis",
         featured=True,
+    ),
+    ModelSpec(
+        id="openai-gpt54",
+        label="OpenAI GPT-5.4",
+        short_label="GPT-5.4",
+        provider="openai",
+        model="gpt-5.4",
+        endpoint_env="OPENAI_BASE_URL",
+        model_env="DEMO_OPENAI_GPT54_MODEL",
+        endpoint_default="https://api.openai.com/v1",
+        api_key_env="OPENAI_API_KEY",
+        note="OpenAI · 5.4 ana modeli",
+    ),
+    ModelSpec(
+        id="openai-o4-mini",
+        label="OpenAI o4-mini",
+        short_label="o4-mini",
+        provider="openai",
+        model="o4-mini",
+        endpoint_env="OPENAI_BASE_URL",
+        model_env="DEMO_OPENAI_O4_MINI_MODEL",
+        endpoint_default="https://api.openai.com/v1",
+        api_key_env="OPENAI_API_KEY",
+        note="OpenAI · küçük o-serisi modeli",
+    ),
+    ModelSpec(
+        id="openai-gpt61-sol",
+        label="OpenAI GPT-6.1 Sol",
+        short_label="GPT-6.1 Sol",
+        provider="openai",
+        model="gpt-6.1-sol",
+        endpoint_env="OPENAI_BASE_URL",
+        model_env="DEMO_OPENAI_GPT61_MODEL",
+        endpoint_default="https://api.openai.com/v1",
+        api_key_env="OPENAI_API_KEY",
+        note="OpenAI · Astra'ya yakın, daha ucuz",
+    ),
+    ModelSpec(
+        id="openai-gpt6-astra",
+        label="OpenAI GPT-6 Astra",
+        short_label="GPT-6 Astra",
+        provider="openai",
+        model="gpt-6-astra",
+        endpoint_env="OPENAI_BASE_URL",
+        model_env="DEMO_OPENAI_ASTRA_MODEL",
+        endpoint_default="https://api.openai.com/v1",
+        api_key_env="OPENAI_API_KEY",
+        note="OpenAI · en güçlü model",
     ),
     ModelSpec(
         id="openrouter-qwen",
@@ -202,6 +268,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     patient_id: str = Field(alias="patientId")
     model_id: str = Field(default="gpu-gemma4", alias="modelId")
+    model_prompt: str = Field(default="", alias="modelPrompt", max_length=6_000)
     question: str = Field(min_length=1, max_length=2_000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=8)
     quick_reply: bool = Field(default=False, alias="quickReply")
@@ -209,6 +276,7 @@ class ChatRequest(BaseModel):
         default="stepwise", alias="interactionMode"
     )
     selected_options: list[str] = Field(default_factory=list, alias="selectedOptions", max_length=6)
+    preprocess_mode: Literal["raw", "s5", "s6b"] = Field(default="raw", alias="preprocessMode")
 
     @field_validator("patient_id", "model_id", "question")
     @classmethod
@@ -217,6 +285,11 @@ class ChatRequest(BaseModel):
         if not value:
             raise ValueError("blank_value")
         return value
+
+    @field_validator("model_prompt")
+    @classmethod
+    def strip_model_prompt(cls, value: str) -> str:
+        return value.strip()
 
     @field_validator("selected_options")
     @classmethod
@@ -241,6 +314,8 @@ def build_question_prompt(body: ChatRequest, today: str) -> str:
             "Kullanıcının önceki takip sorusuna seçtiği yanıt: "
             f"{body.question}\n\n{FOLLOW_UP_SELECTION_SUFFIX}"
         )
+    if body.history and body.interaction_mode != "multi_select":
+        return f"Bugünün tarihi {today}.\nHasta sorusu: {body.question}\n\n{FOLLOW_UP_QUESTION_SUFFIX}"
     suffix = (
         MULTI_SELECT_QUESTION_SUFFIX if body.interaction_mode == "multi_select" else QUESTION_SUFFIX
     )
@@ -347,7 +422,7 @@ def load_patient_payloads(source_root: Path | None = None) -> dict[str, dict[str
             break
 
     records: dict[str, dict[str, Any]] = {}
-    for index, path in enumerate(files[:99], start=1):
+    for index, path in enumerate(files, start=1):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -483,7 +558,12 @@ class ModelRouter:
         self.openrouter_provider = os.getenv("DEMO_OPENROUTER_PROVIDER", "").strip()
         self._transport = transport
 
-    async def complete(self, model_id: str, messages: list[dict[str, str]]) -> dict[str, Any]:
+    async def complete(
+        self,
+        model_id: str,
+        messages: list[dict[str, str]],
+        extra: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
         spec = MODEL_BY_ID.get(model_id)
         if spec is None:
             raise HTTPException(422, "Bilinmeyen model seçimi.")
@@ -537,6 +617,10 @@ class ModelRouter:
                 }
             )
 
+        if extra:
+            payload.update(extra)
+            if "max_tokens" in extra and "max_completion_tokens" in payload:
+                payload["max_completion_tokens"] = payload.pop("max_tokens")
         started = perf_counter()
         try:
             async with httpx.AsyncClient(
@@ -552,6 +636,25 @@ class ModelRouter:
             answer = response_payload["choices"][0]["message"]["content"]
             if not isinstance(answer, str) or not answer.strip():
                 raise ValueError("empty_model_answer")
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            if spec.provider == "openrouter" and status_code in {401, 403}:
+                raise HTTPException(
+                    502,
+                    "OpenRouter API anahtarı geçersiz veya süresi dolmuş. "
+                    ".env dosyasındaki OPENROUTER_API_KEY değerini yenileyip uygulamayı yeniden başlatın.",
+                ) from exc
+            if spec.provider == "openrouter" and status_code == 402:
+                raise HTTPException(
+                    502,
+                    "OpenRouter kredisi yetersiz. OpenRouter hesabının kredi ve harcama limitlerini kontrol edin.",
+                ) from exc
+            if spec.provider == "openrouter" and status_code == 429:
+                raise HTTPException(
+                    502,
+                    "OpenRouter istek sınırına ulaşıldı. Kısa süre sonra yeniden deneyin.",
+                ) from exc
+            raise RuntimeError("model_request_failed") from exc
         except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise RuntimeError("model_request_failed") from exc
         return {
@@ -565,8 +668,23 @@ class ModelRouter:
         if spec.provider != "local":
             if not self.allow_external:
                 return "locked"
-            if spec.api_root is None or not os.getenv(spec.api_key_env or "", "").strip():
+            api_key = os.getenv(spec.api_key_env or "", "").strip()
+            if spec.api_root is None or not api_key:
                 return "setup"
+            if spec.provider == "openrouter":
+                try:
+                    async with httpx.AsyncClient(
+                        timeout=httpx.Timeout(5.0, connect=3.0), transport=self._transport
+                    ) as client:
+                        response = await client.get(
+                            f"{spec.api_root}/auth/key",
+                            headers={"Authorization": f"Bearer {api_key}"},
+                        )
+                    if response.status_code in {401, 403}:
+                        return "auth_error"
+                    return "ready" if response.status_code == 200 else "offline"
+                except httpx.HTTPError:
+                    return "offline"
             return "ready"
         if spec.api_root is None:
             return "setup"
@@ -673,7 +791,9 @@ def create_app(
         response.headers["X-Frame-Options"] = "DENY"
         if request.url.path == "/" or request.url.path.startswith("/static/"):
             response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; script-src 'self'; style-src 'self'; "
+                "default-src 'self'; script-src 'self'; "
+                "style-src 'self' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
                 "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; "
                 "object-src 'none'; base-uri 'none'; form-action 'self'"
             )
@@ -720,6 +840,10 @@ def create_app(
             "rawJson": record.payload,
         }
 
+    @application.get("/api/system-prompt")
+    async def system_prompt():
+        return {"systemPrompt": SYSTEM_PROMPT}
+
     @application.get("/api/models")
     async def models():
         return await model_router.catalog(mocked=completion is not None)
@@ -744,9 +868,45 @@ def create_app(
             raise HTTPException(422, "Bilinmeyen model seçimi.")
 
         today = datetime.now().astimezone().strftime("%d.%m.%Y")
+        system_prompt, system_prompt_source = resolve_system_prompt(body.model_prompt)
+        record_text = record.text
+        preprocess_info: dict[str, Any] = {"mode": "raw"}
+        if body.preprocess_mode != "raw":
+
+            async def helper_call(
+                helper_messages: list[dict[str, str]],
+                max_tokens: int,
+                response_format: dict[str, Any] | None,
+            ) -> str:
+                if completion is not None:
+                    return (await completion(helper_messages))["answer"]
+                extra: dict[str, Any] = {"max_tokens": max_tokens}
+                if response_format:
+                    extra["response_format"] = response_format
+                return (await model_router.complete(body.model_id, helper_messages, extra))["answer"]
+
+            selector_question = body.question
+            if body.quick_reply or body.interaction_mode == "multi_select":
+                earlier = [item.content for item in body.history if item.role == "user"]
+                options = " ".join(body.selected_options)
+                selector_question = " ".join(x for x in (earlier[-1] if earlier else "", body.question, options) if x)
+            try:
+                record_text, preprocess_info = await build_preprocessed_context(
+                    body.preprocess_mode,
+                    text=record.text,
+                    question=selector_question,
+                    today=datetime.now().astimezone().date(),
+                    call=helper_call,
+                    cache_key=f"{body.model_id}:{record.id}",
+                )
+                system_prompt = f"{system_prompt}\n\n{S_CONTEXT_NOTE}"
+            except HTTPException:
+                raise
+            except Exception:  # ön işleme hatası: ham kayda dön, demo kesilmesin
+                record_text, preprocess_info = record.text, {"mode": body.preprocess_mode, "error": True}
         messages: list[dict[str, str]] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": record.text},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": record_text},
         ]
         messages.extend(item.model_dump() for item in body.history[-6:])
         current_prompt = build_question_prompt(body, today)
@@ -765,7 +925,13 @@ def create_app(
                 "Seçilen model bağlantısı kurulamadı. Model servisini ve ağ tünelini kontrol edin.",
             ) from exc
         result.setdefault("modelId", body.model_id)
+        result["systemPrompt"] = system_prompt
+        result["systemPromptSource"] = system_prompt_source
         result["references"] = build_source_references(result["answer"], record.text)
+        result["preprocessMode"] = body.preprocess_mode
+        result["preprocessInfo"] = {
+            key: value for key, value in preprocess_info.items() if isinstance(value, (int, str, bool))
+        }
         return result
 
     return application

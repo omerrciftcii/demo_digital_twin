@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "cco-text-training-manifest/0.3.0",
+  "datasetId": "controlled-seed-10-17",
+  "purpose": "answer_sft",
+  "policy": {
+    "personalizationPriority": true,
+    "primarySource": "text_cco",
+    "legacyFactRole": "legacy_audit_only",
+    "maxNotSupportedFraction": 0.1,
+    "minReviewedFraction": 0.0
+  }
+}

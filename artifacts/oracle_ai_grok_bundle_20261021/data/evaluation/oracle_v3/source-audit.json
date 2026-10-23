@@ -1,0 +1,1225 @@
+{
+  "examined": 149,
+  "eligible": 147,
+  "files": [
+    {
+      "sourceFile": "3a246a49-d9f6-cce6-29d1-7fccc99a20f2.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 7322,
+      "sectionCount": 12
+    },
+    {
+      "sourceFile": "3a246a49-ddf6-8fe0-d951-5b89816ba635.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 970,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a49-dfcb-37ff-90bb-a7e6baaa017b.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 9454,
+      "sectionCount": 13
+    },
+    {
+      "sourceFile": "3a246a49-e449-ecaa-a1da-7d1d83b5d931.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 8221,
+      "sectionCount": 16
+    },
+    {
+      "sourceFile": "3a246a49-e90b-c3fa-943c-20cf2c1f2f13.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 77,
+      "sectionCount": 2
+    },
+    {
+      "sourceFile": "3a246a49-e9fd-fb73-d933-82d0a35e7c54.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 23014,
+      "sectionCount": 18
+    },
+    {
+      "sourceFile": "3a246a49-ef2e-f81f-f527-730e95212c1a.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 11973,
+      "sectionCount": 16
+    },
+    {
+      "sourceFile": "3a246a49-f3b6-1bda-7f6b-658e4ea99766.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 18,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a49-f4a5-9e53-4ecb-451dcc9e7ce6.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a49-f5a4-4be0-67bb-d3174be6838a.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 393,
+      "sectionCount": 5
+    },
+    {
+      "sourceFile": "3a246a49-f6f7-5e70-4f23-f9bb88cec902.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2968,
+      "sectionCount": 12
+    },
+    {
+      "sourceFile": "3a246a49-fa4e-a7e9-c6f4-895be8f11ba1.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 23558,
+      "sectionCount": 17
+    },
+    {
+      "sourceFile": "3a246a49-fd81-b6cf-8b8b-f65b4abf8875.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a49-fe40-cfbb-520a-6eb7dbe271de.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a49-ff28-07e8-0e0b-94daffee0d0e.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a49-ffe9-ed06-156b-37b383713242.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 6677,
+      "sectionCount": 14
+    },
+    {
+      "sourceFile": "3a246a4a-03a7-bb5b-b14b-42bfd0da974d.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2057,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-07b0-6ffa-6dc3-24d657edd4de.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 102,
+      "sectionCount": 2
+    },
+    {
+      "sourceFile": "3a246a4a-0894-36b3-ef80-d1ed72394921.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2216,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-0c94-ce01-4244-48c17acd465b.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 4932,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4a-1136-04da-77d2-8c24a143f05d.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1658,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-143a-c484-38aa-e576a4b4bc4e.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1849,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-161e-b141-53a1-281ae772ab5f.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1438,
+      "sectionCount": 6
+    },
+    {
+      "sourceFile": "3a246a4a-1841-2d19-47d0-273db57aa4f3.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-1929-bba8-b549-53d043de9f1b.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-19f7-79fe-5826-610e40ff40a1.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-1afc-530a-ac28-8304b45c8be2.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-1c2a-25a8-350f-5d838939da1d.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1598,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-1e88-5214-ad9b-d23e48d113b0.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 10629,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4a-2288-126e-8560-e4ce700230b9.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-23ac-cc35-2093-f939bfb705ca.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2217,
+      "sectionCount": 6
+    },
+    {
+      "sourceFile": "3a246a4a-26ee-1efb-2ccd-c24b80bbdc23.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 8347,
+      "sectionCount": 14
+    },
+    {
+      "sourceFile": "3a246a4a-2c67-0201-d131-37a73045e299.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 5687,
+      "sectionCount": 14
+    },
+    {
+      "sourceFile": "3a246a4a-3125-e832-616a-1f495a23ece0.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1802,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-34e2-4139-fbcd-2a2910d8cd88.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-35c0-cdc5-e8cb-04e86e2a3e41.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 15442,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4a-3bb2-1c30-e286-448ba38c7c9f.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-3c77-f189-5537-4fb0e990e7dc.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1893,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-3f37-e0cd-204c-b2d74891eba5.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 10971,
+      "sectionCount": 12
+    },
+    {
+      "sourceFile": "3a246a4a-426b-5631-f3d3-2b0591d0bce1.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-4333-c77d-3b7e-1158077c9e10.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-442e-ed09-9416-adeb1de545cb.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 390,
+      "sectionCount": 5
+    },
+    {
+      "sourceFile": "3a246a4a-455a-25f2-4bf1-bcf90616db0f.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-4664-be90-9c26-48e04143b1ea.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2130,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-49af-a17e-f8ca-e34542e62da6.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 5779,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4a-4e84-5a75-b47c-5a827344ed19.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-4f86-baaa-9566-edea4418ffc1.json",
+      "contractValid": true,
+      "identifierFindings": [
+        {
+          "kind": "clinician_name",
+          "line": 78,
+          "matchSha256": "1a6f965a6e242a76cf8318ebd0df4e4a994603e28674f672453e350d14e46fef"
+        },
+        {
+          "kind": "clinician_name",
+          "line": 80,
+          "matchSha256": "1a6f965a6e242a76cf8318ebd0df4e4a994603e28674f672453e350d14e46fef"
+        }
+      ],
+      "status": "blocked",
+      "bytes": 17646,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-51b1-0760-dc5a-c1a2fa485736.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1982,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-541e-90c9-d9d5-5ec2325ab460.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1757,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-55de-8f27-75ac-79ab491bcb9e.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-56e2-6e35-aba5-9212978a5bc1.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 250,
+      "sectionCount": 4
+    },
+    {
+      "sourceFile": "3a246a4a-5810-a51d-3a6d-2e1c99d32466.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-58f3-8bc0-b116-16fe02ef0dc5.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 10987,
+      "sectionCount": 13
+    },
+    {
+      "sourceFile": "3a246a4a-5d39-f691-19d7-a15a501d0a0c.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-5e86-757c-f2fb-1d5492598fa3.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 713,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-5feb-0263-5763-2d1077a6e683.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 18,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-6101-7a0c-61e5-19642bed6606.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1943,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-6359-6e60-0478-6cd9589bc789.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 14027,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-66cb-c704-9790-4fbf40f2c134.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1741,
+      "sectionCount": 5
+    },
+    {
+      "sourceFile": "3a246a4a-69ef-8713-1f62-f77b82405149.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1535,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-6dfe-2064-46a8-ef3d1b3c455a.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1866,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-71ff-cf20-a9c0-c202417de86a.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1847,
+      "sectionCount": 10
+    },
+    {
+      "sourceFile": "3a246a4a-76d9-8ca2-4e8d-5c72aa12fb02.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 586,
+      "sectionCount": 4
+    },
+    {
+      "sourceFile": "3a246a4a-7910-d4a6-efb6-2ca7c96df665.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1633,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-7c1d-0044-e77d-1bbf32c8550e.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1912,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-7ddc-ea53-ac42-6f76251fc8fe.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 4367,
+      "sectionCount": 5
+    },
+    {
+      "sourceFile": "3a246a4a-7eea-75e9-92f3-8df79033ebc6.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 18,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-7fd1-f27d-d3a1-3b3cdfcf29c5.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-80de-b06d-d336-2ba1aa843d09.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 13229,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4a-858b-7275-b40c-9418508285b2.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2053,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-87b2-ff75-bc3b-11732b23b2e1.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-8902-b757-53d1-59f0dd7b1913.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 3728,
+      "sectionCount": 5
+    },
+    {
+      "sourceFile": "3a246a4a-8a1e-9e1d-135b-3e5cefaf5364.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2114,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-8dca-a18f-eac9-4ed4b4d5d218.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-8ebe-0c31-61a1-883dec435912.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 12876,
+      "sectionCount": 14
+    },
+    {
+      "sourceFile": "3a246a4a-91b4-b675-bcc8-267c05aa1ca0.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-930f-364a-758c-7397bd2fbaa2.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 14789,
+      "sectionCount": 19
+    },
+    {
+      "sourceFile": "3a246a4a-97ca-1e92-a543-ddfc7714ddb2.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2040,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-9c08-6447-18fa-627c87640b3e.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 18,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-9cff-243a-c593-8cef75a086a1.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1773,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-9fe8-6828-975a-fe528b6efe99.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 7161,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4a-a4a9-1ac4-60d3-e142fcf5080b.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-a5df-f771-0d1a-60d317554396.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-a712-1ce3-c770-6019e953fd88.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1746,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4a-a966-a9f5-e821-7639a4e8ffd6.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1626,
+      "sectionCount": 12
+    },
+    {
+      "sourceFile": "3a246a4a-acce-5896-a820-73a8f3d2b7bc.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2358,
+      "sectionCount": 12
+    },
+    {
+      "sourceFile": "3a246a4a-b2ac-4c37-2c2e-7b1d31815f6b.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 78,
+      "sectionCount": 2
+    },
+    {
+      "sourceFile": "3a246a4a-b432-42b3-4af3-da3a67cff523.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2106,
+      "sectionCount": 10
+    },
+    {
+      "sourceFile": "3a246a4a-b89f-17c6-8998-c9ce96a2fd09.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 926,
+      "sectionCount": 5
+    },
+    {
+      "sourceFile": "3a246a4a-ba85-818b-5388-c496d4964d83.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2304,
+      "sectionCount": 10
+    },
+    {
+      "sourceFile": "3a246a4a-bf15-8983-4c0b-9d3c4e82d557.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 378,
+      "sectionCount": 5
+    },
+    {
+      "sourceFile": "3a246a4a-c024-9921-dabc-375ab6c83f60.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4a-c125-4585-c559-ecc3d3ea8eb7.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 6384,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4a-c702-2def-3b99-c74fd5dd1847.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 555,
+      "sectionCount": 5
+    },
+    {
+      "sourceFile": "3a246a4a-c926-d995-77c9-c91f39001f42.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 706,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-cbfc-d3d8-53de-a2ca572575f4.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1254,
+      "sectionCount": 6
+    },
+    {
+      "sourceFile": "3a246a4a-cde6-3727-dc5f-290d9193e196.json",
+      "contractValid": true,
+      "identifierFindings": [
+        {
+          "kind": "clinician_name",
+          "line": 284,
+          "matchSha256": "d44b49daf615f057a3b8dda1807d0c29a9d9b29776b9a0e64a98e63b8c8df49e"
+        },
+        {
+          "kind": "clinician_name",
+          "line": 285,
+          "matchSha256": "d44b49daf615f057a3b8dda1807d0c29a9d9b29776b9a0e64a98e63b8c8df49e"
+        },
+        {
+          "kind": "clinician_name",
+          "line": 294,
+          "matchSha256": "d41c324ed4245c49a068bcffa9bdb54c8105bfd4945d69a45ae46e7a6698fda3"
+        }
+      ],
+      "status": "blocked",
+      "bytes": 51142,
+      "sectionCount": 10
+    },
+    {
+      "sourceFile": "3a246a4a-d2a1-a6d5-6ca4-98dda81ae673.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 11662,
+      "sectionCount": 13
+    },
+    {
+      "sourceFile": "3a246a4a-d6f2-0d14-354a-667aa7a363ff.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 705,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-d86d-7b7b-0296-dfad5564c1b1.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2045,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-dd02-df08-6ef2-b4e1cda533a7.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2017,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-e192-dbbc-8762-613395273218.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1313,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4a-e4ff-2924-354c-ac500f9c0c1e.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1649,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-e6ed-2ec4-2c80-6d620d8664c4.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 3825,
+      "sectionCount": 14
+    },
+    {
+      "sourceFile": "3a246a4a-eb71-71b9-1b97-620c481ceffe.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 3268,
+      "sectionCount": 12
+    },
+    {
+      "sourceFile": "3a246a4a-f01b-d045-3edd-1874c7ff1edd.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 918,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-f169-9907-a662-996c0e22e476.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2227,
+      "sectionCount": 11
+    },
+    {
+      "sourceFile": "3a246a4a-f4f3-d10c-24d3-894b62df0099.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1897,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-f949-359a-448f-80bdb5f2dfaa.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1405,
+      "sectionCount": 10
+    },
+    {
+      "sourceFile": "3a246a4a-faec-2f08-ccdd-2004b568b49f.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1919,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4a-ff0d-78a8-f4b3-ef142a050b68.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4b-0025-a7d6-bf9c-94161ac458ad.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1948,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4b-02b7-5fec-dce8-f90eee8f2a78.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 920,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4b-048b-8f1c-a4fc-9e239fe1e929.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1650,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4b-081f-57cf-23d3-37dc5a1e5d1d.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2326,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4b-0b97-9a2d-31ac-6c17df423338.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4b-0c78-73ea-62f1-18628c1bf4fa.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2464,
+      "sectionCount": 11
+    },
+    {
+      "sourceFile": "3a246a4b-10c0-c816-8252-738c491f47b2.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1798,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4b-136e-47cb-0a99-310fb8a43434.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 20,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4b-1450-d221-23c2-e1c22d78b802.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4b-1538-88b8-dd0d-996133fdae62.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19861,
+      "sectionCount": 16
+    },
+    {
+      "sourceFile": "3a246a4b-1c41-44de-3769-f9a16f60c534.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1321,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4b-2031-fdfe-b780-a4fbabd3ee1d.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 339,
+      "sectionCount": 4
+    },
+    {
+      "sourceFile": "3a246a4b-2155-1723-6cd7-d51d1801f8c0.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1660,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4b-239b-d9aa-aadf-5461698f9a7e.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2276,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4b-2759-57b7-7bd7-a9c9a27d5e32.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1892,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4b-2cb1-f532-4a74-8fa19ca8e94f.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 4858,
+      "sectionCount": 14
+    },
+    {
+      "sourceFile": "3a246a4b-306c-01df-2194-7f30d2082017.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2333,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4b-3438-e514-386c-a5e5a1481d83.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 32068,
+      "sectionCount": 17
+    },
+    {
+      "sourceFile": "3a246a4b-39aa-8c8d-436b-99cdf0bac9a6.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2042,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4b-3d3c-3151-8ed0-2f3ae90843c3.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1341,
+      "sectionCount": 6
+    },
+    {
+      "sourceFile": "3a246a4b-3f71-211d-44a4-3a5cec3d1f77.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2093,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4b-4378-1d19-69bf-3e5ee1561ba7.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 3402,
+      "sectionCount": 13
+    },
+    {
+      "sourceFile": "3a246a4b-48ca-7f09-ba57-f9c364c2a255.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2485,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4b-4b20-5447-d952-5f6259f76e46.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2816,
+      "sectionCount": 12
+    },
+    {
+      "sourceFile": "3a246a4b-4f3d-7737-43aa-a6f5da73e610.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1673,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4b-5361-ef69-9b83-62f4fda67749.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 11688,
+      "sectionCount": 14
+    },
+    {
+      "sourceFile": "3a246a4b-585f-2231-c547-5319388d1194.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1973,
+      "sectionCount": 10
+    },
+    {
+      "sourceFile": "3a246a4b-5cdf-6488-558c-5f54ce7d3688.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 3823,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4b-60c5-72bf-ab6c-3f507a5050df.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1443,
+      "sectionCount": 9
+    },
+    {
+      "sourceFile": "3a246a4b-6447-dc9d-752c-0f6243987deb.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 3316,
+      "sectionCount": 15
+    },
+    {
+      "sourceFile": "3a246a4b-66d8-5f41-d37c-a8d6a409d565.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2037,
+      "sectionCount": 10
+    },
+    {
+      "sourceFile": "3a246a4b-6b95-d8f2-15c0-574a077dbac3.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    },
+    {
+      "sourceFile": "3a246a4b-6ca4-23a9-eeb4-b654b4123e09.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 2093,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4b-6fba-8dc1-eda1-171935f9b6d4.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1870,
+      "sectionCount": 7
+    },
+    {
+      "sourceFile": "3a246a4b-71b6-39c2-46a1-9c9c696bf8fe.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 265,
+      "sectionCount": 2
+    },
+    {
+      "sourceFile": "3a246a4b-730d-6418-9f47-4b2bf126bb80.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1954,
+      "sectionCount": 10
+    },
+    {
+      "sourceFile": "3a246a4b-7500-f1fa-90d7-d277d74fcaf5.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 1411,
+      "sectionCount": 8
+    },
+    {
+      "sourceFile": "3a246a4b-764b-1b9d-6e56-77abc9ebc07e.json",
+      "contractValid": true,
+      "identifierFindings": [],
+      "status": "eligible",
+      "bytes": 19,
+      "sectionCount": 1
+    }
+  ]
+}

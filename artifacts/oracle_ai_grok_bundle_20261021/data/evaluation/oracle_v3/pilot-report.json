@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "cco-oracle-pilot/0.2.0",
+  "sourceAudit": {
+    "examined": 149,
+    "statusCounts": {
+      "blocked": 2,
+      "eligible": 147
+    },
+    "identifierFindingFiles": 2,
+    "sourceFilesModified": 0
+  },
+  "existingGoldQueue": {
+    "tasks": 60,
+    "humanReviewed": 0,
+    "pending": 60,
+    "usableAsOracleNow": false
+  },
+  "pilot": {
+    "cases": 20,
+    "uniqueCcos": 20,
+    "categories": {
+      "acute_safety": 2,
+      "daily_life": 2,
+      "diagnosis_status": 1,
+      "fatigue": 2,
+      "gastrointestinal": 2,
+      "general_symptom": 2,
+      "headache": 2,
+      "medication": 3,
+      "palpitations": 2,
+      "sleep": 2
+    },
+    "evidenceAvailability": {
+      "not_supported": 2,
+      "partial": 7,
+      "supported": 11
+    },
+    "reviewStatus": "pending",
+    "trainable": false
+  },
+  "externalProcessing": {
+    "authorizedByUserRequest": true,
+    "model": "openai/gpt-6-luna",
+    "requestedProvider": "azure",
+    "actualProvider": null,
+    "zdr": true,
+    "dataCollection": "deny",
+    "allowFallbacks": false,
+    "requestSha256": "c2997f7036a04dd4ab00bd58c41ddc7e6d922278f083381019c32779cfbb82bd",
+    "identifiersSent": false,
+    "recordIdsSent": false,
+    "subjectIdsSent": false,
+    "reusedSchemaValidatedDraft": true
+  },
+  "abc": {
+    "infrastructureReady": true,
+    "realModelCallsExecuted": false,
+    "blockedReason": "human_oracle_annotations_pending",
+    "loraStarted": false
+  },
+  "errorAttribution": {
+    "observedModelErrors": 0,
+    "status": "not_measured_without_gemma_abc_and_human_grades"
+  },
+  "syntheticScaleExpanded": false,
+  "loraStarted": false
+}

@@ -1,0 +1,11 @@
+/*
+!demo/
+!demo/**
+!src/
+!src/**
+!data/
+!data/cco/
+!data/cco/**
+!app.py
+!pyproject.toml
+!vercel.json

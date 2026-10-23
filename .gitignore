@@ -1,8 +1,10 @@
 .env
+.vercel/
 .venv/
 __pycache__/
 .pytest_cache/
 .pytest-tmp/
+.pytest-*/
 .ruff_cache/
 *.py[cod]
 
@@ -24,3 +26,7 @@ build/
 htmlcov/
 
 
+
+# yedek dosyalar
+*.bak_*
+*.bak

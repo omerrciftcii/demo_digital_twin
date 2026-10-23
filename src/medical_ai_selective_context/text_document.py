@@ -18,13 +18,16 @@ from typing import Any
 from .store import canonical_json
 
 FORMAT = "cco-text/1"
-MAX_TEXT_BYTES = 48 * 1024
+EVIDENCE_ID_VERSION = "cco-text-evidence/1"
+MAX_TEXT_BYTES = 64 * 1024
 _UUID = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
 _HEADING = re.compile(r"^##\s+(\S.*?)\s*$")
-_FIELDS = ("format", "id", "subjectId", "asOf", "language", "text")
+_REQUIRED_FIELDS = ("id", "subjectId", "asOf", "text")
+_OPTIONAL_FIELDS = ("format", "language")
+_FIELDS = (*_REQUIRED_FIELDS, *_OPTIONAL_FIELDS)
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "text" / "patients"
 EXAMPLE_FIXTURE = FIXTURE_DIR.parent / "example-facts.json"
 
@@ -47,6 +50,29 @@ class SourceLine:
     number: int
     text: str
     section_index: int
+
+
+@dataclass(frozen=True)
+class EvidenceSpan:
+    evidence_id: str
+    snapshot_id: str
+    content_hash: str
+    section_heading: str
+    start_line: int
+    end_line: int
+    text_sha256: str
+    text: str
+
+    def location(self) -> dict[str, Any]:
+        """Return provenance without copying clinical text into annotations."""
+        return {
+            "snapshotId": self.snapshot_id,
+            "contentHash": self.content_hash,
+            "sectionHeading": self.section_heading,
+            "startLine": self.start_line,
+            "endLine": self.end_line,
+            "textSha256": self.text_sha256,
+        }
 
 
 @dataclass
@@ -125,11 +151,16 @@ def _require_uuid(value: Any, code: str) -> str:
 
 def parse_cco_text(payload: Any) -> TextRecord:
     """Validate the wrapper. Missing fields stay missing; nothing is invented."""
-    if not isinstance(payload, dict) or set(payload) != set(_FIELDS):
+    if not isinstance(payload, dict):
         raise TextRecordError("invalid_text_record")
-    if payload.get("format") != FORMAT:
+    supplied = set(payload)
+    if not set(_REQUIRED_FIELDS).issubset(supplied):
+        raise TextRecordError("invalid_text_record")
+    if supplied - set(_REQUIRED_FIELDS) - set(_OPTIONAL_FIELDS):
+        raise TextRecordError("invalid_text_record")
+    if payload.get("format", FORMAT) != FORMAT:
         raise TextRecordError("unsupported_text_format")
-    if payload.get("language") != "tr":
+    if payload.get("language", "tr") != "tr":
         raise TextRecordError("unsupported_language")
     record_id = _require_uuid(payload.get("id"), "invalid_text_record")
     subject_id = _require_uuid(payload.get("subjectId"), "invalid_text_record")
@@ -149,10 +180,15 @@ def parse_cco_text(payload: Any) -> TextRecord:
     size = len(text.encode("utf-8"))
     if size > MAX_TEXT_BYTES:
         raise TextRecordError("text_too_large")
-    canonical = {key: payload[key] for key in _FIELDS}
+    canonical = {
+        "format": FORMAT,
+        "id": record_id,
+        "subjectId": subject_id,
+        "asOf": as_of,
+        "language": "tr",
+        "text": text,
+    }
     canonical["text"] = text
-    canonical["id"] = record_id
-    canonical["subjectId"] = subject_id
     try:
         digest = hashlib.sha256(canonical_json(canonical).encode("utf-8")).hexdigest()
     except (TypeError, ValueError) as exc:
@@ -162,6 +198,76 @@ def parse_cco_text(payload: Any) -> TextRecord:
         id=record_id, subject_id=subject_id, as_of=as_of, language="tr", text=text,
         content_hash=digest, data_class="real", sections=sections, lines=lines,
     )
+
+
+def build_evidence_spans(record: TextRecord) -> list[EvidenceSpan]:
+    """Create stable, snapshot-bound evidence IDs for non-heading source lines."""
+    spans: list[EvidenceSpan] = []
+    for source_line in record.lines:
+        text = source_line.text.strip()
+        if not text or _HEADING.match(text):
+            continue
+        text_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        identity = canonical_json({
+            "version": EVIDENCE_ID_VERSION,
+            "snapshotId": record.id,
+            "contentHash": record.content_hash,
+            "startLine": source_line.number,
+            "endLine": source_line.number,
+            "textSha256": text_sha256,
+        })
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:32]
+        spans.append(EvidenceSpan(
+            evidence_id=f"evi_{digest}",
+            snapshot_id=record.id,
+            content_hash=record.content_hash,
+            section_heading=record.sections[source_line.section_index].heading,
+            start_line=source_line.number,
+            end_line=source_line.number,
+            text_sha256=text_sha256,
+            text=text,
+        ))
+    return spans
+
+
+def evidence_span_index(record: TextRecord) -> dict[str, EvidenceSpan]:
+    return {span.evidence_id: span for span in build_evidence_spans(record)}
+
+
+def extract_explicit_claims(section_heading: str, text: str) -> set[str]:
+    """Extract only literal status markers; absence always remains unspecified."""
+    folded_heading = section_heading.casefold()
+    folded = text.casefold()
+    claims: set[str] = set()
+    if "hasta beyanı" in folded_heading:
+        claims.add("patient_reported")
+    if "reçete kaydı" in folded_heading:
+        claims.add("medication_prescribed")
+    if "— kesin tanı" in folded:
+        claims.add("assertion_definitive")
+    if "— ön tanı" in folded:
+        claims.add("assertion_preliminary")
+    if any(marker in folded for marker in (
+        "bıraktığını belirtti", "kullanımı sonlandırıldı", "ilaç kesildi",
+    )):
+        claims.add("medication_stopped")
+    if any(marker in folded for marker in (
+        "halen kullandığını belirtti", "aktif olarak kullanıyor", "kullanmaya devam ediyor",
+    )):
+        claims.add("medication_active")
+    if any(marker in folded for marker in (
+        "şikayetlerinde gerileme oldu", "belirgin gerileme", "klinik iyileşme",
+    )):
+        claims.add("course_improved")
+    if any(marker in folded for marker in (
+        "tamamen düzeldi", "tam olarak iyileşti", "durum sonlandı",
+    )):
+        claims.add("course_resolved")
+    if any(marker in folded for marker in (
+        "nedeni olduğu belirtildi", "nedensel ilişki kuruldu", "bağlı olduğu belirtildi",
+    )):
+        claims.add("causality_explicit")
+    return claims
 
 
 def loads_text_payload(raw: bytes) -> Any:
@@ -202,7 +308,8 @@ class TextRecordStore:
             return
         for path in sorted(self.directory.glob("*.json")):
             payload = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_keys)
-            document = {key: payload[key] for key in _FIELDS}
+            document = {key: payload[key] for key in _REQUIRED_FIELDS}
+            document.update({key: payload[key] for key in _OPTIONAL_FIELDS if key in payload})
             record = parse_cco_text(document)
             # The on-disk label is not trusted. Only the shipped fixture hash is synthetic.
             record.data_class = "synthetic" if record.content_hash in self._synthetic else "real"

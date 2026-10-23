@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f4f2ec">
+  <meta name="theme-color" content="#794cf5">
   <title>MedicalAI · Digital Twin Lab</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
@@ -64,6 +64,22 @@
           </label>
         </div>
         <p id="model-note" class="model-note"></p>
+        <details id="model-prompt-panel" class="model-prompt-panel" open>
+          <summary>
+            <span>Sistem promptu</span>
+            <small id="model-prompt-summary">Varsayılan sistem promptu</small>
+          </summary>
+          <div class="model-prompt-body">
+            <label for="model-prompt">
+              <span id="model-prompt-label">Sistem promptu</span>
+              <textarea id="model-prompt" rows="7" maxlength="6000" placeholder="Sistem promptu yükleniyor…"></textarea>
+            </label>
+            <div class="model-prompt-footer">
+              <span id="model-prompt-status" aria-live="polite">Varsayılan sistem promptu</span>
+              <button id="clear-model-prompt" type="button" disabled>Varsayılana dön</button>
+            </div>
+          </div>
+        </details>
       </section>
 
       <header class="chat-header">
@@ -76,6 +92,12 @@
             <button type="button" class="mode-button active" data-mode="stepwise" aria-pressed="true">Adım adım</button>
             <button type="button" class="mode-button" data-mode="multi_select" aria-pressed="false">Çoklu seçim</button>
           </div>
+          <div class="mode-switch preprocess-switch" role="group" aria-label="Kayıt ön işleme modu">
+            <button type="button" class="pre-button active" data-pre="raw" aria-pressed="true" title="Hasta kaydı olduğu gibi gönderilir">Ham</button>
+            <button type="button" class="pre-button" data-pre="s5" aria-pressed="false" title="Soruyla ilgili kayıtlar seçilir, eski kayıtlar işaretlenir">S5</button>
+            <button type="button" class="pre-button" data-pre="s6b" aria-pressed="false" title="S5 + tekrarlayan hastalık eşleştirmesi ve kanıt paketleri">S6b</button>
+          </div>
+          <button id="export-button" class="export-button" type="button" disabled aria-label="Mesaj geçmişini Markdown olarak dışa aktar">Dışa aktar <span aria-hidden="true">↓</span></button>
           <button id="clear-button" class="ghost-button" type="button">Temizle</button>
         </div>
       </header>

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "cco-ai-oracle-generation-report/0.1.0",
+  "cases": 20,
+  "accepted": 20,
+  "rejected": 0,
+  "complete": true,
+  "experimental": true,
+  "humanVerified": false,
+  "gold": false,
+  "trainable": false,
+  "models": [
+    "openai/gpt-6-astra",
+    "openai/gpt-6.1-sol"
+  ],
+  "reasoningEfforts": [
+    "medium"
+  ],
+  "reportedUsageCost": 1.211935
+}

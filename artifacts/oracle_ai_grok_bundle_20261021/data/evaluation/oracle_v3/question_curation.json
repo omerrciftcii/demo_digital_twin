@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "cco-oracle-question-curation/0.1.0",
+  "curationSource": "codex_language_only_unreviewed",
+  "clinicalLabelsChanged": false,
+  "questions": {
+    "oracle-pilot-001": "Bilgisayar başında çalışırken başım ağrıyor ve bazen yazılar bulanıklaşıyor. Geçmiş kayıtlarımda buna benzer bir durum için nasıl bir değerlendirme yapılmıştı?",
+    "oracle-pilot-002": "Gözlüğümü taktığım halde kitap okurken baş ağrım ve bulanık görmem tekrar ederse gözlüğü kullanmaya devam etmem yeterli mi, yeniden muayene gerekir mi?",
+    "oracle-pilot-003": "İshal ve kusma başlayınca çok halsiz düşüyorum. Sıvı kaybını önlemek için evde nelere dikkat etmeliyim?",
+    "oracle-pilot-004": "Son zamanlarda halsizim ve çabuk yoruluyorum. Uykum da düzensiz; önce uyku düzenimi mi toparlamalıyım, doktor kontrolünü mü önceliklendirmeliyim?",
+    "oracle-pilot-005": "Bugün sulu ishal, kusma ve karın sancısı başladı. Hangi belirtilerde evde beklemeyip sağlık kuruluşuna başvurmalıyım?",
+    "oracle-pilot-006": "Mide şikâyetlerim yeniden başladı. Geçmişteki mide sorunlarım açısından kontrol veya yeniden test gerekir mi?",
+    "oracle-pilot-007": "Yüzüğümde görünen kısa uyku kaydı tek gecelik bir durum mu, bunu nasıl takip etmeliyim?",
+    "oracle-pilot-008": "Uyku kayıtlarımda bazı geceler 5–6 saat civarında uyku görünüyor. Gündüz hayatımı etkiliyorsa uyku süresini artırmak için ilk olarak ne deneyebilirim?",
+    "oracle-pilot-009": "Ara ara kalbim hızlı atıyormuş gibi hissediyorum. Kayıtlı nabız ölçümlerim bunun nedenini anlamaya yeter mi, hangi belirtilerde acile başvurmalıyım?",
+    "oracle-pilot-010": "Evde nabzım düşük göründü. Tansiyon geçmişim de varken bunu tansiyonla birlikte nasıl değerlendirmeli, hangi belirtilerde yardım almalıyım?",
+    "oracle-pilot-011": "Kullandığım vitamin ve balık yağı ürünlerini birlikte almak güvenli mi? İlaç ve takviye listemi doktor ya da eczacıya nasıl doğrulatmalıyım?",
+    "oracle-pilot-012": "Astım ve diyabet kontrolüne giderken kullandığım ilaçlarla evde yaptığım ölçümleri doktora nasıl bir liste halinde götürmem faydalı olur?",
+    "oracle-pilot-013": "Lev mont ile C vitamini, çinko ve propolis içeren ürünü birlikte kullanmamda sakınca olabilir mi? Eczacıya hangi ayrıntıları söylemeliyim?",
+    "oracle-pilot-014": "Uyku ve hareket kayıtlarımı birlikte değerlendirdiğinde, az uyuduğum günlerde günlük hareketimi azaltmam gerekir mi?",
+    "oracle-pilot-015": "Son dönemde daha az hareket ediyorum ve bazı geceler kısa uyuyorum. Küçük ve sürdürülebilir bir günlük hareket hedefini nasıl seçebilirim?",
+    "oracle-pilot-016": "Panik atak sırasında alkolün beni rahatlattığını hissediyorum. Kendimi daha güvenli biçimde sakinleştirmek için ne yapabilirim?",
+    "oracle-pilot-017": "Daha önce böbrek taşı yaşamıştım. Bugün yan ağrısı, ateş ya da idrar yapamama olursa ne kadar acil değerlendirilmeliyim?",
+    "oracle-pilot-018": "Hipotiroidi tanım kesinleşmiş mi, yoksa kayıtlarımda hâlâ ön tanı mı görünüyor? Bunu anlamak için hangi test ve takip bilgileri gerekir?",
+    "oracle-pilot-019": "Başım ağrıyorsa hangi belirtiler olduğunda beklemek yerine acil yardım almalıyım?",
+    "oracle-pilot-020": "Boğazım ağrıyor. Evde ne yapabilirim, hangi durumda doktora görünmeliyim?"
+  }
+}

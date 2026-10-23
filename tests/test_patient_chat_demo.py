@@ -2,9 +2,33 @@ import asyncio
 import json
 
 import httpx
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from demo.patient_chat.app import ModelRouter, create_app
+from demo.patient_chat.app import (
+    MODEL_BY_ID,
+    SYSTEM_PROMPT,
+    ModelRouter,
+    create_app,
+    load_patient_payloads,
+)
+
+
+def test_patient_loader_does_not_truncate_after_99_records(tmp_path):
+    for index in range(1, 125):
+        subject_id = f"subject-{index:03d}"
+        (tmp_path / f"{subject_id}.json").write_text(
+            json.dumps({"subjectId": subject_id, "text": f"Hasta kaydı {index}"}),
+            encoding="utf-8",
+        )
+
+    records = load_patient_payloads(tmp_path)
+
+    assert len(records) == 124
+    assert records["P99"]["subjectId"] == "subject-099"
+    assert records["P100"]["subjectId"] == "subject-100"
+    assert records["P124"]["subjectId"] == "subject-124"
 
 
 def test_demo_serves_local_ui_and_patient_aliases():
@@ -22,13 +46,36 @@ def test_demo_serves_local_ui_and_patient_aliases():
         assert "Digital Twin Lab" in page.text
         assert "Adım adım" in page.text
         assert "Çoklu seçim" in page.text
+        assert 'id="model-prompt"' in page.text
+        assert 'id="export-button"' in page.text
         assert "grid-template-areas" in styles.text
         assert "overflow-y: auto;" in styles.text
         assert "scrollbar-gutter: stable;" in styles.text
         assert ".answer-source::after" in styles.text
+        assert "font-family: Onest" in styles.text
+        assert "--teal: #794cf5" in styles.text
+        assert ".message-content { font-size: 15px" in styles.text
         assert "linkAnswerTextToReferences(body, meta.references)" in script.text
+        assert "closeCodeFence" in script.text
+        assert 'medicalai:system-prompts:v1' in script.text
+        assert "modelPrompt: systemPrompt" in script.text
+        assert "function exportConversation()" in script.text
+        assert '## Sistem promptu' in script.text
+        assert "systemPromptSource" in script.text
+        assert 'type: "text/markdown;charset=utf-8"' in script.text
+        assert "state.transcript.push" in script.text
+        assert 'document.body.classList.add("has-messages")' in script.text
+        assert "body.has-messages .model-title-row" in styles.text
+        assert "body.has-messages .model-prompt-panel { display: block; }" in styles.text
+        assert "Sistem promptu" in page.text
+        assert "Varsayılana dön" in page.text
+        assert 'label.textContent = "CCO EŞLEŞMELERİ"' not in script.text
+        assert "addReferences(article, meta.references)" not in script.text
+        assert 'grid-template-areas:\n    "input send"' in styles.text
+        assert "<blockquote>" in script.text
         assert 'target.setAttribute("role", "button")' in script.text
         assert "script-src 'self'" in page.headers["content-security-policy"]
+        assert "https://fonts.googleapis.com" in page.headers["content-security-policy"]
         patient = client.get("/api/patients").json()[0]
         assert patient["id"] == "P01"
         assert patient["label"] == "Hasta 1"
@@ -40,6 +87,13 @@ def test_demo_serves_local_ui_and_patient_aliases():
         assert [model["id"] for model in models[:2]] == [
             "gpu-gemma4",
             "openai-luna",
+        ]
+        assert [model["id"] for model in models if model["provider"] == "OpenAI"] == [
+            "openai-luna",
+            "openai-gpt54",
+            "openai-o4-mini",
+            "openai-gpt61-sol",
+            "openai-gpt6-astra",
         ]
         assert [model["provider"] for model in models[:2]] == ["GPU", "OpenAI"]
         assert all(model["status"] == "ready" for model in models)
@@ -71,9 +125,71 @@ def test_demo_sends_unchanged_record_and_returns_raw_markdown():
     assert response.status_code == 200
     assert response.json()["answer"].startswith("**Son kayıtlarına göre**")
     assert response.json()["modelId"] == "openai-luna"
+    assert calls[0][0] == {"role": "system", "content": SYSTEM_PROMPT}
+    assert response.json()["systemPrompt"] == SYSTEM_PROMPT
+    assert response.json()["systemPromptSource"] == "default"
     assert calls[0][1] == {"role": "user", "content": raw_text}
     assert "Gözüm neden kızardı?" in calls[0][-1]["content"]
     assert len(calls[0]) == 3
+
+
+def test_demo_uses_edited_model_prompt_as_the_system_prompt():
+    calls = []
+
+    async def complete(messages):
+        calls.append(messages)
+        return {"answer": "Yanıt", "model": "test", "latencyMs": 4}
+
+    with TestClient(create_app(records={"P01": "HAM METİN"}, completion=complete)) as client:
+        default = client.get("/api/system-prompt")
+        response = client.post(
+            "/api/chat",
+            json={
+                "patientId": "P01",
+                "modelId": "gpu-gemma4",
+                "modelPrompt": "Önce en kritik üç bulguyu sırala.",
+                "question": "Öncelikli bulgular neler?",
+            },
+        )
+        unchanged = client.post(
+            "/api/chat",
+            json={
+                "patientId": "P01",
+                "modelId": "gpu-gemma4",
+                "modelPrompt": SYSTEM_PROMPT,
+                "question": "Aynı kurallarla devam",
+            },
+        )
+
+    assert default.status_code == 200
+    assert default.json() == {"systemPrompt": SYSTEM_PROMPT}
+    assert response.status_code == 200
+    system_message = calls[0][0]
+    assert system_message["role"] == "system"
+    assert system_message["content"] == "Önce en kritik üç bulguyu sırala."
+    assert "Türkçe, doğal ve hasta dostu yanıt ver" not in system_message["content"]
+    assert response.json()["systemPrompt"] == "Önce en kritik üç bulguyu sırala."
+    assert response.json()["systemPromptSource"] == "custom"
+    assert unchanged.status_code == 200
+    assert calls[1][0]["content"] == SYSTEM_PROMPT
+    assert unchanged.json()["systemPromptSource"] == "default"
+
+
+def test_demo_rejects_oversized_model_prompt():
+    async def complete(_messages):
+        raise AssertionError("model must not be called")
+
+    with TestClient(create_app(records={"P01": "HAM METİN"}, completion=complete)) as client:
+        response = client.post(
+            "/api/chat",
+            json={
+                "patientId": "P01",
+                "modelPrompt": "x" * 6001,
+                "question": "Merhaba",
+            },
+        )
+
+    assert response.status_code == 422
 
 
 def test_demo_rejects_unknown_patient_and_cross_origin_write():
@@ -289,6 +405,53 @@ def test_demo_routes_local_gemma_openrouter_models_and_openai_directly(monkeypat
     assert openai_request["body"]["model"] == "gpt-6-luna"
     assert "provider" not in openai_request["body"]
     assert openai_request["body"]["reasoning_effort"] == "low"
+
+    monkeypatch.setenv("DEMO_OPENAI_MODEL", "gpt-6-luna")
+    for model_id, api_model in (
+        ("openai-gpt54", "gpt-5.4"),
+        ("openai-o4-mini", "o4-mini"),
+        ("openai-gpt61-sol", "gpt-6.1-sol"),
+        ("openai-gpt6-astra", "gpt-6-astra"),
+    ):
+        asyncio.run(router.complete(model_id, messages))
+        request = seen[-1]
+        assert request["url"] == "https://api.openai.com/v1/chat/completions"
+        assert request["body"]["model"] == api_model
+        assert request["body"]["reasoning_effort"] == "low"
+        assert "provider" not in request["body"]
+
+
+def test_openrouter_expired_key_has_actionable_error(monkeypatch):
+    monkeypatch.setenv("DEMO_ALLOW_EXTERNAL_MODELS", "true")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "expired-router-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"error": {"message": "API key expired."}})
+
+    router = ModelRouter(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            router.complete("openrouter-qwen", [{"role": "user", "content": "Merhaba"}])
+        )
+
+    assert exc_info.value.status_code == 502
+    assert "süresi dolmuş" in exc_info.value.detail
+    assert "OPENROUTER_API_KEY" in exc_info.value.detail
+
+
+def test_openrouter_expired_key_is_not_reported_ready(monkeypatch):
+    monkeypatch.setenv("DEMO_ALLOW_EXTERNAL_MODELS", "true")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "expired-router-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://openrouter.ai/api/v1/auth/key"
+        return httpx.Response(401, json={"error": {"message": "API key expired."}})
+
+    router = ModelRouter(transport=httpx.MockTransport(handler))
+    status = asyncio.run(router.status(MODEL_BY_ID["openrouter-qwen"]))
+
+    assert status == "auth_error"
 
 
 def test_local_gemma_does_not_require_external_model_permission(monkeypatch):

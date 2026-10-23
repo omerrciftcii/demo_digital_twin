@@ -1,0 +1,758 @@
+{
+  "schemaVersion": "cco-oracle-grok-bundle/0.1.0",
+  "generatedAt": "2026-10-21T21:44:45.3858874+03:00",
+  "experimental": true,
+  "realGemmaBenchmarkExecuted": false,
+  "files": [
+    {
+      "path": ".python-version",
+      "bytes": 5,
+      "sha256": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d"
+    },
+    {
+      "path": "cco/3a246a49-ddf6-8fe0-d951-5b89816ba635.json",
+      "bytes": 1155,
+      "sha256": "2c11ef4da01ff281cb9f95d97d977377d0037725a49da97c98b1c4c40e2e674d"
+    },
+    {
+      "path": "cco/3a246a49-f6f7-5e70-4f23-f9bb88cec902.json",
+      "bytes": 3178,
+      "sha256": "6d36e18871775b9c5e5c19b4b9011dc67a1b977bc49360c2167ca7098bd947bd"
+    },
+    {
+      "path": "cco/3a246a49-fa4e-a7e9-c6f4-895be8f11ba1.json",
+      "bytes": 23847,
+      "sha256": "9e17820c185b55e048edc64e935a22c1032d83b439b28d9ca67603a5fe05ffbf"
+    },
+    {
+      "path": "cco/3a246a4a-161e-b141-53a1-281ae772ab5f.json",
+      "bytes": 1618,
+      "sha256": "905b20627c61fb6c55ef6f4ac9a39c4160f13b226940962cab967883dd0f4a5c"
+    },
+    {
+      "path": "cco/3a246a4a-1e88-5214-ad9b-d23e48d113b0.json",
+      "bytes": 10910,
+      "sha256": "c597b4f424a0678429037b6066de61fd70bbc26ac04d90827b670dd366affc77"
+    },
+    {
+      "path": "cco/3a246a4a-2c67-0201-d131-37a73045e299.json",
+      "bytes": 5926,
+      "sha256": "05baf0c86b6245f0e8fb41b065eeedc8ff480ef5fec220c166dcf369b5bc39b3"
+    },
+    {
+      "path": "cco/3a246a4a-35c0-cdc5-e8cb-04e86e2a3e41.json",
+      "bytes": 15695,
+      "sha256": "800e73e4c0bfbf6bdf97ab0fb585e57f6f08c7dbf5916550e22b973409e450b0"
+    },
+    {
+      "path": "cco/3a246a4a-455a-25f2-4bf1-bcf90616db0f.json",
+      "bytes": 182,
+      "sha256": "a7a5292405dc38feb37f664d6ee2a21e95d1eef9c970fe70b86e000a33c3084a"
+    },
+    {
+      "path": "cco/3a246a4a-55de-8f27-75ac-79ab491bcb9e.json",
+      "bytes": 182,
+      "sha256": "aad47bc74d9f5df14583eecfee7dc66189c1e76b676c327d63d9f699864478e2"
+    },
+    {
+      "path": "cco/3a246a4a-69ef-8713-1f62-f77b82405149.json",
+      "bytes": 1725,
+      "sha256": "1f351ec9929a9b656621afe1d63f4246182e8e510aedc9782839efe70a2250df"
+    },
+    {
+      "path": "cco/3a246a4a-8ebe-0c31-61a1-883dec435912.json",
+      "bytes": 13138,
+      "sha256": "fd915ac7386b5884558a78bfb9b3ad50ef32f4625d97bbade75b5b0837dde3e6"
+    },
+    {
+      "path": "cco/3a246a4a-ba85-818b-5388-c496d4964d83.json",
+      "bytes": 2510,
+      "sha256": "6726c975627861acdbc9c2872e847bf3afbdc9d9194dabff856406be06710393"
+    },
+    {
+      "path": "cco/3a246a4a-cbfc-d3d8-53de-a2ca572575f4.json",
+      "bytes": 1433,
+      "sha256": "cf3df1adc87c06194d1b688e45fc311b0b9db56b776211bbad2b6f50f924f915"
+    },
+    {
+      "path": "cco/3a246a4a-e192-dbbc-8762-613395273218.json",
+      "bytes": 1501,
+      "sha256": "640b9532c81c2102addae2e3e747d36dc7a797c173da783d4c78d101255d021b"
+    },
+    {
+      "path": "cco/3a246a4a-e6ed-2ec4-2c80-6d620d8664c4.json",
+      "bytes": 4046,
+      "sha256": "a684642c3b8339eee773a0fcce025cefbc9bb3d0f161a3ac02cd237837377a44"
+    },
+    {
+      "path": "cco/3a246a4a-f01b-d045-3edd-1874c7ff1edd.json",
+      "bytes": 1103,
+      "sha256": "aefba986e9eaec1fd568cd3c2f5e0d946601a656eb4c66da0f90515608d40fec"
+    },
+    {
+      "path": "cco/3a246a4b-1538-88b8-dd0d-996133fdae62.json",
+      "bytes": 20156,
+      "sha256": "0e61b3fb63cc8b7957b09a6d719f306eb4891ea356947cd219a78db58247862e"
+    },
+    {
+      "path": "cco/3a246a4b-2cb1-f532-4a74-8fa19ca8e94f.json",
+      "bytes": 5083,
+      "sha256": "5f14b533e19613ab8930b2417774afe8f380c004bc844054256ae61d3c65d580"
+    },
+    {
+      "path": "cco/3a246a4b-48ca-7f09-ba57-f9c364c2a255.json",
+      "bytes": 2696,
+      "sha256": "1446506d9a48a137908e615840ec0ca91e2930fe8ab9b6f5e3e11221b875172d"
+    },
+    {
+      "path": "cco/3a246a4b-5361-ef69-9b83-62f4fda67749.json",
+      "bytes": 11950,
+      "sha256": "8354581d3c7aab5d940c2bcc9c7d96170804e9f1f7392b783078c71ebd7a5fbd"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle_human_review_hash_before.txt",
+      "bytes": 66,
+      "sha256": "c69633f35eb370d307f5eed7f1663afb215c3ef8770a1dc5d087aecbf113e8c1"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/dry_run/oracle_abc_runs.jsonl",
+      "bytes": 139448,
+      "sha256": "724b4ad127286e9905cc2b021a04dbe7a28a23f63336f1b23c9b4a546559bebe"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/dry_run/oracle_grading_queue.jsonl",
+      "bytes": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/dry_run/oracle_run_summary.json",
+      "bytes": 1216,
+      "sha256": "3c83a65740edce4eb232495f1a193aeb7512812e91d76ae573d127cb8ab6302c"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/oracle_ai_drafts.jsonl",
+      "bytes": 169094,
+      "sha256": "acbc74361b972253a7fa0ba2cd32427c21a80c371ab58abd104b67e5f43b7bd7"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/oracle_ai_errors.jsonl",
+      "bytes": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/oracle_ai_generation_report.json",
+      "bytes": 386,
+      "sha256": "54e9b2e200cd120ff421048fc73d541756971bc94f6c94154dd85979c54bc111"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/oracle_ai_manifest.json",
+      "bytes": 1182,
+      "sha256": "fcb6894482581abe8f207cbf09f5812b5fc2927fb5cf845df8c4635d7e9727a2"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/oracle_ai_reviews.jsonl",
+      "bytes": 258192,
+      "sha256": "ff1c5bf80bc2fa83d612316cee13377b2bdb68e2b46653027053ca3be1817e6a"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/ai_oracle/oracle_ai_validation.json",
+      "bytes": 346,
+      "sha256": "ef6ec9b687c53a4b40dd08d4afa8a9931aa6a2d1e37ef1771197c9a0d94d1846"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/dry_run/oracle_abc_runs.jsonl",
+      "bytes": 90226,
+      "sha256": "5b5f1fa3d5ba67bbc1fac02779f9063272344c97d97c218bd3187a2dff993f51"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/dry_run/oracle_grading_queue.jsonl",
+      "bytes": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/dry_run/oracle_run_summary.json",
+      "bytes": 1097,
+      "sha256": "0fef4b8c287c4d3f7036d10f04e5efac8c1bd95c9ad131d0265b6d961acfca64"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/oracle_cases.jsonl",
+      "bytes": 89108,
+      "sha256": "2bd4308204716615a262069a434e49631384e6e241a4e0de30786f533b2c5731"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/oracle_evidence_reviews.jsonl",
+      "bytes": 81716,
+      "sha256": "d624420eabd9fc402226a683a7dc306c6972a61212535542c8f8cfb6c23bee18"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/oracle_run_manifest.json",
+      "bytes": 2841,
+      "sha256": "bb1d06913e5cb907f8d43a57a1a9eaf16da6f274720f5cfe3c5a88c5f8d41390"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/package-validation.json",
+      "bytes": 379,
+      "sha256": "b4a6e1d6850d8e6ba1703094d44d027189ceb562cb75314238955991327e3237"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/pilot-report.json",
+      "bytes": 1702,
+      "sha256": "c8fc03a972fa37d5d85f3d6fb6038fe03577eb3ae550ad4dba3d4a0d5071d98f"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/question_curation.json",
+      "bytes": 3500,
+      "sha256": "10da96b14ecece1c231a4e01988a3f780b0253e7fa2fc8639458420424b8c978"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/question-drafts-unreviewed.json",
+      "bytes": 17051,
+      "sha256": "a08695222cc52e7e72f27fec5f86146224df16c959b60ef21fccd8b0aa06756f"
+    },
+    {
+      "path": "data/evaluation/oracle_v3/source-audit.json",
+      "bytes": 33711,
+      "sha256": "dbe942abd525bcadc0272596382e0d83c5f87cb1a409166e63b5af43626506d8"
+    },
+    {
+      "path": "docs/ORACLE_AI_EXPERIMENTAL_GROK_HANDOFF.md",
+      "bytes": 5989,
+      "sha256": "d7ff47a9cf89ecb03858b6ac4d873c8c2711e7e07dcee51ad16a4b2926a6eae0"
+    },
+    {
+      "path": "docs/ORACLE_GROK_HANDOFF.md",
+      "bytes": 9164,
+      "sha256": "3719aa1c373233289f1cb80bdae6f9690dae8307d0e6a55fd8b72078be36036e"
+    },
+    {
+      "path": "oracle_prompts/A_full_cco.md",
+      "bytes": 314,
+      "sha256": "9350ac17047f357b998c388e128a91e6e0e1936e95dbc21237256b152e63b691"
+    },
+    {
+      "path": "oracle_prompts/answer_schema.json",
+      "bytes": 1821,
+      "sha256": "e4a35389d2c8f5f92c33146e33f8aa90d43c729b3c61d7dfde971481ade591a2"
+    },
+    {
+      "path": "oracle_prompts/B_AI_provisional.md",
+      "bytes": 863,
+      "sha256": "9b6a62b8e45dbaa5052e9f6604110f6eb4de6471bf33d764a4e98f9f19688924"
+    },
+    {
+      "path": "oracle_prompts/B_human_oracle.md",
+      "bytes": 999,
+      "sha256": "ee01f2ce921c242063ca69cc9e3a1fa44065583dfd73ad2c4ce9aa9eb7a22f98"
+    },
+    {
+      "path": "oracle_prompts/C_predicted_ranker.md",
+      "bytes": 923,
+      "sha256": "563c900e96ebf04a7d70d5c8d797df785ea3650c78f9fb160f413e79bd2fd4aa"
+    },
+    {
+      "path": "oracle_prompts/README.md",
+      "bytes": 593,
+      "sha256": "f3de3a356c1350e87389ccc24bc4c85d045a27739d1f5e91d0271a9cd2b1a81b"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 1056,
+      "sha256": "0052775dfc2ade64a85f55c721a76ad69f54c90e2a28a1b1715611c3771e9b3c"
+    },
+    {
+      "path": "scripts/analyze_oracle_abc.py",
+      "bytes": 1134,
+      "sha256": "c75ac2f8904f25bd80bd7d36ecac859e8c2d1593edaabcf384b25e6876ee7b79"
+    },
+    {
+      "path": "scripts/run_oracle_abc.py",
+      "bytes": 13280,
+      "sha256": "623a0111606eb0bd79d8873219175cce5a8baff315d321c6bcad7afa69be347b"
+    },
+    {
+      "path": "scripts/validate_ai_oracle_package.py",
+      "bytes": 3242,
+      "sha256": "c89d6eccd5e370e1717e11144c9982d84b73e4d05f7bb6542c8398f22c00e220"
+    },
+    {
+      "path": "scripts/validate_oracle_package.py",
+      "bytes": 5034,
+      "sha256": "5c7764cf67bdfa2b3c0dd12013fa6820ae5a2ff7195bdd58c87a48bc39a1b48f"
+    },
+    {
+      "path": "src/medical_ai_digital_twin.egg-info/dependency_links.txt",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "src/medical_ai_digital_twin.egg-info/PKG-INFO",
+      "bytes": 777,
+      "sha256": "8806188027a91eb048ac3a69282169e76bde9ecd901ac1240e9bbc643c99a632"
+    },
+    {
+      "path": "src/medical_ai_digital_twin.egg-info/requires.txt",
+      "bytes": 277,
+      "sha256": "388f46ef833c2bddc065f17169a5849b8bf4a71748f29f02795d4c89d6b646b6"
+    },
+    {
+      "path": "src/medical_ai_digital_twin.egg-info/SOURCES.txt",
+      "bytes": 2211,
+      "sha256": "b7e7fab411b23b578723448f6f06c1206835d16db2727d1b3604fd598373acf5"
+    },
+    {
+      "path": "src/medical_ai_digital_twin.egg-info/top_level.txt",
+      "bytes": 29,
+      "sha256": "463f1bafe70bb07be753b9401ae4f503037f552f8de2e2e3e92b0a40af467a76"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__init__.py",
+      "bytes": 103,
+      "sha256": "a789c34a095fb3518eb1aff5b4eeed39150d4df14448c45df77b0ca2cee6d828"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/__init__.cpython-312.pyc",
+      "bytes": 308,
+      "sha256": "8649c79d4f5cd955af8c6bdc9d3279d194f95706c7e0cd0dcfc07b8a4b9a53d4"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/__init__.cpython-314.pyc",
+      "bytes": 310,
+      "sha256": "6403c18237f9d4bfa854b115746792f9f604c6a771e2b679b7eef16f6542e01e"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/ai_oracle.cpython-312.pyc",
+      "bytes": 25734,
+      "sha256": "8f3b5a51da6cf7b229b61e1f115b0c25c3fe9d4e6fe7069b14552ceb114e1638"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/evaluation.cpython-312.pyc",
+      "bytes": 19758,
+      "sha256": "60407a549ab3e24e930afc4cefcdfff588f7abf150dfa9f6e2c1d145de213d2c"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/evaluation.cpython-314.pyc",
+      "bytes": 23009,
+      "sha256": "aac1d4536949c175c534d969a15bdb79ab4b00b0fef7a0efe4611f8407cf01a4"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/evidence.cpython-312.pyc",
+      "bytes": 7514,
+      "sha256": "b875d66c172470a20eb55b0cf0050189544117f610e63affc1e3042c53e660cd"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/evidence.cpython-314.pyc",
+      "bytes": 9037,
+      "sha256": "bce965eb34369ff2b0851018d97fb6be93ee081df9cf5eb6ba82c20a1d951e43"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/graph.cpython-312.pyc",
+      "bytes": 11800,
+      "sha256": "1e2aef67412c9d1f12e40cb0e9710f52b21c41fd6a1174b45994d06ea8099072"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/graph.cpython-314.pyc",
+      "bytes": 13645,
+      "sha256": "2680294a14eaf54795bf04e4f81a88f7a9885239748cc72a167df6b98ba896bd"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/hybrid_synthetic.cpython-312.pyc",
+      "bytes": 41712,
+      "sha256": "06b01b9ef1e37c05d74f696f2bbf23ed315c704577e6b1389edff16b47b42a4a"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/index.cpython-312.pyc",
+      "bytes": 23761,
+      "sha256": "e6b5e92e89d85b9d8239767ab3d723ff79186b2b159466978f273e93a270e743"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/index.cpython-314.pyc",
+      "bytes": 31042,
+      "sha256": "d39902d40ec017ed5f1546fb15ff5d80f3affbd0e53925d159500bc45b487018"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/llm.cpython-312.pyc",
+      "bytes": 33249,
+      "sha256": "7a3807e54008913c7e70cccdf5802fbedd8a506234fda607d6843449dc815894"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/llm.cpython-314.pyc",
+      "bytes": 39491,
+      "sha256": "0f1586e0b73ddb1926155244a2a0f8eb157e33792f67b6fe5a776230d9298c01"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/main.cpython-312.pyc",
+      "bytes": 30616,
+      "sha256": "08566fcd2187a4805f1195a847d9fec0b76767f0b8918c33590195eac03688ca"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/main.cpython-314.pyc",
+      "bytes": 35362,
+      "sha256": "67bb34d07a08b2c90937f2d538d75b7a25157618504eeb1b51d44480470ff005"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/model_gateway.cpython-312.pyc",
+      "bytes": 27979,
+      "sha256": "468874309d3f639f9c62bb17eb27bd6e943495fd21e9ed1904e8492095f42664"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/model_gateway.cpython-314.pyc",
+      "bytes": 34393,
+      "sha256": "1c7e59297f5a46ac40f133e8890c98d5d4df453aad23682936c29f313eaaea96"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/models.cpython-312.pyc",
+      "bytes": 8303,
+      "sha256": "e187957c983c4189cb6f43086cebeac078fcb7dcd25b8b45261f4c293897db60"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/models.cpython-314.pyc",
+      "bytes": 11998,
+      "sha256": "104f667457af1240eae5133a0cbace95e2fda51f0ae19f426c805c6888054027"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/oracle_benchmark.cpython-312.pyc",
+      "bytes": 16963,
+      "sha256": "e7df4d7921e0e7b20eeca287343fa522a26fed9dd97797e1d0addf9e117123a1"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/oracle_eval.cpython-312.pyc",
+      "bytes": 34846,
+      "sha256": "e1f93088b64a20e2fd3b038834c189ec3019121261290348b4c9c00a3689144e"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/selector.cpython-312.pyc",
+      "bytes": 26489,
+      "sha256": "caddf25a9e1638fa631d3e2f9f1c0508ef7ab0b5b7e25ed7f7f06e0358f9d952"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/selector.cpython-314.pyc",
+      "bytes": 31068,
+      "sha256": "96be212544d50959eada87ef2220376279df041255504e09c37b2717ba78a275"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/store.cpython-312.pyc",
+      "bytes": 14395,
+      "sha256": "f46311d1e44d61cf540827279c0b7055bd981b14ff5b134f8c4a0201ffd82657"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/store.cpython-314.pyc",
+      "bytes": 18131,
+      "sha256": "c5a71a45cd3ce9cfe21bb21efc328765c5f2faf605e312ba447261459a9b1963"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/synthetic_training.cpython-312.pyc",
+      "bytes": 31970,
+      "sha256": "7446b1c5b2f7abe4cb47a7cae03dd1973c5e59eb6f8529349c375da1cbc58354"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/terminology.cpython-312.pyc",
+      "bytes": 4975,
+      "sha256": "e4c3602749175eff4ef92a7a4b17d56f9c1af483d81f35d463b020f88331f375"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/terminology.cpython-314.pyc",
+      "bytes": 5630,
+      "sha256": "64130c66e6c6543ddb1920e199035b30e8beb2579f99774263d06ff0d0c0f6e5"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_document.cpython-312.pyc",
+      "bytes": 19849,
+      "sha256": "e0c234e142ed3eddb3a27cceb406c27a005be939f4535073a00b048324203ca6"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_document.cpython-314.pyc",
+      "bytes": 16921,
+      "sha256": "73c0a7aa5a62075b421ecca30b58930608e8c1a7e5aab908135cd667da574e4a"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_drug_index.cpython-312.pyc",
+      "bytes": 11883,
+      "sha256": "71ebbbb7562a09cd9921d50258d8bb8d1756911aa408feba16d97863cb3bf9c4"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_drug_index.cpython-314.pyc",
+      "bytes": 14525,
+      "sha256": "88d42bfab31b2a517b94099aaab5750b6e99e9ffee73744c475546545c6e4adc"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_embed.cpython-312.pyc",
+      "bytes": 11870,
+      "sha256": "085a306238b892db883fd5a6c112b4785efd6d603275198381907e29f0b65c97"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_embed.cpython-314.pyc",
+      "bytes": 14610,
+      "sha256": "c4a09686daa9baeb27f512bf816d1e5d49a55bac7795b9b26b998c0df01f637d"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_eval.cpython-312.pyc",
+      "bytes": 24824,
+      "sha256": "82eea5e3a3b193cb99edc4c66ed5b03a43d620f0250310d0d937e02f452be15a"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_eval.cpython-314.pyc",
+      "bytes": 29081,
+      "sha256": "05423fdcb1e3aae67197c22301f1d245e05b77320ecc2f2abfcc86914875b161"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_evidence.cpython-312.pyc",
+      "bytes": 53459,
+      "sha256": "81ecad02c48459fcb640f94b19f7b43df4f7711095490730d67f7503f3609efe"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_evidence.cpython-314.pyc",
+      "bytes": 65833,
+      "sha256": "9111e4ae8d721437fbd078fc2b5f5de11b702af8f43bd44447737122d15b9156"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_grounding.cpython-312.pyc",
+      "bytes": 115799,
+      "sha256": "17b3dc19f29d65f513ee652dd2ce628e817cf1b6add740b1c28c6ca8c3dc7a0b"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_grounding.cpython-314.pyc",
+      "bytes": 148384,
+      "sha256": "ac652a4cf1d2c4ba0305aea5319aab3defab95966cec325fc6ae568ec42ea3d2"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_llm.cpython-312.pyc",
+      "bytes": 37197,
+      "sha256": "03f79797f9b3c78a4dabad5c0d46201ce9fd250be5db0024e173c089c2c89058"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_llm.cpython-314.pyc",
+      "bytes": 45432,
+      "sha256": "be22883d5439c699be43f696e96730f655a94802e4ff0e8ca35da95408f384eb"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_qa.cpython-312.pyc",
+      "bytes": 53799,
+      "sha256": "fb5c08adaf40b41e09c163f4e8f71cf3075b563e8bbbb355ce848135514719e6"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_qa.cpython-314.pyc",
+      "bytes": 61624,
+      "sha256": "6251c4acb4e2ff0a06dab6dc45adcfdbab8295b5091a5f20c76fbc8932ffe2ad"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_relevance.cpython-312.pyc",
+      "bytes": 26631,
+      "sha256": "130555819722a77d7fa69bd150d14c80f0b142baa7c76688760a54dc470f1b49"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_relevance.cpython-314.pyc",
+      "bytes": 32753,
+      "sha256": "51570cf5b351d0062c9edd203e6fb78e299ac27fc7c1a26f7d13d0c16a1a5fb4"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_safety.cpython-312.pyc",
+      "bytes": 18732,
+      "sha256": "21a62f6a76d3448a48742ef14e4313f749673c4db19cf3e38fb5e192e3ccd72b"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_safety.cpython-314.pyc",
+      "bytes": 22634,
+      "sha256": "4aa4601376cc2c59c4fa1b13d7b19cb36a2c6f777c4f17c376f4988666efde25"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_verify.cpython-312.pyc",
+      "bytes": 82791,
+      "sha256": "b4db3afa91c65d52368b3d7ee14ef34fa23d6f10dbde868b163324eb997d62c8"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/text_verify.cpython-314.pyc",
+      "bytes": 101295,
+      "sha256": "d08e68e6a1e47fb472ef0c9c4e3ad2631027f57949dc0361b5ef0aabc499b3ea"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/training_dataset.cpython-312.pyc",
+      "bytes": 36069,
+      "sha256": "cd7ff3f4c48398474cde1d7f17a3a3ee1d78548c368ce6f9a3450a2a0217507e"
+    },
+    {
+      "path": "src/medical_ai_selective_context/__pycache__/training_sources.cpython-312.pyc",
+      "bytes": 20271,
+      "sha256": "577e70cd5d06aacc742eda8a4714ec5d10d6235cb7d3c4a607526d24e5e0947c"
+    },
+    {
+      "path": "src/medical_ai_selective_context/ai_oracle.py",
+      "bytes": 21135,
+      "sha256": "3b633a1c6c9acca82df473d6875211d2ea4b0eb6f924cfcd6c532dde74e56844"
+    },
+    {
+      "path": "src/medical_ai_selective_context/data/stopwords-tr.txt",
+      "bytes": 1751,
+      "sha256": "4a698b0c05ab561878d45d44dc542e3782e26002b531df8dc4552434bd1ea693"
+    },
+    {
+      "path": "src/medical_ai_selective_context/evaluation.py",
+      "bytes": 13448,
+      "sha256": "4aa587ffac027c4b06b85de69ee83d47a3ac60877dc499ffec43b7726b434b97"
+    },
+    {
+      "path": "src/medical_ai_selective_context/evidence.py",
+      "bytes": 5373,
+      "sha256": "d99f00d84cfbd0dbb192f2032317f865758d519748e1fa2a43a61395b2d481fd"
+    },
+    {
+      "path": "src/medical_ai_selective_context/graph.py",
+      "bytes": 8475,
+      "sha256": "91f7b6e763fac8d006787cfcb4b4c4725d4b9d9ef3f7cc428559f2baffd3eade"
+    },
+    {
+      "path": "src/medical_ai_selective_context/hybrid_synthetic.py",
+      "bytes": 35833,
+      "sha256": "9adeef0ae1d2847069d7a56d333ee496b3057a2e8449ecd1bc2048d728abf688"
+    },
+    {
+      "path": "src/medical_ai_selective_context/index.py",
+      "bytes": 21602,
+      "sha256": "59e1bbc65252dc352f6ac1dd06c3b806cdbe3c25163ad45b40a9e4596ee2cf0c"
+    },
+    {
+      "path": "src/medical_ai_selective_context/llm.py",
+      "bytes": 23669,
+      "sha256": "e96e941111a1bca0e77f43fb0389874a41773cf36c604778cf65315ceea16f34"
+    },
+    {
+      "path": "src/medical_ai_selective_context/main.py",
+      "bytes": 20194,
+      "sha256": "d61ac790cef51b5762b4395ffaffe1812e0b2a517b044ebc51a7af4af77d1037"
+    },
+    {
+      "path": "src/medical_ai_selective_context/model_gateway.py",
+      "bytes": 16483,
+      "sha256": "0b15dc1998106be12d8ef602d6dae39a90135815cbeddf826947f553b5f4376d"
+    },
+    {
+      "path": "src/medical_ai_selective_context/models.py",
+      "bytes": 4809,
+      "sha256": "4bca0b2565a47d84e5d862a9a051652ed960f37d89dfe38df703e6a51da64258"
+    },
+    {
+      "path": "src/medical_ai_selective_context/oracle_benchmark.py",
+      "bytes": 10883,
+      "sha256": "bf3f0e80ad4f52fe62a22697272887d555ef20e9d92d44eb4ea245bf46f44800"
+    },
+    {
+      "path": "src/medical_ai_selective_context/oracle_eval.py",
+      "bytes": 26784,
+      "sha256": "2a4bbc436288bdb14efb2eed91a1f9649fe6e6b2d54b89f2aa5ec9e679d8c764"
+    },
+    {
+      "path": "src/medical_ai_selective_context/schema/cco-0.7.schema.json",
+      "bytes": 17115,
+      "sha256": "f17cd896233ca7e9719507c1842974ebf341557f814421ffa32edca60500369d"
+    },
+    {
+      "path": "src/medical_ai_selective_context/selector.py",
+      "bytes": 21702,
+      "sha256": "b70e8aeab70528d84e2784a6d942089c3f6b15ff0624aaf8245e309112d87d60"
+    },
+    {
+      "path": "src/medical_ai_selective_context/static/app.js",
+      "bytes": 29942,
+      "sha256": "4f6855040d6481dffe146d8657985750d05ecd8ede870984c7bdd62544908653"
+    },
+    {
+      "path": "src/medical_ai_selective_context/static/index.html",
+      "bytes": 6112,
+      "sha256": "fdcaccd85323f72b71ad3d189583af18014b2f473767cc3052d13b167d0e314e"
+    },
+    {
+      "path": "src/medical_ai_selective_context/static/styles.css",
+      "bytes": 14221,
+      "sha256": "e7fe646f091bdbdeed13628d9744e9efb88064d9ef70e56efc2768df12ed40fe"
+    },
+    {
+      "path": "src/medical_ai_selective_context/store.py",
+      "bytes": 9153,
+      "sha256": "ec69c8b738b26bf016bef895ed29cf61a9c218b3b15e2a239fe4ade5d1316c17"
+    },
+    {
+      "path": "src/medical_ai_selective_context/synthetic_training.py",
+      "bytes": 26853,
+      "sha256": "106fd79494b7ae3ea8c362455f7e45c4854907c7c7aedc99815b40b5344f843b"
+    },
+    {
+      "path": "src/medical_ai_selective_context/terminology.py",
+      "bytes": 3246,
+      "sha256": "1f5ad8a6a48d748268bfb2d00a3270de85f82bceab996ffb9fa262e2a2bbad7d"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_document.py",
+      "bytes": 12857,
+      "sha256": "5f98f53f61cdb6574bbba1945c96e70a1435bce3a046608f903961a92d569f9c"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_drug_index.py",
+      "bytes": 7583,
+      "sha256": "e7591e16480d1b9e7fe76667c31648e86b9d94e87ae9dae530ec446529250eb0"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_embed.py",
+      "bytes": 8047,
+      "sha256": "89a515d716eb9b937f984a0f67c1dd55a6a674f8db8028fb921893ea33520c2b"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_eval.py",
+      "bytes": 16275,
+      "sha256": "f22bad6b317151a2e859277fd68a8f75b4675805ff7d4049a5cbb18ff958b5e4"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_evidence.py",
+      "bytes": 37330,
+      "sha256": "f3a9c081edccc7518461396a5920bd3291602a323178047ea084e971d1b4e8c3"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_focus.py",
+      "bytes": 230,
+      "sha256": "92254bb1ffe06feb1363407d172de9ae825d1b5def90a0b94ae197a69accb0f2"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_grounding.py",
+      "bytes": 87433,
+      "sha256": "7164a2eec85c092b0c538fcbf3bb23b07449784598d652124aefdc53a4eae555"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_llm.py",
+      "bytes": 28274,
+      "sha256": "5fb17d1a057174b071bb71ea83cd68805860d92eac9da8200015251aca3ce44a"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_qa.py",
+      "bytes": 47185,
+      "sha256": "c0676788fd34c1b5f397d19f17d3794b4e085ad1a6fe262896e2dbc09fec688f"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_relevance.py",
+      "bytes": 16927,
+      "sha256": "9871ec478cf15752676b86ca72f81ff9618deeb728fe60c6c9c5fc4993393d03"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_safety.py",
+      "bytes": 14877,
+      "sha256": "6d4efa0eeaa982c348348b68e96c050359a52ac27773b60e69bc9f14b35a0791"
+    },
+    {
+      "path": "src/medical_ai_selective_context/text_verify.py",
+      "bytes": 60271,
+      "sha256": "4a4ca8cedbbe350e1fe6a4f7f960010959839b6b51a6951442654c51c4c3e89d"
+    },
+    {
+      "path": "src/medical_ai_selective_context/training_dataset.py",
+      "bytes": 26019,
+      "sha256": "be016856c85f2a3dc56614e57e7ce2b63fea84216c599448430b54d6933cf869"
+    },
+    {
+      "path": "src/medical_ai_selective_context/training_sources.py",
+      "bytes": 16623,
+      "sha256": "b434fc07b2fb19906ee8383c1358fb5648c206cb8feb29b82b122f566794d2cb"
+    },
+    {
+      "path": "uv.lock",
+      "bytes": 414961,
+      "sha256": "3a8911a755494177d7c5721cce968748eea9285f780eb9067b01bfe94e5e5c90"
+    }
+  ]
+}
